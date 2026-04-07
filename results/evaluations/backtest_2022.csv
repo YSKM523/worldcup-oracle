@@ -1,0 +1,5 @@
+model,wc_name,n_teams,group_match_brier,group_match_accuracy,knockout_accuracy,champion_brier,uniform_champion_brier,brier_skill_score,calibration_error,predicted_champion_prob,actual_champion
+Elo Baseline,2022 Qatar,48.0,0.6545287230217586,0.5,0.8,0.014146578333333333,0.020399305555555556,0.3065166706382979,0.030983333333333335,0.2564,Argentina
+Chronos-2,2022 Qatar,,,,,0.013554199583333338,,0.3355558331914892,,0.2728,Argentina
+TimesFM-2.5,2022 Qatar,,,,,0.014061685000000004,,0.31067825021276574,,0.2591,Argentina
+FlowState,2022 Qatar,,,,,0.013939455416666668,,0.3166701004255319,,0.2651,Argentina

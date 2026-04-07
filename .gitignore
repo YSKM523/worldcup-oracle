@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environment (symlinked to fin-forecast-arena)
+venv/
+
+# Data cache (large parquet files, re-downloadable)
+data/cache/
+
+# Logs
+results/logs/*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
