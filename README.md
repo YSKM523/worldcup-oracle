@@ -2,11 +2,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-52%20passed-brightgreen.svg)](#backtest-validation-3-past-world-cups)
+[![Tests](https://img.shields.io/badge/tests-53%20passed-brightgreen.svg)](#backtest-validation-3-past-world-cups)
 
 An AI system that predicts every aspect of the 2026 FIFA World Cup using **time series foundation models** (Chronos-2, TimesFM 2.5, FlowState), then compares predictions against **Polymarket odds** ($525M+ volume) to find mispriced markets.
 
-**Last updated:** April 7, 2026 | **Tournament:** June 11 - July 19, 2026 | **48 teams, 104 matches**
+**Last updated:** April 8, 2026 | **Tournament:** June 11 - July 19, 2026 | **48 teams, 104 matches**
 
 ---
 
@@ -88,17 +88,17 @@ An AI system that predicts every aspect of the 2026 FIFA World Cup using **time 
 
 ## Backtest Validation: 3 Past World Cups
 
-Before trusting the model, we backtested on the 2014, 2018, and 2022 World Cups using only data available before each tournament.
+Before trusting the model, we backtested on the 2014, 2018, and 2022 World Cups using only data available before each tournament. All backtests use the correct 32-team format with the official FIFA bracket structure (1A vs 2B, etc.).
 
 ### Cross-Tournament Comparison
 
 | Model | 2014 Brazil | 2018 Russia | 2022 Qatar | Avg Brier | Avg BSS |
 |:---|:---|:---|:---|---:|---:|
-| **Chronos-2** | 0.0173 (#3) | 0.0228 (>5) | **0.0136** (#2) | **0.0179** | **+0.124** |
-| TimesFM-2.5 | 0.0171 (#3) | 0.0227 (>5) | 0.0141 (#2) | 0.0180 | +0.120 |
-| FlowState | 0.0173 (#3) | 0.0227 (>5) | 0.0139 (#2) | 0.0180 | +0.119 |
-| Elo Baseline | 0.0171 (#3) | 0.0229 (>5) | 0.0141 (#2) | 0.0181 | +0.115 |
-| Uniform (random) | 0.0204 | 0.0204 | 0.0204 | 0.0204 | 0.000 |
+| **Chronos-2** | 0.0250 (#3) | 0.0347 (>5) | **0.0192** (#2) | **0.0263** | **+0.131** |
+| TimesFM-2.5 | 0.0250 (#3) | 0.0352 (>5) | 0.0195 (#2) | 0.0266 | +0.122 |
+| FlowState | 0.0252 (#3) | 0.0351 (>5) | 0.0196 (#2) | 0.0266 | +0.120 |
+| Elo Baseline | 0.0249 (#3) | 0.0351 (>5) | 0.0201 (#2) | 0.0267 | +0.118 |
+| Uniform (random) | 0.0303 | 0.0303 | 0.0303 | 0.0303 | 0.000 |
 
 *Brier Score: lower is better. BSS (Brier Skill Score): higher is better, 0 = random.*
 *(#N) = actual champion's rank in model's top-5 predictions.*
@@ -113,11 +113,11 @@ Before trusting the model, we backtested on the 2014, 2018, and 2022 World Cups 
 | Elo Baseline | #3 | >5 | #2 | 2/3 |
 
 **Key findings:**
+- All backtests use the correct 32-team format with the official FIFA bracket (1A vs 2B, etc.)
 - All models correctly identified the champion in their top 3 for 2/3 tournaments
-- 2018 was the hardest: France was Elo-ranked 7th pre-tournament; Brazil and Spain dominated predictions
-- Chronos-2 was the best TSFM model across all 3 tournaments
-- All models significantly beat the uniform (random) baseline (BSS +0.12 to +0.12)
-- TSFMs provide modest but consistent improvement over pure Elo
+- 2018 was the hardest: France was Elo-ranked outside the top 5 pre-tournament; all models have negative BSS
+- Chronos-2 is the best TSFM model across all 3 tournaments (avg BSS +0.131)
+- TSFMs provide modest but consistent improvement over pure Elo (+0.131 vs +0.118)
 
 ---
 
@@ -196,9 +196,9 @@ Bet sizing uses the [Kelly criterion](https://en.wikipedia.org/wiki/Kelly_criter
 - **Daily**: Fetch Polymarket odds, log movements
 - **Weekly (Mondays)**: Re-run TSFM models, update predictions, regenerate plots
 
-### Phase B: During Tournament (June 11 - July 19)
-- After each match day: update Elo, re-run models, re-simulate remaining bracket
-- Running scoreboard: AI accuracy vs Polymarket accuracy
+### Phase B: During Tournament (June 11 - July 19) — *not yet implemented*
+- **Planned**: After each match day, update Elo with actual results, re-simulate remaining bracket, score previous predictions
+- **Current status**: Falls back to the Phase A pipeline. See `pipeline/matchday_run.py` for the TODO list.
 
 ---
 
@@ -228,13 +228,13 @@ worldcup-oracle/
 │   └── odds_converter.py      # Probability/odds math
 ├── evaluation/
 │   ├── backtester.py          # Backtest on 2014/2018/2022 WCs
-│   ├── metrics.py             # Brier score, log loss, calibration
-│   └── calibration.py         # Reliability diagrams
+│   └── metrics.py             # Brier score, log loss, calibration
 ├── visualization/             # All chart generators
 ├── pipeline/
 │   ├── daily_run.py           # Phase A: pre-tournament pipeline
-│   └── matchday_run.py        # Phase B: during-tournament pipeline
-├── tests/                     # 52 tests, all passing
+│   └── matchday_run.py        # Phase B: during-tournament (stub)
+├── tests/                     # 53 tests, all passing
+├── requirements.txt           # Python dependencies
 └── results/
     ├── predictions/           # Current AI predictions
     ├── odds_history/          # Polymarket odds snapshots

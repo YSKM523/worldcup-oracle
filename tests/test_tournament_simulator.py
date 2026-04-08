@@ -54,14 +54,19 @@ class TestSimulateGroup:
         assert len(standings) == 4
 
     def test_standings_sorted_by_points(self):
-        rng = np.random.default_rng(42)
+        """Primary sort key (points) should be non-increasing across many seeds."""
         teams = ["A", "B", "C", "D"]
         elos = {t: 1500 for t in teams}
-        standings = _simulate_group(teams, elos, rng)
-        points = [s[1] for s in standings]
-        # Points should be non-increasing (sorted descending, with tiebreak)
-        for i in range(len(points) - 1):
-            assert points[i] >= points[i + 1] or True  # Tiebreakers may reorder
+        for seed in range(50):
+            rng = np.random.default_rng(seed)
+            standings = _simulate_group(teams, elos, rng)
+            points = [s[1] for s in standings]
+            for i in range(len(points) - 1):
+                # Tiebreakers (gd, gf, random) can reorder equal-point teams,
+                # but a higher-ranked team must never have fewer points.
+                assert points[i] >= points[i + 1], (
+                    f"seed={seed}: points not sorted: {points}"
+                )
 
 
 class TestSimulateTournament:
@@ -81,6 +86,31 @@ class TestSimulateTournament:
         result = simulate_tournament(sample_elo, rng)
         finalists = [t for t, s in result.items() if s in ("final", "champion")]
         assert len(finalists) == 2
+
+    def test_32_team_format_via_groups_param(self):
+        """Passing 8 groups of 4 should run the 32-team format (no R32 round)."""
+        groups_32 = {
+            "A": ["T_A1", "T_A2", "T_A3", "T_A4"],
+            "B": ["T_B1", "T_B2", "T_B3", "T_B4"],
+            "C": ["T_C1", "T_C2", "T_C3", "T_C4"],
+            "D": ["T_D1", "T_D2", "T_D3", "T_D4"],
+            "E": ["T_E1", "T_E2", "T_E3", "T_E4"],
+            "F": ["T_F1", "T_F2", "T_F3", "T_F4"],
+            "G": ["T_G1", "T_G2", "T_G3", "T_G4"],
+            "H": ["T_H1", "T_H2", "T_H3", "T_H4"],
+        }
+        all_teams = [t for g in groups_32.values() for t in g]
+        elos = {t: 1500 for t in all_teams}
+        rng = np.random.default_rng(42)
+
+        result = simulate_tournament(elos, rng, groups=groups_32)
+
+        assert len(result) == 32
+        champions = [t for t, s in result.items() if s == "champion"]
+        assert len(champions) == 1
+        # In 32-team format there should be no R32 stage
+        r32_teams = [t for t, s in result.items() if s == "r32"]
+        assert len(r32_teams) == 0
 
 
 class TestMonteCarlo:

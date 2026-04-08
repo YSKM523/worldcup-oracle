@@ -4,7 +4,8 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
-# Virtual environment (symlinked to fin-forecast-arena)
+# Virtual environment (may be a symlink or a directory)
+venv
 venv/
 
 # Data cache (large parquet files, re-downloadable)

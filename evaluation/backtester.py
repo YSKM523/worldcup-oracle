@@ -376,21 +376,13 @@ def backtest_elo_baseline(
         ["group_eliminated", "group_advance", "r32", "r16", "qf", "sf", "final", "champion"]
     )}
 
-    # Override GROUPS temporarily for backtesting
-    import config
-    original_groups = config.GROUPS
-    config.GROUPS = wc["groups"]
-
-    try:
-        for _ in range(n_simulations):
-            result = simulate_tournament(team_elos, rng)
-            for team, stage in result.items():
-                team_rank = stage_rank.get(stage, 0)
-                for s in STAGES:
-                    if team_rank >= stage_rank.get(s, 0):
-                        counters[team][s] += 1
-    finally:
-        config.GROUPS = original_groups
+    for _ in range(n_simulations):
+        result = simulate_tournament(team_elos, rng, groups=wc["groups"])
+        for team, stage in result.items():
+            team_rank = stage_rank.get(stage, 0)
+            for s in STAGES:
+                if team_rank >= stage_rank.get(s, 0):
+                    counters[team][s] += 1
 
     # Convert to probabilities
     sim_probs = {}
@@ -496,7 +488,6 @@ def backtest_tsfm(
 
         # Run Monte Carlo with forecasted Elos
         from prediction.tournament_simulator import simulate_tournament, STAGES
-        import config
 
         rng = np.random.default_rng(42)
         counters = defaultdict(lambda: {s: 0 for s in STAGES})
@@ -504,19 +495,13 @@ def backtest_tsfm(
             ["group_eliminated", "group_advance", "r32", "r16", "qf", "sf", "final", "champion"]
         )}
 
-        original_groups = config.GROUPS
-        config.GROUPS = wc["groups"]
-
-        try:
-            for _ in range(n_simulations):
-                result = simulate_tournament(forecasted_elos, rng)
-                for team, stage in result.items():
-                    team_rank = stage_rank.get(stage, 0)
-                    for s in STAGES:
-                        if team_rank >= stage_rank.get(s, 0):
-                            counters[team][s] += 1
-        finally:
-            config.GROUPS = original_groups
+        for _ in range(n_simulations):
+            result = simulate_tournament(forecasted_elos, rng, groups=wc["groups"])
+            for team, stage in result.items():
+                team_rank = stage_rank.get(stage, 0)
+                for s in STAGES:
+                    if team_rank >= stage_rank.get(s, 0):
+                        counters[team][s] += 1
 
         sim_probs = {}
         for team in counters:

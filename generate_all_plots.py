@@ -126,19 +126,21 @@ def main():
     log.info("  Multi-team Elo chart done")
 
     # ── Save ensemble predictions to CSV for README ──────────────────────
+    # Average stage probabilities across all TSFM models (consistent with ai_prob)
+    stage_cols = [c for c in model_sim_results[tsfm_models[0]].columns if c.startswith("P(")]
     ensemble_rows = []
     for team in ALL_TEAMS:
         row = {"team": team, "ai_prob": ensemble_probs.get(team, 0)}
         row["polymarket_prob"] = market_probs.get(team, 0)
         row["edge"] = row["ai_prob"] - row["polymarket_prob"]
-        # Get per-stage probs from baseline (most readable)
-        for mn in tsfm_models[:1]:  # Use first model for stage probs
-            sim_df = model_sim_results[mn]
-            r = sim_df[sim_df["team"] == team]
-            if not r.empty:
-                for col in sim_df.columns:
-                    if col.startswith("P("):
-                        row[col] = r[col].values[0]
+        for col in stage_cols:
+            vals = []
+            for mn in tsfm_models:
+                sim_df = model_sim_results[mn]
+                r = sim_df[sim_df["team"] == team]
+                if not r.empty:
+                    vals.append(r[col].values[0])
+            row[col] = float(np.mean(vals)) if vals else 0.0
         ensemble_rows.append(row)
 
     ensemble_df = pd.DataFrame(ensemble_rows).sort_values("ai_prob", ascending=False)
