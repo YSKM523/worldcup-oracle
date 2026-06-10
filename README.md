@@ -2,11 +2,13 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-53%20passed-brightgreen.svg)](#backtest-validation-3-past-world-cups)
+[![Tests](https://img.shields.io/badge/tests-76%20passed-brightgreen.svg)](#backtest-validation-3-past-world-cups)
 
-An AI system that predicts every aspect of the 2026 FIFA World Cup using **time series foundation models** (Chronos-2, TimesFM 2.5, FlowState), then compares predictions against **Polymarket odds** ($525M+ volume) to find mispriced markets.
+An AI system that predicts every aspect of the 2026 FIFA World Cup using **time series foundation models** (Chronos-2, TimesFM 2.5, FlowState), then compares predictions against **Polymarket odds** ($1.9B volume) to find mispriced markets.
 
-**Last updated:** April 8, 2026 | **Tournament:** June 11 - July 19, 2026 | **48 teams, 104 matches**
+**🔴 Live dashboard: [worldcup-oracle.pages.dev](https://worldcup-oracle.pages.dev)** — per-match win/draw/loss + scoreline predictions for all 104 matches, live group tables, champion odds vs the market, and the AI's running track record. Rebuilt daily by the in-tournament pipeline; in-play scores stream client-side from ESPN.
+
+**Tournament:** June 11 - July 19, 2026 | **48 teams, 104 matches**
 
 ---
 
@@ -202,8 +204,12 @@ Daily at 06:00 UTC (`pipeline/matchday_run.py`):
 - **Elo update**: real WC results merged into match history, ratings rebuilt
 - **Conditioned simulation**: played matches are taken as fact — group standings start from real results, knockout winners are pinned, and only the *remaining* tournament is simulated (50K runs per model). Once the real Round-of-32 bracket is out, FIFA's actual third-place slot assignment replaces the constraint solver.
 - **Model refresh**: TSFM strength forecasts re-run weekly (Mondays); between refreshes each model's Elo is shifted by realized Elo movement: `live = forecast + (actual_now − actual_at_forecast)`
-- **Scoring**: every fixture gets a pre-match probability (stored once, never revised); finished matches are Brier-scored, and a running **AI vs Polymarket scoreboard** resolves champion-market probabilities as teams get eliminated for real
+- **Scoring**: every fixture gets a pre-match probability **and most-likely scoreline** (stored once, never revised); finished matches are Brier-scored, and a running **AI vs Polymarket scoreboard** resolves champion-market probabilities as teams get eliminated for real
+- **Dashboard**: `visualization/dashboard.py` packages everything (per-match ensemble predictions, Poisson scoreline distributions, live group standings, champion edges, track record) into a static site deployed to Cloudflare Pages
 - Phase A continues to archive daily odds snapshots but hands predictions/edges over to Phase B for the duration.
+
+### Match-level predictions
+Per-match probabilities use the same per-model live Elo as the tournament sim, pushed through Bradley-Terry-Davidson (groups) or the ET/penalty split (knockouts) and averaged across models. Scorelines come from an Elo→expected-goals Poisson grid whose win/draw/loss blocks are rescaled to exactly match the ensemble outcome probabilities — so the scoreline distribution and the headline probabilities can never disagree.
 
 ---
 
@@ -226,8 +232,9 @@ worldcup-oracle/
 ├── prediction/
 │   ├── strength_forecaster.py # Level 1: TSFM Elo forecasting
 │   ├── match_predictor.py     # Level 2: Bradley-Terry bridge
+│   ├── score_predictor.py     # Scorelines: Elo→Poisson grid, Davidson-conditioned
 │   ├── tournament_simulator.py # Level 3: Monte Carlo (50K sims)
-│   └── ensemble.py            # Multi-model ensemble
+│   └── ensemble.py            # Multi-model ensemble + per-model live Elo
 ├── markets/
 │   ├── edge_detector.py       # AI vs market comparison + Kelly
 │   ├── polymarket_tracker.py  # Daily odds snapshots
@@ -236,11 +243,12 @@ worldcup-oracle/
 │   ├── backtester.py          # Backtest on 2014/2018/2022 WCs
 │   ├── live_scoring.py        # In-tournament Brier + AI-vs-PM scoreboard
 │   └── metrics.py             # Brier score, log loss, calibration
-├── visualization/             # All chart generators
+├── visualization/             # Chart generators + dashboard.py (data.json builder)
+├── dashboard/                 # Static live dashboard (worldcup-oracle.pages.dev)
 ├── pipeline/
 │   ├── daily_run.py           # Phase A: pre-tournament pipeline
 │   └── matchday_run.py        # Phase B: during-tournament (conditioned re-sim)
-├── tests/                     # 64 tests, all passing
+├── tests/                     # 76 tests, all passing
 ├── requirements.txt           # Python dependencies
 └── results/
     ├── predictions/           # Current AI predictions

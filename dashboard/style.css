@@ -1,0 +1,165 @@
+/* WorldCup Oracle dashboard — dark theme, solid colors only */
+:root {
+  --bg: #10141a;
+  --card: #1a212b;
+  --card-2: #222b38;
+  --line: #2d3848;
+  --text: #e8ecf1;
+  --muted: #93a1b3;
+  --home: #3d8bfd;
+  --draw: #5c6b7e;
+  --away: #e5564a;
+  --green: #2ea44f;
+  --red: #d1352c;
+  --gold: #d4a017;
+  --live: #ff4d4d;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+a { color: var(--home); text-decoration: none; }
+button { font-family: inherit; }
+
+.container { max-width: 860px; margin: 0 auto; padding: 0 14px; }
+
+/* Header */
+.site-header { background: #161c24; border-bottom: 1px solid var(--line); padding-top: 14px; }
+.header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+h1 { font-size: 21px; }
+.subtitle { color: var(--muted); font-size: 13px; }
+.meta-box { text-align: right; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.meta-box .vol { color: var(--gold); }
+
+.tabs { display: flex; gap: 4px; margin-top: 12px; overflow-x: auto; }
+.tab {
+  background: none; border: none; color: var(--muted); font-size: 15px;
+  padding: 9px 14px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap;
+}
+.tab.active { color: var(--text); border-bottom-color: var(--home); font-weight: 600; }
+
+main { padding: 16px 14px 32px; }
+
+/* Filters */
+.filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  background: var(--card); color: var(--muted); border: 1px solid var(--line);
+  border-radius: 14px; padding: 4px 12px; font-size: 13px; cursor: pointer;
+}
+.chip.active { background: var(--home); border-color: var(--home); color: #fff; }
+#team-search {
+  background: var(--card); border: 1px solid var(--line); color: var(--text);
+  border-radius: 8px; padding: 6px 10px; font-size: 14px; flex: 1; min-width: 130px;
+}
+
+/* Match list */
+.day-header {
+  font-size: 14px; font-weight: 600; color: var(--muted);
+  margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line);
+}
+.day-header.today { color: var(--gold); }
+.match-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 10px;
+}
+.match-top { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; gap: 8px; }
+.match-top .stage-badge {
+  background: var(--card-2); border-radius: 4px; padding: 1px 7px; color: var(--text); flex-shrink: 0;
+}
+.match-top .venue { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.match-teams { display: flex; align-items: center; gap: 8px; }
+.team { flex: 1; display: flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 600; min-width: 0; }
+.team .flag { font-size: 22px; flex-shrink: 0; }
+.team .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team.away { flex-direction: row-reverse; text-align: right; }
+.team.loser { color: var(--muted); font-weight: 400; }
+.score-mid { text-align: center; min-width: 86px; flex-shrink: 0; }
+.score-mid .big { font-size: 19px; font-weight: 700; }
+.score-mid .pred-tag { font-size: 11px; color: var(--muted); }
+.score-mid .live-now { color: var(--live); font-size: 12px; font-weight: 600; }
+.score-mid .ko-time { font-size: 13px; color: var(--muted); }
+.live-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--live); margin-right: 4px; animation: blink 1.2s infinite;
+}
+@keyframes blink { 50% { opacity: 0.25; } }
+
+.prob-bar { display: flex; height: 22px; border-radius: 5px; overflow: hidden; margin-top: 10px; font-size: 11.5px; font-weight: 600; color: #fff; }
+.prob-bar .seg { display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; }
+.prob-bar .seg.h { background: var(--home); }
+.prob-bar .seg.d { background: var(--draw); }
+.prob-bar .seg.a { background: var(--away); }
+.prob-labels { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+
+.score-pred { font-size: 12.5px; color: var(--muted); margin-top: 7px; }
+.score-pred b { color: var(--text); font-size: 13px; }
+.model-row { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+.result-line { font-size: 12.5px; margin-top: 7px; }
+.hit { color: var(--green); font-weight: 600; }
+.miss { color: var(--red); font-weight: 600; }
+.tbd-note { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+/* Groups */
+.group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.group-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.group-card h3 { font-size: 15px; margin-bottom: 8px; }
+.group-card table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.group-card th { color: var(--muted); font-weight: 400; font-size: 11.5px; text-align: right; padding: 2px 4px; }
+.group-card th:first-child, .group-card td:first-child { text-align: left; }
+.group-card td { padding: 4px; text-align: right; border-top: 1px solid var(--line); }
+.group-card td.t { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.group-card .adv { color: var(--green); font-weight: 600; }
+
+/* Champions */
+.legend { font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
+.champ-row {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 8px; cursor: pointer;
+}
+.champ-main { display: flex; align-items: center; gap: 8px; }
+.champ-rank { color: var(--muted); width: 22px; font-size: 13px; flex-shrink: 0; }
+.champ-team { display: flex; align-items: center; gap: 7px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; }
+.champ-bars { margin-top: 6px; }
+.champ-bar-bg { background: var(--card-2); height: 8px; border-radius: 4px; overflow: hidden; margin: 2px 0; }
+.champ-bar-bg .fill-ai { background: var(--home); height: 100%; }
+.champ-bar-bg .fill-mkt { background: var(--draw); height: 100%; }
+.champ-nums { text-align: right; font-size: 13px; flex-shrink: 0; }
+.champ-nums .ai-n { color: var(--home); font-weight: 700; }
+.champ-nums .mkt-n { color: var(--muted); }
+.edge-badge {
+  font-size: 11px; font-weight: 700; border-radius: 4px; padding: 2px 6px;
+  color: #fff; margin-left: 6px; white-space: nowrap;
+}
+.edge-badge.buy { background: var(--green); }
+.edge-badge.sell { background: var(--red); }
+.champ-detail { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; font-size: 12.5px; color: var(--muted); }
+.stage-probs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.stage-probs span { background: var(--card-2); border-radius: 4px; padding: 2px 8px; }
+
+/* Record */
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.sum-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; text-align: center; }
+.sum-card .val { font-size: 22px; font-weight: 700; }
+.sum-card .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.sum-card.lead-ai .val { color: var(--green); }
+.record-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--card); border-radius: 10px; overflow: hidden; }
+.record-table th { color: var(--muted); font-weight: 400; font-size: 12px; padding: 8px; text-align: left; border-bottom: 1px solid var(--line); }
+.record-table td { padding: 8px; border-bottom: 1px solid var(--line); }
+.empty-note { color: var(--muted); text-align: center; padding: 30px 0; font-size: 14px; }
+
+/* Footer */
+.site-footer { padding: 18px 14px 40px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.site-footer p { margin-bottom: 6px; }
+
+@media (max-width: 520px) {
+  .meta-box { display: none; }
+  .team { font-size: 14.5px; }
+}

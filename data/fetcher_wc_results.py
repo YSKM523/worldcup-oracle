@@ -47,7 +47,11 @@ ESPN_ALIASES = {
 
 TEAM_TO_GROUP = {t: g for g, teams in GROUPS.items() for t in teams}
 
-# 2026 knockout stage date windows (UTC kickoff dates)
+# 2026 stage date windows in *venue-local* dates. All 16 venues sit in
+# UTC−4…−7, so late kickoffs spill into the next UTC date (e.g. the last
+# group-stage games kick off 02:00Z on June 28 — local evening June 27).
+# We classify on kickoff_utc − 6h, which lands every match in its window.
+_LOCAL_SHIFT = timedelta(hours=6)
 _STAGE_WINDOWS = [
     ("group", date(2026, 6, 11), date(2026, 6, 27)),
     ("r32", date(2026, 6, 28), date(2026, 7, 3)),
@@ -63,14 +67,12 @@ def _normalize(name: str) -> str:
     return ESPN_ALIASES.get(name, name)
 
 
-def _classify_stage(kickoff: date, home: str, away: str) -> str:
+def _classify_stage(kickoff_utc: datetime, home: str, away: str) -> str:
+    local_date = (kickoff_utc - _LOCAL_SHIFT).date()
     for stage, start, end in _STAGE_WINDOWS:
-        if start <= kickoff <= end:
-            # Same-group teams before June 28 → definitely a group match
-            if stage == "group":
-                return "group"
+        if start <= local_date <= end:
             return stage
-    log.warning("Could not classify stage for %s vs %s on %s", home, away, kickoff)
+    log.warning("Could not classify stage for %s vs %s at %s", home, away, kickoff_utc)
     return "unknown"
 
 
@@ -98,6 +100,10 @@ def _parse_event(event: dict) -> dict | None:
     home_score = int(home_c.get("score", 0) or 0)
     away_score = int(away_c.get("score", 0) or 0)
 
+    venue = comp.get("venue") or {}
+    venue_name = venue.get("fullName")
+    venue_city = (venue.get("address") or {}).get("city")
+
     # Winner flag covers ET + penalty shootouts (advancing team)
     winner = None
     if completed:
@@ -107,9 +113,10 @@ def _parse_event(event: dict) -> dict | None:
             winner = away
         # Group-stage draws have no winner flag — that's fine.
 
-    stage = _classify_stage(kickoff_date, home, away)
+    stage = _classify_stage(kickoff_utc, home, away)
 
     return {
+        "espn_id": str(event.get("id", "")),
         "date": pd.Timestamp(kickoff_date),
         "kickoff_utc": kickoff_utc.isoformat(),
         "home_team": home,
@@ -121,27 +128,24 @@ def _parse_event(event: dict) -> dict | None:
         "status": status,
         "stage": stage,
         "group": TEAM_TO_GROUP.get(home) if stage == "group" else None,
+        "venue": venue_name,
+        "venue_city": venue_city,
     }
 
 
 def fetch_wc_results(force: bool = True) -> pd.DataFrame:
-    """Fetch all 2026 WC results from tournament start through today.
+    """Fetch the full 2026 WC schedule + results (start → tournament end).
 
-    Returns a DataFrame of all matches seen so far (completed and scheduled),
-    cached to parquet. Only completed matches have meaningful scores.
+    Past dates carry final scores; future dates are scheduled fixtures
+    (knockout slots appear as placeholder names like "Group C Winner" until
+    determined — those rows fail the ALL_TEAMS check and are display-only).
+    Cached to parquet. Only completed matches have meaningful scores.
     """
     if not force and WC_RESULTS_PARQUET.exists():
         return pd.read_parquet(WC_RESULTS_PARQUET)
 
     start = datetime.strptime(TOURNAMENT_START, "%Y-%m-%d").date()
-    end = datetime.strptime(TOURNAMENT_END, "%Y-%m-%d").date()
-    today = datetime.now(timezone.utc).date()
-    # Include tomorrow: late-night UTC kickoffs land on the next date
-    fetch_end = min(today + timedelta(days=1), end)
-
-    if today < start:
-        log.info("Tournament has not started yet (today=%s)", today)
-        return pd.DataFrame()
+    fetch_end = datetime.strptime(TOURNAMENT_END, "%Y-%m-%d").date()
 
     rows: list[dict] = []
     day = start
@@ -179,7 +183,10 @@ def fetch_wc_results(force: bool = True) -> pd.DataFrame:
     df = df.drop_duplicates(subset=["kickoff_utc", "home_team", "away_team"])
     df = df.sort_values("kickoff_utc").reset_index(drop=True)
 
-    unknown = (set(df["home_team"]) | set(df["away_team"])) - set(ALL_TEAMS)
+    # Placeholder names on future knockout fixtures are expected — only a
+    # *completed* match with an unknown team means we're missing an alias.
+    done = df[df["completed"]]
+    unknown = (set(done["home_team"]) | set(done["away_team"])) - set(ALL_TEAMS)
     if unknown:
         log.warning("Unrecognized team names from ESPN (alias needed): %s", unknown)
 

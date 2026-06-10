@@ -85,6 +85,7 @@ def main():
     )
     from markets.edge_detector import detect_edges, format_edge_report
     from pipeline.daily_run import load_model_snapshot, step_forecast_tournament_elos
+    from prediction.ensemble import live_model_elos
     from prediction.tournament_simulator import TournamentState, run_monte_carlo
 
     # ── 1. Live results ──────────────────────────────────────────────────
@@ -125,19 +126,11 @@ def main():
         except Exception as exc:  # noqa: BLE001 — degrade to Actual-Elo, keep pipeline alive
             log.error("  TSFM refresh failed: %s", exc)
 
-    model_elos: dict[str, dict[str, float]] = {}
+    model_elos = live_model_elos(current_elo, snapshot, teams=list(ALL_TEAMS))
     if snapshot and snapshot.get("model_tournament_elo"):
-        asof_elo = snapshot.get("actual_elo", {})
-        for model_name, tsfm_elo in snapshot["model_tournament_elo"].items():
-            model_elos[model_name] = {
-                t: tsfm_elo.get(t, current_elo.get(t, 1500.0))
-                   + (current_elo.get(t, 1500.0) - asof_elo.get(t, current_elo.get(t, 1500.0)))
-                for t in ALL_TEAMS
-            }
         log.info("Step 5: Live Elo for %d models (snapshot %s + realized delta).",
                  len(model_elos), snapshot["as_of"])
     else:
-        model_elos["Actual-Elo"] = dict(current_elo)
         log.warning("Step 5: No model snapshot — falling back to Actual-Elo only.")
 
     # ── 6. Conditioned Monte Carlo (remaining tournament only) ──────────
@@ -182,9 +175,19 @@ def main():
 
     # ── 8. Live scoring ──────────────────────────────────────────────────
     log.info("Step 8: Live scoring …")
-    predict_upcoming_matches(wc_df, current_elo)
+    predict_upcoming_matches(wc_df, current_elo, model_elos=model_elos)
     score_completed_matches(wc_df)
     update_scoreboard(wc_df)
+
+    # ── 9. Dashboard ─────────────────────────────────────────────────────
+    log.info("Step 9: Building dashboard …")
+    try:
+        from visualization.dashboard import build_dashboard, deploy_dashboard
+
+        build_dashboard(wc_df=wc_df)
+        deploy_dashboard()
+    except Exception as exc:  # noqa: BLE001 — dashboard must never kill the run
+        log.error("  Dashboard step failed: %s", exc)
 
     log.info("Matchday run complete.")
 

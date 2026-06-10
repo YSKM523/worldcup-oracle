@@ -5,6 +5,35 @@ from __future__ import annotations
 import numpy as np
 
 
+def live_model_elos(
+    current_elo: dict[str, float],
+    snapshot: dict | None,
+    teams: list[str] | None = None,
+) -> dict[str, dict[str, float]]:
+    """Per-model live tournament Elo from a TSFM snapshot + realized movement.
+
+    live = tsfm_forecast + (actual_now − actual_at_forecast). Falls back to a
+    single "Actual-Elo" model when no usable snapshot exists.
+
+    Returns {model_name: {team: live_elo}}.
+    """
+    if teams is None:
+        teams = sorted(current_elo.keys())
+
+    if not snapshot or not snapshot.get("model_tournament_elo"):
+        return {"Actual-Elo": {t: current_elo.get(t, 1500.0) for t in teams}}
+
+    asof_elo = snapshot.get("actual_elo", {})
+    out: dict[str, dict[str, float]] = {}
+    for model_name, tsfm_elo in snapshot["model_tournament_elo"].items():
+        out[model_name] = {
+            t: tsfm_elo.get(t, current_elo.get(t, 1500.0))
+               + (current_elo.get(t, 1500.0) - asof_elo.get(t, current_elo.get(t, 1500.0)))
+            for t in teams
+        }
+    return out
+
+
 def equal_weight_probs(
     model_probs: list[dict[str, float]],
 ) -> dict[str, float]:

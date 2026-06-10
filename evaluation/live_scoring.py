@@ -25,6 +25,7 @@ from config import (
     WC_HOST_HOME_ADVANTAGE_ELO,
 )
 from prediction.match_predictor import knockout_probabilities, match_probabilities
+from prediction.score_predictor import ensemble_match_prediction
 
 log = logging.getLogger(__name__)
 
@@ -49,8 +50,14 @@ def predict_upcoming_matches(
     wc_df: pd.DataFrame,
     elo_ratings: dict[str, float],
     horizon_days: int = 3,
+    model_elos: dict[str, dict[str, float]] | None = None,
 ) -> int:
-    """Store pre-match probabilities for upcoming fixtures. Returns # added."""
+    """Store pre-match probabilities for upcoming fixtures. Returns # added.
+
+    With model_elos (per-model live Elo), probabilities are the model
+    ensemble and a most-likely scoreline is stored too; otherwise falls back
+    to single-Elo Davidson probs.
+    """
     if wc_df is None or wc_df.empty:
         return 0
 
@@ -76,16 +83,31 @@ def predict_upcoming_matches(
             continue  # first prediction stands — no revision after the fact
 
         home, away = r["home_team"], r["away_team"]
-        elo_h = elo_ratings.get(home, 1500.0)
-        elo_a = elo_ratings.get(away, 1500.0)
         ha = _host_home_advantage(home, away)
+        is_ko = r["stage"] in KNOCKOUT_STAGES
 
-        if r["stage"] in KNOCKOUT_STAGES:
-            probs = knockout_probabilities(elo_h, elo_a, home_advantage=ha)
-            p_home, p_draw, p_away = probs["win_a"], 0.0, probs["win_b"]
+        if model_elos:
+            elo_pairs = [
+                (m.get(home, 1500.0), m.get(away, 1500.0))
+                for m in model_elos.values()
+            ]
+            pred = ensemble_match_prediction(elo_pairs, home_advantage=ha, knockout=is_ko)
+            if is_ko:
+                p_home, p_draw, p_away = pred["p_adv_home"], 0.0, pred["p_adv_away"]
+            else:
+                p_home, p_draw, p_away = pred["p_home"], pred["p_draw"], pred["p_away"]
+            pred_score = pred["scoreline"]["most_likely"]
+            pred_score_p = pred["scoreline"]["most_likely_p"]
         else:
-            probs = match_probabilities(elo_h, elo_a, home_advantage=ha)
-            p_home, p_draw, p_away = probs["win_a"], probs["draw"], probs["win_b"]
+            elo_h = elo_ratings.get(home, 1500.0)
+            elo_a = elo_ratings.get(away, 1500.0)
+            if is_ko:
+                probs = knockout_probabilities(elo_h, elo_a, home_advantage=ha)
+                p_home, p_draw, p_away = probs["win_a"], 0.0, probs["win_b"]
+            else:
+                probs = match_probabilities(elo_h, elo_a, home_advantage=ha)
+                p_home, p_draw, p_away = probs["win_a"], probs["draw"], probs["win_b"]
+            pred_score, pred_score_p = None, None
 
         rows.append({
             "predicted_at": now.isoformat(),
@@ -96,6 +118,8 @@ def predict_upcoming_matches(
             "p_home": round(p_home, 4),
             "p_draw": round(p_draw, 4),
             "p_away": round(p_away, 4),
+            "pred_score": pred_score,
+            "pred_score_p": pred_score_p,
         })
 
     if rows:
