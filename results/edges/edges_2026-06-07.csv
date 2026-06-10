@@ -1,0 +1,9 @@
+team,ai_prob,market_prob,edge,edge_pct,direction,half_kelly,models_agree,strength
+Spain,0.3019,0.1615,0.1404,14.04,BUY,0.0837,0,edge
+Portugal,0.0184,0.0975,-0.0791,-7.91,SELL,0.0,0,edge
+Ecuador,0.0601,0.0085,0.0516,5.16,BUY,0.026,0,edge
+Brazil,0.0319,0.0825,-0.0506,-5.06,SELL,0.0,0,edge
+England,0.065,0.1115,-0.0465,-4.65,SELL,0.0,0,edge
+Argentina,0.1339,0.0885,0.0454,4.54,BUY,0.0249,0,edge
+France,0.1256,0.1615,-0.0359,-3.59,SELL,0.0,0,edge
+Germany,0.019,0.0545,-0.0355,-3.55,SELL,0.0,0,edge

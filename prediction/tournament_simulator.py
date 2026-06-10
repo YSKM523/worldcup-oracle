@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
@@ -100,6 +101,55 @@ _THIRD_PLACE_SLOT_GROUPS = [
 
 _third_place_cache: dict[frozenset[str], dict[int, str]] = {}
 
+
+# ── Tournament State (live conditioning) ─────────────────────────────────────
+@dataclass
+class TournamentState:
+    """Known real-world results to condition the simulation on.
+
+    group_played : {group_letter: [(team_a, team_b, score_a, score_b), ...]}
+    ko_winners   : {stage: {frozenset({a, b}): winner}} for completed knockouts
+    ko_fixtures  : {stage: [frozenset({a, b}), ...]} actual pairings, including
+                   scheduled-but-unplayed ones (used to pin third-place slots)
+    """
+
+    group_played: dict[str, list[tuple[str, str, int, int]]] = field(default_factory=dict)
+    ko_winners: dict[str, dict[frozenset, str]] = field(default_factory=dict)
+    ko_fixtures: dict[str, list[frozenset]] = field(default_factory=dict)
+
+    @classmethod
+    def from_results(cls, wc_df: pd.DataFrame, all_teams: set[str] | None = None) -> "TournamentState":
+        """Build state from a fetcher_wc_results DataFrame (completed + scheduled)."""
+        state = cls()
+        if wc_df is None or wc_df.empty:
+            return state
+
+        for _, r in wc_df.iterrows():
+            home, away = r["home_team"], r["away_team"]
+            if all_teams is not None and (home not in all_teams or away not in all_teams):
+                continue  # TBD placeholders before a round is determined
+            stage = r["stage"]
+
+            if stage == "group":
+                if r["completed"]:
+                    state.group_played.setdefault(r["group"], []).append(
+                        (home, away, int(r["home_score"]), int(r["away_score"]))
+                    )
+            elif stage in ("r32", "r16", "qf", "sf", "final"):
+                pair = frozenset((home, away))
+                state.ko_fixtures.setdefault(stage, []).append(pair)
+                if r["completed"] and r.get("winner"):
+                    state.ko_winners.setdefault(stage, {})[pair] = r["winner"]
+            # "third" place match does not affect highest-stage-reached
+
+        return state
+
+    def groups_complete(self, groups: dict[str, list[str]]) -> bool:
+        """True when every group's 6 matches have been played."""
+        return all(
+            len(self.group_played.get(g, [])) >= 6 for g in groups
+        )
+
 # ── 2026 Knockout Venue Countries ────────────────────────────────────────────
 # Only apply home advantage when the match venue is in a host team's country.
 _R32_VENUE_COUNTRY = [
@@ -171,17 +221,40 @@ def _simulate_group(
     teams: list[str],
     elo_ratings: dict[str, float],
     rng: np.random.Generator,
+    played: list[tuple[str, str, int, int]] | None = None,
 ) -> list[tuple[str, int, int, int]]:
     """Simulate a group of 4 teams (round-robin).
+
+    Real results in *played* are applied as-is; only remaining fixtures
+    are simulated.
 
     Returns sorted standings: [(team, points, goal_diff, goals_for), ...]
     """
     standings = {t: {"pts": 0, "gd": 0, "gf": 0} for t in teams}
 
-    # Round-robin: 6 matches (all pairs)
+    played_pairs: set[frozenset] = set()
+    for a, b, score_a, score_b in (played or []):
+        if a not in standings or b not in standings:
+            continue
+        played_pairs.add(frozenset((a, b)))
+        standings[a]["gf"] += score_a
+        standings[a]["gd"] += score_a - score_b
+        standings[b]["gf"] += score_b
+        standings[b]["gd"] += score_b - score_a
+        if score_a > score_b:
+            standings[a]["pts"] += 3
+        elif score_a == score_b:
+            standings[a]["pts"] += 1
+            standings[b]["pts"] += 1
+        else:
+            standings[b]["pts"] += 3
+
+    # Round-robin: 6 matches (all pairs), minus already-played ones
     for i in range(len(teams)):
         for j in range(i + 1, len(teams)):
             a, b = teams[i], teams[j]
+            if frozenset((a, b)) in played_pairs:
+                continue
             elo_a, elo_b = elo_ratings.get(a, 1500), elo_ratings.get(b, 1500)
 
             # Determine home advantage (host nations get bonus in their group)
@@ -248,11 +321,18 @@ def _simulate_knockout_match(
     elo_ratings: dict[str, float],
     rng: np.random.Generator,
     venue_country: str | None = None,
+    known_winners: dict[frozenset, str] | None = None,
 ) -> str:
     """Simulate a knockout match. Returns the winner.
 
+    If the real result is already known (known_winners), it is used directly.
     Home advantage is only applied when venue_country matches a host team.
     """
+    if known_winners:
+        winner = known_winners.get(frozenset((team_a, team_b)))
+        if winner is not None:
+            return winner
+
     elo_a = elo_ratings.get(team_a, 1500)
     elo_b = elo_ratings.get(team_b, 1500)
 
@@ -304,10 +384,47 @@ def _assign_third_place_to_slots(
     return _third_place_cache[qualifying_groups]
 
 
+def _pin_third_slots_from_fixtures(
+    winners: dict[str, str],
+    third_by_group: dict[str, str],
+    r32_fixtures: list[frozenset],
+) -> dict[int, str] | None:
+    """Derive the real third-place slot assignment from actual R32 pairings.
+
+    Each third-place slot faces a known group winner (e.g. slot 0 plays 1E).
+    Once real fixtures are out, find the winner's match — the opponent is the
+    third-place team for that slot. Returns None if derivation fails.
+    """
+    team_to_slot_team: dict[int, str] = {}
+    thirds = set(third_by_group.values())
+
+    for src_a, src_b in _R32_BRACKET_48:
+        for src, other in ((src_a, src_b), (src_b, src_a)):
+            if src[0] != "3":
+                continue
+            slot = src[1]
+            # The opposing side is always a "1X" group winner in the 2026 bracket
+            if other[0] != "1":
+                return None
+            anchor = winners.get(other[1])
+            if anchor is None:
+                return None
+            fixture = next((f for f in r32_fixtures if anchor in f), None)
+            if fixture is None:
+                return None
+            opponent = next((t for t in fixture if t != anchor), None)
+            if opponent is None or opponent not in thirds:
+                return None
+            team_to_slot_team[slot] = opponent
+
+    return team_to_slot_team if len(team_to_slot_team) == 8 else None
+
+
 def simulate_tournament(
     elo_ratings: dict[str, float],
     rng: np.random.Generator,
     groups: dict[str, list[str]] | None = None,
+    state: TournamentState | None = None,
 ) -> dict[str, str]:
     """Simulate one complete tournament. Returns {team: highest_stage_reached}.
 
@@ -318,6 +435,7 @@ def simulate_tournament(
     Parameters
     ----------
     groups : optional override for tournament groups (default: 2026 config)
+    state : known real results — played matches are applied, not simulated
     """
     if groups is None:
         groups = GROUPS
@@ -331,7 +449,8 @@ def simulate_tournament(
     third_place: list[tuple[str, int, int, int, str]] = []
 
     for group_letter, teams in groups.items():
-        standings = _simulate_group(teams, elo_ratings, rng)
+        played = state.group_played.get(group_letter) if state else None
+        standings = _simulate_group(teams, elo_ratings, rng, played=played)
         winners[group_letter] = standings[0][0]
         runners[group_letter] = standings[1][0]
 
@@ -359,11 +478,19 @@ def simulate_tournament(
             g: t for t, _, _, _, g in third_place if t in best_thirds_set
         }
 
-        # Assign third-place teams to R32 slots using FIFA constraints
-        slot_to_group = _assign_third_place_to_slots(
-            frozenset(third_by_group.keys())
-        )
-        slot_to_team = {s: third_by_group[g] for s, g in slot_to_group.items()}
+        # Assign third-place teams to R32 slots. When the real R32 fixtures
+        # are out (groups complete), pin FIFA's actual assignment; otherwise
+        # solve the constraint satisfaction problem.
+        slot_to_team = None
+        if state and state.ko_fixtures.get("r32") and state.groups_complete(groups):
+            slot_to_team = _pin_third_slots_from_fixtures(
+                winners, third_by_group, state.ko_fixtures["r32"]
+            )
+        if slot_to_team is None:
+            slot_to_group = _assign_third_place_to_slots(
+                frozenset(third_by_group.keys())
+            )
+            slot_to_team = {s: third_by_group[g] for s, g in slot_to_group.items()}
 
         def resolve_48(src: tuple) -> str:
             pos, key = src
@@ -381,8 +508,11 @@ def simulate_tournament(
             team_stage[team_a] = "r32"
             team_stage[team_b] = "r32"
 
+        known_r32 = state.ko_winners.get("r32") if state else None
         r32_winners = [
-            _simulate_knockout_match(a, b, elo_ratings, rng, _R32_VENUE_COUNTRY[i])
+            _simulate_knockout_match(
+                a, b, elo_ratings, rng, _R32_VENUE_COUNTRY[i], known_winners=known_r32
+            )
             for i, (a, b) in enumerate(r32_matchups)
         ]
 
@@ -420,8 +550,11 @@ def simulate_tournament(
         final_venue = None
 
     # ── R16 → QF → SF → Final ───────────────────────────────────────────
+    known_r16 = state.ko_winners.get("r16") if state else None
     r16_winners = [
-        _simulate_knockout_match(a, b, elo_ratings, rng, r16_venues[i])
+        _simulate_knockout_match(
+            a, b, elo_ratings, rng, r16_venues[i], known_winners=known_r16
+        )
         for i, (a, b) in enumerate(r16_matchups)
     ]
 
@@ -430,8 +563,11 @@ def simulate_tournament(
         team_stage[a] = "qf"
         team_stage[b] = "qf"
 
+    known_qf = state.ko_winners.get("qf") if state else None
     qf_winners = [
-        _simulate_knockout_match(a, b, elo_ratings, rng, qf_venues[i])
+        _simulate_knockout_match(
+            a, b, elo_ratings, rng, qf_venues[i], known_winners=known_qf
+        )
         for i, (a, b) in enumerate(qf_matchups)
     ]
 
@@ -440,16 +576,21 @@ def simulate_tournament(
         team_stage[a] = "sf"
         team_stage[b] = "sf"
 
+    known_sf = state.ko_winners.get("sf") if state else None
     sf_winners = [
-        _simulate_knockout_match(a, b, elo_ratings, rng, sf_venues[i])
+        _simulate_knockout_match(
+            a, b, elo_ratings, rng, sf_venues[i], known_winners=known_sf
+        )
         for i, (a, b) in enumerate(sf_matchups)
     ]
 
     team_stage[sf_winners[0]] = "final"
     team_stage[sf_winners[1]] = "final"
 
+    known_final = state.ko_winners.get("final") if state else None
     champion = _simulate_knockout_match(
-        sf_winners[0], sf_winners[1], elo_ratings, rng, final_venue
+        sf_winners[0], sf_winners[1], elo_ratings, rng, final_venue,
+        known_winners=known_final,
     )
     team_stage[champion] = "champion"
 
@@ -461,12 +602,14 @@ def run_monte_carlo(
     n_simulations: int = MONTE_CARLO_SIMULATIONS,
     seed: int = 42,
     groups: dict[str, list[str]] | None = None,
+    state: TournamentState | None = None,
 ) -> pd.DataFrame:
     """Run N tournament simulations and aggregate probabilities.
 
     Parameters
     ----------
     groups : optional override for tournament groups (default: 2026 config)
+    state : known real results to condition on (live, mid-tournament)
 
     Returns
     -------
@@ -486,7 +629,7 @@ def run_monte_carlo(
 
     log.info("Running %d Monte Carlo simulations …", n_simulations)
     for sim in range(n_simulations):
-        result = simulate_tournament(elo_ratings, rng, groups=groups)
+        result = simulate_tournament(elo_ratings, rng, groups=groups, state=state)
 
         for team, stage in result.items():
             team_rank = stage_rank.get(stage, 0)
@@ -497,9 +640,9 @@ def run_monte_carlo(
         if (sim + 1) % 10000 == 0:
             log.info("  %d / %d simulations complete", sim + 1, n_simulations)
 
-    # Convert to probabilities
+    # Convert to probabilities — include teams that never advanced (all zeros)
     rows = []
-    for team in sorted(counters.keys()):
+    for team in sorted(elo_ratings.keys()):
         row = {"team": team}
         for stage in STAGES:
             row[f"P({stage})"] = counters[team][stage] / n_simulations

@@ -8,6 +8,7 @@ Runs daily at 08:00 UTC.
 from __future__ import annotations
 
 import gc
+import json
 import logging
 import sys
 from datetime import datetime, timezone
@@ -18,19 +19,56 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import ALL_TEAMS, RESULTS_DIR, TSFM_CONTEXT_WEEKS
+from config import (
+    ALL_TEAMS,
+    RESULTS_DIR,
+    TOURNAMENT_END,
+    TOURNAMENT_START,
+    TSFM_CONTEXT_WEEKS,
+)
 from data.elo import build_elo_history, get_latest_elo, resample_weekly
 from data.fetcher_matches import fetch_matches
 from data.fetcher_polymarket import fetch_current_wc_odds, save_odds_snapshot
 from markets.edge_detector import detect_edges, format_edge_report
 
+# Persisted by full model runs; consumed daily for model-agreement scoring and
+# by the Phase B (tournament) pipeline as the per-model Elo baseline.
+MODEL_SNAPSHOT_PATH = RESULTS_DIR / "predictions" / "model_snapshot_latest.json"
+
+# Elo target date for TSFM forecasts: start of the R16 — the heart of the
+# knockout bracket, where most champion-probability mass gets decided.
+TOURNAMENT_TARGET_DATE = "2026-07-04"
+
+
+def tournament_week_index(today: datetime | None = None) -> int:
+    """Weeks from now until the knockout heart of the tournament.
+
+    Previously hardcoded to 10 (correct in April, increasingly stale since).
+    """
+    if today is None:
+        today = datetime.now(timezone.utc)
+    target = datetime.strptime(TOURNAMENT_TARGET_DATE, "%Y-%m-%d").replace(
+        tzinfo=timezone.utc
+    )
+    return max(0, round((target - today).days / 7))
+
+
+def load_model_snapshot() -> dict | None:
+    """Load the latest per-model snapshot (tournament Elos + champion probs)."""
+    if not MODEL_SNAPSHOT_PATH.exists():
+        return None
+    try:
+        return json.loads(MODEL_SNAPSHOT_PATH.read_text())
+    except (json.JSONDecodeError, OSError) as exc:
+        log.warning("Could not load model snapshot: %s", exc)
+        return None
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(RESULTS_DIR / "logs" / "daily_run.log"),
-    ],
+    # Stream only: cron already redirects stdout/stderr to daily_run.log.
+    # A FileHandler on the same path doubled every line.
+    handlers=[logging.StreamHandler()],
 )
 log = logging.getLogger(__name__)
 
@@ -56,12 +94,14 @@ def step_update_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     return matches, elo
 
 
-def step_run_models(elo: pd.DataFrame) -> dict[str, float]:
-    """Step 3: Run TSFM models + Monte Carlo (Mondays only)."""
-    log.info("Step 3: Running TSFM models …")
+def step_forecast_tournament_elos(elo: pd.DataFrame) -> dict[str, dict[str, float]]:
+    """Run TSFM models and persist the per-model tournament-Elo snapshot.
 
+    The snapshot also records each team's *actual* Elo as of the forecast,
+    so Phase B can shift forecasts by realized Elo movement during the
+    tournament: elo_model_live = tsfm_elo + (actual_now - actual_at_forecast).
+    """
     from prediction.strength_forecaster import forecast_all_teams, get_tournament_elo_forecasts
-    from prediction.tournament_simulator import run_monte_carlo
 
     team_elo_series = {}
     for team in ALL_TEAMS:
@@ -71,8 +111,30 @@ def step_run_models(elo: pd.DataFrame) -> dict[str, float]:
         except ValueError:
             team_elo_series[team] = np.full(TSFM_CONTEXT_WEEKS, 1500.0)
 
+    week_idx = tournament_week_index()
+    log.info("  TSFM forecast target: week index %d (~%s)", week_idx, TOURNAMENT_TARGET_DATE)
     forecasts = forecast_all_teams(team_elo_series, horizon=20)
-    tournament_elos = get_tournament_elo_forecasts(forecasts, tournament_week_index=10)
+    tournament_elos = get_tournament_elo_forecasts(forecasts, tournament_week_index=week_idx)
+
+    actual_elo = get_latest_elo(elo)
+    snapshot = {
+        "as_of": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "tournament_week_index": week_idx,
+        "actual_elo": {t: actual_elo.get(t, 1500.0) for t in ALL_TEAMS},
+        "model_tournament_elo": tournament_elos,
+        "model_champion_probs": {},  # filled in by the sim step
+    }
+    MODEL_SNAPSHOT_PATH.write_text(json.dumps(snapshot, indent=1))
+    return tournament_elos
+
+
+def step_run_models(elo: pd.DataFrame) -> tuple[dict[str, float], dict]:
+    """Step 3: Run TSFM models + Monte Carlo (Mondays only)."""
+    log.info("Step 3: Running TSFM models …")
+
+    from prediction.tournament_simulator import run_monte_carlo
+
+    tournament_elos = step_forecast_tournament_elos(elo)
 
     # Monte Carlo for each model
     model_sim_results = {}
@@ -92,6 +154,15 @@ def step_run_models(elo: pd.DataFrame) -> dict[str, float]:
             if not row.empty:
                 probs.append(row["P(champion)"].values[0])
         ensemble_probs[team] = float(np.mean(probs)) if probs else 0.0
+
+    # Record per-model champion probs in the snapshot (for daily agreement)
+    snapshot = load_model_snapshot()
+    if snapshot is not None:
+        snapshot["model_champion_probs"] = {
+            mn: dict(zip(df["team"], df["P(champion)"].astype(float)))
+            for mn, df in model_sim_results.items()
+        }
+        MODEL_SNAPSHOT_PATH.write_text(json.dumps(snapshot, indent=1))
 
     # Save predictions
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -115,6 +186,13 @@ def step_detect_edges(
     if model_sim_results:
         for mn, df in model_sim_results.items():
             model_probs_dict[mn] = dict(zip(df["team"], df["P(champion)"]))
+    else:
+        # Non-Monday: reuse the latest persisted per-model probs so
+        # models_agree / STRONG EDGE still work between full model runs.
+        snapshot = load_model_snapshot()
+        if snapshot and snapshot.get("model_champion_probs"):
+            model_probs_dict = snapshot["model_champion_probs"]
+            log.info("  Using per-model probs from snapshot of %s", snapshot["as_of"])
 
     edges = detect_edges(ensemble_probs, market_probs, model_probs_dict, min_edge_pct=2.0)
 
@@ -137,6 +215,14 @@ def main():
     today = datetime.now(timezone.utc)
     is_monday = today.weekday() == 0
     log.info("Daily run starting — %s (Monday=%s)", today.strftime("%Y-%m-%d"), is_monday)
+
+    # During the tournament, Phase B (matchday_run) owns predictions/edges —
+    # conditioned on real results. Phase A only archives the odds snapshot.
+    date_str = today.strftime("%Y-%m-%d")
+    if TOURNAMENT_START <= date_str <= TOURNAMENT_END:
+        log.info("Tournament active — Phase B owns outputs; snapshotting odds only.")
+        step_fetch_odds()
+        return
 
     # Always: fetch odds
     pm_df = step_fetch_odds()

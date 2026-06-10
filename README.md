@@ -196,9 +196,14 @@ Bet sizing uses the [Kelly criterion](https://en.wikipedia.org/wiki/Kelly_criter
 - **Daily**: Fetch Polymarket odds, log movements
 - **Weekly (Mondays)**: Re-run TSFM models, update predictions, regenerate plots
 
-### Phase B: During Tournament (June 11 - July 19) — *not yet implemented*
-- **Planned**: After each match day, update Elo with actual results, re-simulate remaining bracket, score previous predictions
-- **Current status**: Falls back to the Phase A pipeline. See `pipeline/matchday_run.py` for the TODO list.
+### Phase B: During Tournament (June 11 - July 19) — live
+Daily at 06:00 UTC (`pipeline/matchday_run.py`):
+- **Live results**: fetched from ESPN's public scoreboard minutes after full time (the community match dataset can lag days behind during the tournament)
+- **Elo update**: real WC results merged into match history, ratings rebuilt
+- **Conditioned simulation**: played matches are taken as fact — group standings start from real results, knockout winners are pinned, and only the *remaining* tournament is simulated (50K runs per model). Once the real Round-of-32 bracket is out, FIFA's actual third-place slot assignment replaces the constraint solver.
+- **Model refresh**: TSFM strength forecasts re-run weekly (Mondays); between refreshes each model's Elo is shifted by realized Elo movement: `live = forecast + (actual_now − actual_at_forecast)`
+- **Scoring**: every fixture gets a pre-match probability (stored once, never revised); finished matches are Brier-scored, and a running **AI vs Polymarket scoreboard** resolves champion-market probabilities as teams get eliminated for real
+- Phase A continues to archive daily odds snapshots but hands predictions/edges over to Phase B for the duration.
 
 ---
 
@@ -209,6 +214,7 @@ worldcup-oracle/
 ├── config.py                 # All constants: 48 teams, 12 groups, parameters
 ├── data/
 │   ├── fetcher_matches.py    # Download international match results
+│   ├── fetcher_wc_results.py # Live 2026 WC results (ESPN scoreboard)
 │   ├── fetcher_polymarket.py # Polymarket Gamma API client
 │   ├── elo.py                # Elo rating engine
 │   └── feature_engineering.py # Per-team time series features
@@ -228,12 +234,13 @@ worldcup-oracle/
 │   └── odds_converter.py      # Probability/odds math
 ├── evaluation/
 │   ├── backtester.py          # Backtest on 2014/2018/2022 WCs
+│   ├── live_scoring.py        # In-tournament Brier + AI-vs-PM scoreboard
 │   └── metrics.py             # Brier score, log loss, calibration
 ├── visualization/             # All chart generators
 ├── pipeline/
 │   ├── daily_run.py           # Phase A: pre-tournament pipeline
-│   └── matchday_run.py        # Phase B: during-tournament (stub)
-├── tests/                     # 53 tests, all passing
+│   └── matchday_run.py        # Phase B: during-tournament (conditioned re-sim)
+├── tests/                     # 64 tests, all passing
 ├── requirements.txt           # Python dependencies
 └── results/
     ├── predictions/           # Current AI predictions

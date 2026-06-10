@@ -116,7 +116,7 @@ def detect_edges(
     return df
 
 
-def format_edge_report(edges_df: pd.DataFrame) -> str:
+def format_edge_report(edges_df: pd.DataFrame, n_models: int = 3) -> str:
     """Format edges as a readable report."""
     if edges_df.empty:
         return "No edges detected above threshold."
@@ -133,7 +133,7 @@ def format_edge_report(edges_df: pd.DataFrame) -> str:
             f"{row['edge_pct']:+6.1f}% "
             f"{row['direction']:>5s} "
             f"{row['half_kelly']:6.1%} "
-            f"{row['models_agree']:5d}/4 "
+            f"{row['models_agree']:5d}/{n_models} "
             f"{row['strength']:>12s}"
         )
 
