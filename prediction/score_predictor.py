@@ -28,11 +28,16 @@ def expected_goals(
     home_advantage: float = 0.0,
     total_goals: float = POISSON_AVG_GOALS,
 ) -> tuple[float, float]:
-    """Split the average total goals into per-team Poisson means via Elo diff."""
+    """Split the average total goals into per-team Poisson means via Elo diff.
+
+    Mismatches produce more total goals (blowouts), so the total scales up
+    mildly with the strength gap.
+    """
     diff = (elo_a + home_advantage - elo_b) / GOAL_DIFF_ELO_SCALE
     diff = max(-MAX_XG_DIFF, min(MAX_XG_DIFF, diff))
-    lam_a = max((total_goals + diff) / 2.0, MIN_LAMBDA)
-    lam_b = max((total_goals - diff) / 2.0, MIN_LAMBDA)
+    total = total_goals + 0.3 * abs(diff)
+    lam_a = max((total + diff) / 2.0, MIN_LAMBDA)
+    lam_b = max((total - diff) / 2.0, MIN_LAMBDA)
     return lam_a, lam_b
 
 
@@ -125,6 +130,7 @@ def ensemble_match_prediction(
     """
     per_model = []
     grids = []
+    lams = []
     for elo_h, elo_a in elo_pairs:
         probs = match_probabilities(elo_h, elo_a, home_advantage)
         m = {
@@ -136,15 +142,19 @@ def ensemble_match_prediction(
             adv = knockout_probabilities(elo_h, elo_a, home_advantage)
             m["p_adv_home"] = round(adv["win_a"], 4)
         per_model.append(m)
-        grids.append(score_grid(*expected_goals(elo_h, elo_a, home_advantage)))
+        lam = expected_goals(elo_h, elo_a, home_advantage)
+        lams.append(lam)
+        grids.append(score_grid(*lam))
 
     p_home = float(np.mean([m["p_home"] for m in per_model]))
     p_draw = float(np.mean([m["p_draw"] for m in per_model]))
     p_away = float(np.mean([m["p_away"] for m in per_model]))
 
     grid = condition_grid(np.mean(grids, axis=0), p_home, p_draw, p_away)
-    top = top_scorelines(grid)
+    top = top_scorelines(grid, n=6)
 
+    n = grid.shape[0]
+    gi, gj = np.meshgrid(np.arange(n), np.arange(n), indexing="ij")
     out = {
         "p_home": round(p_home, 4),
         "p_draw": round(p_draw, 4),
@@ -155,6 +165,10 @@ def ensemble_match_prediction(
             ],
             "most_likely": f"{top[0][0]}-{top[0][1]}",
             "most_likely_p": round(top[0][2], 4),
+            "xg_home": round(float(np.mean([l[0] for l in lams])), 2),
+            "xg_away": round(float(np.mean([l[1] for l in lams])), 2),
+            "p_over25": round(float(grid[gi + gj >= 3].sum()), 4),
+            "p_btts": round(float(grid[1:, 1:].sum()), 4),
         },
         "per_model": per_model,
     }

@@ -42,6 +42,29 @@ PM_ODDS_PARQUET = CACHE_DIR / "polymarket_odds.parquet"
 
 PAGES_PROJECT = "worldcup-oracle"
 
+# Venues span UTC−4…−7; kickoff_utc − 6h groups matches by venue-local
+# matchday (must stay consistent with data.fetcher_wc_results._LOCAL_SHIFT).
+LOCAL_SHIFT_H = 6
+
+TEAM_ZH = {
+    "Mexico": "墨西哥", "South Korea": "韩国", "Czech Republic": "捷克", "South Africa": "南非",
+    "United States": "美国", "Turkey": "土耳其", "Australia": "澳大利亚", "Paraguay": "巴拉圭",
+    "Canada": "加拿大", "Switzerland": "瑞士", "Bosnia and Herzegovina": "波黑", "Qatar": "卡塔尔",
+    "Brazil": "巴西", "Morocco": "摩洛哥", "Scotland": "苏格兰", "Haiti": "海地",
+    "Germany": "德国", "Ivory Coast": "科特迪瓦", "Ecuador": "厄瓜多尔", "Curaçao": "库拉索",
+    "Netherlands": "荷兰", "Japan": "日本", "Sweden": "瑞典", "Tunisia": "突尼斯",
+    "Belgium": "比利时", "Iran": "伊朗", "Egypt": "埃及", "New Zealand": "新西兰",
+    "Spain": "西班牙", "Uruguay": "乌拉圭", "Saudi Arabia": "沙特阿拉伯", "Cape Verde": "佛得角",
+    "Argentina": "阿根廷", "Algeria": "阿尔及利亚", "Austria": "奥地利", "Jordan": "约旦",
+    "France": "法国", "Senegal": "塞内加尔", "Iraq": "伊拉克", "Norway": "挪威",
+    "Portugal": "葡萄牙", "Colombia": "哥伦比亚", "Uzbekistan": "乌兹别克斯坦", "DR Congo": "刚果(金)",
+    "England": "英格兰", "Croatia": "克罗地亚", "Ghana": "加纳", "Panama": "巴拿马",
+}
+
+
+def _zh(name: str) -> str:
+    return TEAM_ZH.get(name, name)
+
 
 # ── Input loading ────────────────────────────────────────────────────────────
 def _load_wc_df(wc_df: pd.DataFrame | None) -> pd.DataFrame:
@@ -79,6 +102,177 @@ def _load_model_sims() -> tuple[str | None, dict[str, pd.DataFrame]]:
             model = f.stem[len("sim_"):-len(latest_date) - 1]
             sims[model] = pd.read_csv(f)
     return latest_date, sims
+
+
+# ── Focus matchday (one detailed issue per day) ─────────────────────────────
+def _local_matchday(kickoff_utc: str) -> str:
+    dt = datetime.fromisoformat(kickoff_utc)
+    return (dt - pd.Timedelta(hours=LOCAL_SHIFT_H)).strftime("%Y-%m-%d")
+
+
+def _team_form(matches: pd.DataFrame, team: str, n: int = 5) -> list[dict]:
+    """Last n internationals for a team, most recent first."""
+    sub = matches[
+        (matches["home_team"] == team) | (matches["away_team"] == team)
+    ].sort_values("date").tail(n)
+    out = []
+    for _, r in sub.iterrows():
+        at_home = r["home_team"] == team
+        gf = int(r["home_score"] if at_home else r["away_score"])
+        ga = int(r["away_score"] if at_home else r["home_score"])
+        out.append({
+            "date": str(r["date"].date()),
+            "opp": r["away_team"] if at_home else r["home_team"],
+            "score": f"{gf}-{ga}",
+            "res": "W" if gf > ga else ("D" if gf == ga else "L"),
+        })
+    return out[::-1]
+
+
+def _h2h(matches: pd.DataFrame, home: str, away: str) -> dict:
+    """All meetings between the two teams (1990+), from the home side's view."""
+    sub = matches[
+        ((matches["home_team"] == home) & (matches["away_team"] == away))
+        | ((matches["home_team"] == away) & (matches["away_team"] == home))
+    ].sort_values("date")
+    w = d = l = 0
+    last = []
+    for _, r in sub.iterrows():
+        flip = r["home_team"] != home
+        gf = int(r["away_score"] if flip else r["home_score"])
+        ga = int(r["home_score"] if flip else r["away_score"])
+        if gf > ga:
+            w += 1
+        elif gf == ga:
+            d += 1
+        else:
+            l += 1
+        last.append({"date": str(r["date"].date()), "score": f"{gf}-{ga}",
+                     "tournament": r["tournament"]})
+    return {"n": len(sub), "w": w, "d": d, "l": l, "last": last[-3:]}
+
+
+def _analysis_zh(m: dict, det: dict) -> str:
+    """Rule-based Chinese matchup summary built from the numbers."""
+    home, away = m["home"], m["away"]
+    p = m.get("pred")
+    if p is None:
+        return ""
+    is_ko = m["stage"] in KNOCKOUT_STAGES
+    parts = []
+
+    # Strength gap
+    diff = det["elo_home"] - det["elo_away"]
+    fav = home if diff >= 0 else away
+    gap = abs(diff)
+    if gap >= 250:
+        gap_word = "实力明显高出一档"
+    elif gap >= 120:
+        gap_word = "纸面实力占优"
+    elif gap >= 50:
+        gap_word = "略占上风"
+    else:
+        gap_word = None
+    host = next((t for t in (home, away) if t in ("United States", "Canada", "Mexico")), None)
+    if gap_word is None:
+        opener = "两队实力接近，胜负难料"
+        if host:
+            opener = f"{_zh(host)}坐拥东道主主场之利，但{opener}"
+    elif host == fav:
+        opener = f"{_zh(fav)}坐拥东道主主场之利，且{gap_word}"
+    elif host:
+        opener = f"{_zh(host)}坐拥东道主主场之利，但{_zh(fav)}{gap_word}"
+    else:
+        opener = f"{_zh(fav)}{gap_word}"
+    parts.append(
+        f"{opener}（Elo {det['elo_home']} vs {det['elo_away']}，"
+        f"分列 48 队第 {det['rank_home']}/{det['rank_away']} 位）。"
+    )
+
+    # Model view
+    if is_ko:
+        side = home if p["p_adv_home"] >= 0.5 else away
+        prob = max(p["p_adv_home"], p["p_adv_away"])
+        parts.append(
+            f"模型给 {_zh(side)} {prob:.0%} 的晋级概率，"
+            f"最可能比分 {p['scoreline']['most_likely']}"
+            f"（xG {p['scoreline']['xg_home']} - {p['scoreline']['xg_away']}）。"
+        )
+    else:
+        probs = [("主胜", p["p_home"]), ("平局", p["p_draw"]), ("客胜", p["p_away"])]
+        top_lbl, top_p = max(probs, key=lambda x: x[1])
+        draw_note = f"，平局概率也有 {p['p_draw']:.0%}" if p["p_draw"] >= 0.22 and top_lbl != "平局" else ""
+        parts.append(
+            f"三模型集成看{top_lbl}（{top_p:.0%}）{draw_note}，"
+            f"最可能比分 {p['scoreline']['most_likely']}"
+            f"（xG {p['scoreline']['xg_home']} - {p['scoreline']['xg_away']}，"
+            f"大 2.5 球 {p['scoreline']['p_over25']:.0%}）。"
+        )
+
+    # Form, only when notable
+    for team, form in ((home, det["form_home"]), (away, det["form_away"])):
+        if len(form) >= 5:
+            wins = sum(1 for f in form if f["res"] == "W")
+            losses = sum(1 for f in form if f["res"] == "L")
+            if wins >= 4:
+                parts.append(f"{_zh(team)}近 5 场 {wins} 胜，状态出色。")
+            elif losses >= 3:
+                parts.append(f"{_zh(team)}近 5 场 {losses} 负，状态堪忧。")
+
+    # Head-to-head
+    h2h = det["h2h"]
+    if h2h["n"] > 0:
+        parts.append(
+            f"两队 1990 年以来交手 {h2h['n']} 次，"
+            f"{_zh(home)} {h2h['w']} 胜 {h2h['d']} 平 {h2h['l']} 负。"
+        )
+    else:
+        parts.append("两队 1990 年以来没有交手记录。")
+    return "".join(parts)
+
+
+def _attach_matchday_details(
+    matches: list[dict],
+    matches_hist: pd.DataFrame,
+    ens_elo: dict[str, float],
+    adv_probs: dict[str, float],
+    champ_probs: dict[str, float],
+) -> str | None:
+    """Pick the next venue-local matchday and enrich its matches with deep
+    detail (form, H2H, ranks, stakes, analysis). Returns the matchday date."""
+    now = datetime.now(timezone.utc)
+    candidates = [
+        m for m in matches
+        if not m["tbd"] and not m["completed"]
+        and datetime.fromisoformat(m["kickoff_utc"]) > now - pd.Timedelta(hours=5)
+    ]
+    if not candidates:
+        return None
+    focus = min(_local_matchday(m["kickoff_utc"]) for m in candidates)
+
+    elo_rank = {
+        t: i + 1
+        for i, (t, _) in enumerate(sorted(ens_elo.items(), key=lambda x: -x[1]))
+    }
+    for m in matches:
+        if m["tbd"] or _local_matchday(m["kickoff_utc"]) != focus:
+            continue
+        det = {
+            "elo_home": round(ens_elo.get(m["home"], 1500.0)),
+            "elo_away": round(ens_elo.get(m["away"], 1500.0)),
+            "rank_home": elo_rank.get(m["home"], 48),
+            "rank_away": elo_rank.get(m["away"], 48),
+            "form_home": _team_form(matches_hist, m["home"]),
+            "form_away": _team_form(matches_hist, m["away"]),
+            "h2h": _h2h(matches_hist, m["home"], m["away"]),
+            "advance_home": round(adv_probs.get(m["home"], 0.0), 4),
+            "advance_away": round(adv_probs.get(m["away"], 0.0), 4),
+            "champion_home": round(champ_probs.get(m["home"], 0.0), 4),
+            "champion_away": round(champ_probs.get(m["away"], 0.0), 4),
+        }
+        det["analysis"] = _analysis_zh(m, det)
+        m["detail"] = det
+    return focus
 
 
 # ── Sections ─────────────────────────────────────────────────────────────────
@@ -323,6 +517,16 @@ def build_dashboard(wc_df: pd.DataFrame | None = None) -> dict:
 
     matches = _build_matches(wc_df, model_elos, ens_elo)
 
+    # Focus matchday: today's (or the next) slate gets the deep-dive treatment
+    from data.fetcher_matches import fetch_matches
+
+    matches_hist = fetch_matches(force=False)
+    ens_pred = _latest("predictions/predictions_*.csv")
+    champ_probs = dict(zip(ens_pred[1]["team"], ens_pred[1]["ai_prob"])) if ens_pred else {}
+    matchday = _attach_matchday_details(
+        matches, matches_hist, ens_elo, adv_probs, champ_probs
+    )
+
     market_meta = {}
     if PM_ODDS_PARQUET.exists():
         pm = pd.read_parquet(PM_ODDS_PARQUET)
@@ -338,6 +542,7 @@ def build_dashboard(wc_df: pd.DataFrame | None = None) -> dict:
             "models": list(model_elos.keys()),
             "snapshot_as_of": snapshot.get("as_of") if snapshot else None,
             "sim_date": sim_date,
+            "matchday": matchday,
             "n_matches": len(matches),
             "n_completed": sum(1 for m in matches if m["completed"]),
             **market_meta,

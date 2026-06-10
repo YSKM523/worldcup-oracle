@@ -39,7 +39,7 @@ const ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worl
 
 let DATA = null;
 let live = {};            // espn_id -> {state, status, home_score, away_score, clock, completed, winner_home}
-let filter = "upcoming";
+let filter = "focus";
 let search = "";
 
 const $ = (sel) => document.querySelector(sel);
@@ -74,6 +74,10 @@ function fmtDayHeader(key) {
   return `${mo} 月 ${da} 日 · 周${wd}`;
 }
 const todayKey = () => localDateKey(new Date().toISOString());
+// Venue-local matchday (UTC − 6h), matching the pipeline's grouping
+function venueDayKey(iso) {
+  return new Date(new Date(iso).getTime() - 6 * 3600e3).toISOString().slice(0, 10);
+}
 
 /* ── Rendering: matches ─────────────────────────────────────────── */
 function teamHTML(name, side, loser) {
@@ -179,16 +183,19 @@ function matchCardHTML(m) {
     ${body}</div>`;
 }
 
+function searchOk(m) {
+  if (!search) return true;
+  const hay = `${m.home} ${m.away} ${zh(m.home)} ${zh(m.away)}`.toLowerCase();
+  return hay.includes(search);
+}
+
 function matchVisible(m) {
-  if (search) {
-    const hay = `${m.home} ${m.away} ${zh(m.home)} ${zh(m.away)}`.toLowerCase();
-    if (!hay.includes(search)) return false;
-  }
+  if (!searchOk(m)) return false;
   const lv = live[m.espn_id];
   const finished = m.completed || (lv && lv.completed);
   switch (filter) {
-    case "upcoming": return !finished;
-    case "today": return localDateKey(m.kickoff_utc) === todayKey();
+    case "upcoming":
+      return !finished && (!DATA.meta.matchday || venueDayKey(m.kickoff_utc) > DATA.meta.matchday);
     case "group": return m.stage === "group";
     case "ko": return KO_STAGES.has(m.stage);
     case "done": return finished;
@@ -196,8 +203,102 @@ function matchVisible(m) {
   }
 }
 
+/* Detailed card for the focus matchday */
+function formHTML(form) {
+  if (!form || !form.length) return "";
+  return `<span class="form-letters">${form.map((f) =>
+    `<i class="f-${f.res}" title="${f.date} ${f.score} vs ${zh(f.opp)}">${
+      { W: "胜", D: "平", L: "负" }[f.res]}</i>`).join("")}</span>`;
+}
+
+function teamBigHTML(m, side) {
+  const name = side === "home" ? m.home : m.away;
+  const d = m.detail || {};
+  const elo = side === "home" ? d.elo_home : d.elo_away;
+  const rank = side === "home" ? d.rank_home : d.rank_away;
+  const form = side === "home" ? d.form_home : d.form_away;
+  return `<div class="team-big ${side}">
+    <div class="tb-flag">${flag(name)}</div>
+    <div class="tb-name">${zh(name)}</div>
+    ${elo ? `<div class="tb-elo">Elo ${elo} · 第 ${rank} 位</div>` : ""}
+    ${formHTML(form)}</div>`;
+}
+
+function detailCardHTML(m) {
+  const stageLabel = m.stage === "group" && m.group
+    ? `小组赛 · ${m.group} 组` : (STAGE_ZH[m.stage] || m.stage);
+  const venue = [m.venue, m.city].filter(Boolean).join(" · ");
+  const d = m.detail || {};
+  const p = m.pred;
+  let body = "";
+  if (m.completed) {
+    body = resultBlockHTML(m);
+  } else if (p) {
+    const scoreChips = p.scoreline.top_scores
+      .map((s) => `<span class="score-chip${s.score === p.scoreline.most_likely ? " best" : ""}">${s.score}<i>${pct(s.p, 1)}</i></span>`).join("");
+    const models = DATA.meta.models.map((name, i) =>
+      `${MODEL_SHORT[name] || name} ${pct(KO_STAGES.has(m.stage) ? p.per_model[i].p_adv_home : p.per_model[i].p_home)}`).join(" · ");
+    body = `${KO_STAGES.has(m.stage) ? advBarHTML(p) : probBarHTML(p)}
+      <div class="chip-row">${scoreChips}</div>
+      <div class="stat-row">
+        <span>xG <b>${p.scoreline.xg_home} - ${p.scoreline.xg_away}</b></span>
+        <span>大 2.5 球 <b>${pct(p.scoreline.p_over25)}</b></span>
+        <span>双方进球 <b>${pct(p.scoreline.p_btts)}</b></span>
+      </div>
+      <div class="model-row">${KO_STAGES.has(m.stage) ? "晋级概率" : "主胜率"}分歧 — ${models}</div>`;
+  }
+  const h2h = d.h2h;
+  const h2hLine = h2h
+    ? (h2h.n
+      ? `历史交锋 ${h2h.n} 次：${zh(m.home)} ${h2h.w} 胜 ${h2h.d} 平 ${h2h.l} 负` +
+        (h2h.last.length ? `（最近 ${h2h.last.map((g) => `${g.date.slice(0, 7)} ${g.score}`).join("、")}）` : "")
+      : "两队 1990 年以来无交手记录")
+    : "";
+  const stakes = d.elo_home
+    ? (m.stage === "group"
+      ? `出线概率：${zh(m.home)} ${pct(d.advance_home)} · ${zh(m.away)} ${pct(d.advance_away)}`
+      : `夺冠概率：${zh(m.home)} ${pct(d.champion_home, 1)} · ${zh(m.away)} ${pct(d.champion_away, 1)}`)
+    : "";
+  return `<div class="match-card detail-card" data-id="${m.espn_id}">
+    <div class="match-top"><span class="stage-badge">${stageLabel}</span><span class="venue">${venue}</span></div>
+    <div class="match-teams detail-teams">
+      ${teamBigHTML(m, "home")}
+      ${midHTML(m)}
+      ${teamBigHTML(m, "away")}
+    </div>
+    ${body}
+    ${h2hLine ? `<div class="info-line">${h2hLine}</div>` : ""}
+    ${stakes ? `<div class="info-line">${stakes}</div>` : ""}
+    ${d.analysis ? `<div class="analysis">${d.analysis}</div>` : ""}
+  </div>`;
+}
+
+function renderFocus(list) {
+  const md = DATA.meta.matchday;
+  if (!md) {
+    list.innerHTML = `<div class="empty-note">本届赛事已结束 — 战绩见「AI 战绩」页</div>`;
+    return;
+  }
+  const ms = DATA.matches.filter((m) =>
+    !m.tbd && venueDayKey(m.kickoff_utc) === md && searchOk(m));
+  if (!ms.length) {
+    list.innerHTML = `<div class="empty-note">没有符合条件的比赛</div>`;
+    return;
+  }
+  const [y, mo, da] = md.split("-").map(Number);
+  const wd = "日一二三四五六"[new Date(y, mo - 1, da).getDay()];
+  list.innerHTML =
+    `<div class="day-header today">📌 本期详细预测 · ${mo} 月 ${da} 日 周${wd} · 共 ${ms.length} 场
+      <span class="day-sub">每日 06:00 UTC 出新一期 · 比分实时刷新</span></div>` +
+    ms.map(detailCardHTML).join("");
+}
+
 function renderMatches() {
   const list = $("#match-list");
+  if (filter === "focus") {
+    renderFocus(list);
+    return;
+  }
   const visible = DATA.matches.filter(matchVisible);
   if (!visible.length) {
     list.innerHTML = `<div class="empty-note">没有符合条件的比赛</div>`;

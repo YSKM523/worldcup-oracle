@@ -107,6 +107,38 @@ main { padding: 16px 14px 32px; }
 .miss { color: var(--red); font-weight: 600; }
 .tbd-note { color: var(--muted); font-size: 13px; margin-top: 6px; }
 
+/* Focus matchday detail cards */
+.day-sub { font-weight: 400; font-size: 11.5px; color: var(--muted); margin-left: 8px; }
+.detail-card { padding: 16px; margin-bottom: 14px; }
+.detail-teams { align-items: flex-start; }
+.team-big { flex: 1; min-width: 0; text-align: center; }
+.team-big .tb-flag { font-size: 34px; line-height: 1.2; }
+.team-big .tb-name { font-size: 16.5px; font-weight: 700; margin-top: 2px; }
+.team-big .tb-elo { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.form-letters { display: inline-flex; gap: 3px; margin-top: 5px; }
+.form-letters i {
+  font-style: normal; font-size: 10.5px; color: #fff; border-radius: 3px;
+  width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
+}
+.form-letters .f-W { background: var(--green); }
+.form-letters .f-D { background: var(--draw); }
+.form-letters .f-L { background: var(--red); }
+.detail-card .score-mid { margin-top: 14px; }
+.chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.score-chip {
+  background: var(--card-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: 3px 9px; font-size: 13px; font-weight: 600; text-align: center;
+}
+.score-chip i { font-style: normal; font-weight: 400; font-size: 11px; color: var(--muted); margin-left: 5px; }
+.score-chip.best { border-color: var(--gold); color: var(--gold); }
+.stat-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-top: 9px; }
+.stat-row b { color: var(--text); }
+.info-line { font-size: 12.5px; color: var(--muted); margin-top: 7px; }
+.analysis {
+  background: var(--card-2); border-left: 3px solid var(--home); border-radius: 6px;
+  padding: 9px 12px; font-size: 13px; margin-top: 10px; line-height: 1.65;
+}
+
 /* Groups */
 .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .group-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
