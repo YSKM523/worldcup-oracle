@@ -33,7 +33,11 @@ from prediction.score_predictor import ensemble_match_prediction
 
 log = logging.getLogger(__name__)
 
-DASHBOARD_DIR = ROOT / "dashboard"
+# Next.js app: web/ is the source, web/out the prebuilt static export.
+# The daily pipeline only swaps data.json — no rebuild needed. Rebuild with
+# `cd web && npm run build` after UI changes.
+WEB_PUBLIC_DIR = ROOT / "web" / "public"
+WEB_OUT_DIR = ROOT / "web" / "out"
 SNAPSHOT_PATH = RESULTS_DIR / "predictions" / "model_snapshot_latest.json"
 MATCH_PREDS_CSV = RESULTS_DIR / "predictions" / "match_predictions.csv"
 MATCH_SCORES_CSV = RESULTS_DIR / "evaluations" / "match_scores.csv"
@@ -553,16 +557,23 @@ def build_dashboard(wc_df: pd.DataFrame | None = None) -> dict:
         "performance": _build_performance(matches),
     }
 
-    DASHBOARD_DIR.mkdir(exist_ok=True)
-    out_path = DASHBOARD_DIR / "data.json"
-    out_path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")))
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    WEB_PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
+    (WEB_PUBLIC_DIR / "data.json").write_text(payload)
+    if WEB_OUT_DIR.exists():  # prebuilt export — swap data in place for deploy
+        (WEB_OUT_DIR / "data.json").write_text(payload)
+    else:
+        log.warning("web/out missing — run `cd web && npm run build` once.")
     log.info("Dashboard data written: %s (%d matches, %d completed)",
-             out_path, len(matches), data["meta"]["n_completed"])
+             WEB_PUBLIC_DIR / "data.json", len(matches), data["meta"]["n_completed"])
     return data
 
 
 def deploy_dashboard() -> bool:
-    """Deploy dashboard/ to Cloudflare Pages. Best-effort; returns success."""
+    """Deploy web/out to Cloudflare Pages. Best-effort; returns success."""
+    if not (WEB_OUT_DIR / "index.html").exists():
+        log.warning("web/out has no build — skipping deploy.")
+        return False
     wrangler = shutil.which("wrangler")
     if wrangler is None:
         # cron has a minimal PATH — fall back to the nvm install
@@ -580,7 +591,7 @@ def deploy_dashboard() -> bool:
     env["PATH"] = f"{os.path.dirname(wrangler)}:{env.get('PATH', '')}"
     try:
         result = subprocess.run(
-            [wrangler, "pages", "deploy", str(DASHBOARD_DIR),
+            [wrangler, "pages", "deploy", str(WEB_OUT_DIR),
              "--project-name", PAGES_PROJECT, "--branch", "main",
              "--commit-dirty=true"],
             capture_output=True, text=True, timeout=300, env=env, cwd=str(ROOT),

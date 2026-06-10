@@ -205,7 +205,7 @@ Daily at 06:00 UTC (`pipeline/matchday_run.py`):
 - **Conditioned simulation**: played matches are taken as fact — group standings start from real results, knockout winners are pinned, and only the *remaining* tournament is simulated (50K runs per model). Once the real Round-of-32 bracket is out, FIFA's actual third-place slot assignment replaces the constraint solver.
 - **Model refresh**: TSFM strength forecasts re-run weekly (Mondays); between refreshes each model's Elo is shifted by realized Elo movement: `live = forecast + (actual_now − actual_at_forecast)`
 - **Scoring**: every fixture gets a pre-match probability **and most-likely scoreline** (stored once, never revised); finished matches are Brier-scored, and a running **AI vs Polymarket scoreboard** resolves champion-market probabilities as teams get eliminated for real
-- **Dashboard**: `visualization/dashboard.py` packages everything (per-match ensemble predictions, Poisson scoreline distributions, live group standings, champion edges, track record) into a static site deployed to Cloudflare Pages
+- **Dashboard**: `visualization/dashboard.py` packages everything (per-match ensemble predictions, Poisson scoreline distributions, live group standings, champion edges, track record) into `web/public/data.json`, consumed by a Next.js dashboard (`web/`, static export). The daily run only swaps `data.json` into the prebuilt `web/out` and redeploys to Cloudflare Pages — no rebuild needed; rebuild with `cd web && npm run build` after UI changes
 - Phase A continues to archive daily odds snapshots but hands predictions/edges over to Phase B for the duration.
 
 ### Match-level predictions
@@ -244,7 +244,7 @@ worldcup-oracle/
 │   ├── live_scoring.py        # In-tournament Brier + AI-vs-PM scoreboard
 │   └── metrics.py             # Brier score, log loss, calibration
 ├── visualization/             # Chart generators + dashboard.py (data.json builder)
-├── dashboard/                 # Static live dashboard (worldcup-oracle.pages.dev)
+├── web/                       # Next.js dashboard (worldcup-oracle.pages.dev, static export)
 ├── pipeline/
 │   ├── daily_run.py           # Phase A: pre-tournament pipeline
 │   └── matchday_run.py        # Phase B: during-tournament (conditioned re-sim)
