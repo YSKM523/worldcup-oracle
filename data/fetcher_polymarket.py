@@ -98,8 +98,10 @@ class PolymarketClient:
 
         Returns DataFrame with columns: team, implied_prob, market_id
         """
-        # The active event slug (found via web search)
+        # Active event slug (verified 2026-06-12). Older dated slugs are dead;
+        # the title-search fallback below covers future slug churn.
         WC_EVENT_SLUGS = [
+            "world-cup-winner",
             "2026-fifa-world-cup-winner-595",
             "2026-fifa-world-cup-winner",
         ]
@@ -202,6 +204,83 @@ class PolymarketClient:
 
         return df.sort_values("implied_prob", ascending=False).reset_index(drop=True)
 
+    def fetch_match_moneylines(self) -> dict[str, dict]:
+        """Fetch per-match W/D/L (moneyline) odds for the World Cup.
+
+        Each match is a Gamma event titled "{home} vs. {away}" with exactly
+        three binary markets (home win / away win / draw). Discovered via the
+        "FIFA World Cup" tag (102232). The event's endDate equals the match
+        kickoff, so we key results by kickoff for matching against our fixtures.
+
+        Returns {kickoff_iso: {slug, home_name, away_name, home_price,
+        draw_price, away_price, volume}}.
+        """
+        WC_TAG_ID = 102232
+        out: dict[str, dict] = {}
+        for offset in range(0, 500, 100):  # paginate; cap at 5 pages
+            try:
+                events = self.session.get(
+                    f"{GAMMA_API_BASE}/events",
+                    params={"tag_id": WC_TAG_ID, "limit": 100, "offset": offset,
+                            "closed": "false", "related_tags": "true"},
+                    timeout=30,
+                ).json()
+            except requests.RequestException as e:
+                log.warning("Moneyline page offset=%d failed: %s", offset, e)
+                break
+            if not events:
+                break
+            for ev in events:
+                parsed = self._parse_moneyline_event(ev)
+                if parsed:
+                    out[parsed.pop("kickoff")] = parsed
+            if len(events) < 100:
+                break
+        log.info("Polymarket moneylines: %d match markets", len(out))
+        return out
+
+    @staticmethod
+    def _parse_moneyline_event(ev: dict) -> dict | None:
+        """Parse a '{home} vs. {away}' 3-market moneyline event, or None."""
+        title = ev.get("title", "")
+        if " vs. " not in title or " - " in title:
+            return None  # props/corners/totals events carry a " - " suffix
+        markets = ev.get("markets", [])
+        if len(markets) != 3:
+            return None
+        kickoff = ev.get("endDate")
+        if not kickoff:
+            return None
+        home_raw, away_raw = (s.strip() for s in title.split(" vs. ", 1))
+
+        home_price = away_price = draw_price = None
+        for m in markets:
+            q = (m.get("question") or "").lower()
+            prices_raw = m.get("outcomePrices", "[]")
+            prices = json.loads(prices_raw) if isinstance(prices_raw, str) else prices_raw
+            if not prices:
+                continue
+            yes = float(prices[0])
+            if "draw" in q:
+                draw_price = yes
+            elif home_raw.lower() in q:
+                home_price = yes
+            elif away_raw.lower() in q:
+                away_price = yes
+        if None in (home_price, draw_price, away_price):
+            return None
+
+        return {
+            "kickoff": kickoff,
+            "slug": ev.get("slug", ""),
+            "home_name": _normalize_polymarket_name(home_raw),
+            "away_name": _normalize_polymarket_name(away_raw),
+            "home_price": home_price,
+            "draw_price": draw_price,
+            "away_price": away_price,
+            "volume": float(ev.get("volume", 0) or 0),
+        }
+
     def fetch_all_wc_markets(self) -> list[dict]:
         """Fetch all World Cup-related markets."""
         all_markets = []
@@ -253,6 +332,11 @@ def fetch_current_wc_odds() -> pd.DataFrame | None:
     """Convenience function: fetch current WC winner odds."""
     client = PolymarketClient()
     return client.fetch_wc_winner_odds()
+
+
+def fetch_match_moneylines() -> dict[str, dict]:
+    """Convenience function: per-match W/D/L odds keyed by kickoff ISO."""
+    return PolymarketClient().fetch_match_moneylines()
 
 
 def save_odds_snapshot(df: pd.DataFrame) -> None:

@@ -70,6 +70,55 @@ export const iso = (name: string): string | null => ISO[name] ?? null;
 
 export const pct = (p: number, digits = 0) => `${(p * 100).toFixed(digits)}%`;
 
+/** Decimal odds = 1 / probability (raw price, vig included). null if invalid. */
+export const decimalOdds = (p: number | null | undefined): number | null =>
+  p && p > 0 && p < 1 ? 1 / p : null;
+
+/** Format decimal odds like "5.90"; em-dash when unavailable. */
+export const oddsFmt = (p: number | null | undefined): string => {
+  const o = decimalOdds(p);
+  return o == null ? "—" : o.toFixed(2);
+};
+
+/** Kickoff ISO ('…Z' or '…+00:00') → epoch-second string, for odds matching. */
+export const kickoffEpoch = (iso: string): string =>
+  String(Math.floor(new Date(iso).getTime() / 1000));
+
+// Polymarket display names → our canonical team names (for live champion odds).
+const PM_TO_CANONICAL: Record<string, string> = {
+  USA: "United States",
+  US: "United States",
+  "Korea Republic": "South Korea",
+  Czechia: "Czech Republic",
+  Turkiye: "Turkey",
+  Türkiye: "Turkey",
+  "Cote d'Ivoire": "Ivory Coast",
+  "Côte d'Ivoire": "Ivory Coast",
+  "Cabo Verde": "Cape Verde",
+  Curacao: "Curaçao",
+  Bosnia: "Bosnia and Herzegovina",
+  "Bosnia-Herzegovina": "Bosnia and Herzegovina",
+  "Dem. Rep. Congo": "DR Congo",
+  "Congo DR": "DR Congo",
+};
+
+export const canonicalTeam = (pmName: string): string =>
+  PM_TO_CANONICAL[pmName] ?? pmName;
+
+/** Recompute the AI-vs-market edge from a live de-vigged market probability.
+ *  Mirrors the pipeline (edge ≥2pp shown; STRONG ≥5pp with ≥3 models agreeing).
+ *  models_agree comes from the daily snapshot — it can't be derived live. */
+export function liveEdge(ai: number, marketDevig: number, modelsAgree: number) {
+  const edgePct = Math.round((ai - marketDevig) * 100 * 100) / 100;
+  if (Math.abs(edgePct) < 2) return null;
+  return {
+    edge_pct: edgePct,
+    direction: edgePct >= 0 ? ("BUY" as const) : ("SELL" as const),
+    strength: Math.abs(edgePct) >= 5 && modelsAgree >= 3 ? "STRONG EDGE" : "edge",
+    models_agree: modelsAgree,
+  };
+}
+
 export const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
 

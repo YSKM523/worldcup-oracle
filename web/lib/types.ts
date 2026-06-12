@@ -70,6 +70,15 @@ export interface Detail {
   analysis: string;
 }
 
+/** Raw Polymarket per-match W/D/L prices (vig included) + event slug. */
+export interface MatchMarket {
+  slug: string;
+  home: number;
+  draw: number;
+  away: number;
+  volume: number;
+}
+
 export interface Match {
   espn_id: string;
   kickoff_utc: string;
@@ -88,6 +97,7 @@ export interface Match {
   pred?: Pred;
   locked?: Locked;
   detail?: Detail;
+  market?: MatchMarket;
 }
 
 export interface GroupRow {
@@ -115,6 +125,7 @@ export interface Champion {
   team: string;
   ai: number;
   market: number;
+  market_raw: number;
   edge: Edge | null;
   per_model: Record<string, number>;
   stages: {
@@ -187,3 +198,16 @@ export interface LiveEntry {
 }
 
 export type LiveMap = Record<string, LiveEntry>;
+
+/** Live Polymarket odds, polled client-side; raw prices (vig included). */
+export interface PolyMatchOdds {
+  home: number;
+  draw: number;
+  away: number;
+}
+export interface PolyLive {
+  champion: Record<string, number>; // team → raw Yes price
+  matches: Record<string, PolyMatchOdds>; // kickoff epoch (s) → W/D/L prices
+  championFresh: boolean;
+  updatedAt: number | null; // epoch ms of last successful poll
+}

@@ -5,6 +5,7 @@ import { LogoMark } from "@/components/icons";
 import { ChampionsView, GroupsView, RecordView, ScheduleView } from "@/components/Views";
 import type { Data } from "@/lib/types";
 import { useLive } from "@/lib/useLive";
+import { usePolymarket } from "@/lib/usePolymarket";
 
 const TABS = [
   ["matches", "赛程预测"],
@@ -19,6 +20,7 @@ export default function Home() {
   const [error, setError] = useState(false);
   const [tab, setTab] = useState<Tab>("matches");
   const live = useLive();
+  const poly = usePolymarket(data?.matches ?? []);
 
   useEffect(() => {
     fetch(`/data.json?v=${Math.floor(Date.now() / 3600e3)}`)
@@ -83,11 +85,11 @@ export default function Home() {
         ) : !data ? (
           <p className="py-20 text-center text-sm text-zinc-600">加载中…</p>
         ) : tab === "matches" ? (
-          <ScheduleView data={data} live={live} />
+          <ScheduleView data={data} live={live} poly={poly} />
         ) : tab === "groups" ? (
           <GroupsView data={data} />
         ) : tab === "champions" ? (
-          <ChampionsView data={data} />
+          <ChampionsView data={data} poly={poly} />
         ) : (
           <RecordView data={data} />
         )}

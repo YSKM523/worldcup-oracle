@@ -1,8 +1,17 @@
 "use client";
 
 import { CheckIcon, Flag, XIcon } from "@/components/icons";
-import type { FormEntry, LiveMap, Match, Meta } from "@/lib/types";
-import { KO_STAGES, MODEL_SHORT, STAGE_ZH, fmtTime, pct, zh } from "@/lib/wc";
+import type { FormEntry, LiveMap, Match, Meta, PolyLive } from "@/lib/types";
+import {
+  KO_STAGES,
+  MODEL_SHORT,
+  STAGE_ZH,
+  fmtTime,
+  kickoffEpoch,
+  oddsFmt,
+  pct,
+  zh,
+} from "@/lib/wc";
 
 /* ── Shared bits ───────────────────────────────────────────────── */
 
@@ -153,9 +162,44 @@ function ResultLine({ m }: { m: Match }) {
   );
 }
 
+/** Polymarket per-match decimal odds (W/D/L). Live when fresh, else snapshot. */
+function MarketOdds({ m, poly }: { m: Match; poly: PolyLive }) {
+  const live = poly.matches[kickoffEpoch(m.kickoff_utc)];
+  const snap = m.market;
+  const prices = live ?? (snap ? { home: snap.home, draw: snap.draw, away: snap.away } : null);
+  if (!prices) return null;
+  return (
+    <div className="mt-2 flex items-center gap-x-4 gap-y-1 text-[11px] text-zinc-500">
+      <span className="inline-flex items-center gap-1 text-zinc-600">
+        {live && <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+        Polymarket 赔率
+      </span>
+      <span className="tabular-nums">
+        主 <b className="text-zinc-300">{oddsFmt(prices.home)}</b>
+      </span>
+      <span className="tabular-nums">
+        平 <b className="text-zinc-300">{oddsFmt(prices.draw)}</b>
+      </span>
+      <span className="tabular-nums">
+        客 <b className="text-zinc-300">{oddsFmt(prices.away)}</b>
+      </span>
+    </div>
+  );
+}
+
 /* ── Compact schedule card ─────────────────────────────────────── */
 
-export function CompactCard({ m, meta, live }: { m: Match; meta: Meta; live: LiveMap }) {
+export function CompactCard({
+  m,
+  meta,
+  live,
+  poly,
+}: {
+  m: Match;
+  meta: Meta;
+  live: LiveMap;
+  poly: PolyLive;
+}) {
   const p = m.pred;
   const venue = [m.venue, m.city].filter(Boolean).join(" · ");
   const loser =
@@ -193,6 +237,7 @@ export function CompactCard({ m, meta, live }: { m: Match; meta: Meta; live: Liv
             {p.scoreline.top_scores.slice(1, 4).map((s) => `${s.score} ${pct(s.p)}`).join(" · ")}
           </div>
           <ModelRow m={m} meta={meta} />
+          <MarketOdds m={m} poly={poly} />
         </div>
       )}
     </div>
@@ -256,7 +301,17 @@ function TeamBig({ m, side }: { m: Match; side: "home" | "away" }) {
   );
 }
 
-export function FocusCard({ m, meta, live }: { m: Match; meta: Meta; live: LiveMap }) {
+export function FocusCard({
+  m,
+  meta,
+  live,
+  poly,
+}: {
+  m: Match;
+  meta: Meta;
+  live: LiveMap;
+  poly: PolyLive;
+}) {
   const p = m.pred;
   const d = m.detail;
   const venue = [m.venue, m.city].filter(Boolean).join(" · ");
@@ -328,6 +383,7 @@ export function FocusCard({ m, meta, live }: { m: Match; meta: Meta; live: LiveM
           </div>
 
           <ModelRow m={m} meta={meta} />
+          <MarketOdds m={m} poly={poly} />
         </div>
       ) : null}
 

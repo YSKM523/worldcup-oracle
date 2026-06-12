@@ -281,11 +281,61 @@ def _attach_matchday_details(
 
 
 # ── Sections ─────────────────────────────────────────────────────────────────
+def _kickoff_epoch(iso: str) -> int | None:
+    """Normalize a kickoff ISO ('…Z' or '…+00:00') to an epoch second."""
+    if not iso:
+        return None
+    try:
+        return int(datetime.fromisoformat(str(iso).replace("Z", "+00:00")).timestamp())
+    except (ValueError, TypeError):
+        return None
+
+
+def _index_moneylines(moneylines: dict[str, dict]) -> dict[int, list[dict]]:
+    """Group moneyline markets by kickoff epoch (parallel kickoffs share one)."""
+    by_epoch: dict[int, list[dict]] = {}
+    for kickoff, ml in moneylines.items():
+        ep = _kickoff_epoch(kickoff)
+        if ep is not None:
+            by_epoch.setdefault(ep, []).append(ml)
+    return by_epoch
+
+
+def _match_market(ml_by_epoch: dict[int, list[dict]], kickoff: str,
+                  home: str, away: str) -> dict | None:
+    """Find the moneyline for a fixture by kickoff, disambiguating ties by team."""
+    ep = _kickoff_epoch(kickoff)
+    cands = ml_by_epoch.get(ep, []) if ep is not None else []
+    if not cands:
+        return None
+    if len(cands) == 1:
+        ml = cands[0]
+    else:
+        teams = {home, away}
+        ml = next((c for c in cands if {c["home_name"], c["away_name"]} == teams), None)
+        if ml is None:
+            return None
+    # Orient prices to our fixture's home/away (PM order may differ).
+    if ml["home_name"] == away and ml["away_name"] == home:
+        home_price, away_price = ml["away_price"], ml["home_price"]
+    else:
+        home_price, away_price = ml["home_price"], ml["away_price"]
+    return {
+        "slug": ml["slug"],
+        "home": round(home_price, 4),
+        "draw": round(ml["draw_price"], 4),
+        "away": round(away_price, 4),
+        "volume": round(ml["volume"]),
+    }
+
+
 def _build_matches(
     wc_df: pd.DataFrame,
     model_elos: dict[str, dict[str, float]],
     ens_elo: dict[str, float],
+    moneylines: dict[str, dict] | None = None,
 ) -> list[dict]:
+    ml_by_epoch = _index_moneylines(moneylines or {})
     locked = pd.read_csv(MATCH_PREDS_CSV) if MATCH_PREDS_CSV.exists() else pd.DataFrame()
     locked_by_key: dict[tuple, dict] = {}
     if not locked.empty:
@@ -319,6 +369,12 @@ def _build_matches(
             "away_score": int(r["away_score"]) if completed else None,
             "winner": r.get("winner") if completed and pd.notna(r.get("winner")) else None,
         }
+
+        # Polymarket per-match moneyline (raw W/D/L prices + slug for live poll)
+        if known:
+            mkt = _match_market(ml_by_epoch, r["kickoff_utc"], home, away)
+            if mkt:
+                row["market"] = mkt
 
         # Fresh prediction for any match not yet played (today's view)
         if known and not completed:
@@ -390,10 +446,13 @@ def _build_champions(sims: dict[str, pd.DataFrame]) -> list[dict]:
     ai_probs = dict(zip(ens[1]["team"], ens[1]["ai_prob"])) if ens else {}
 
     market: dict[str, float] = {}
+    market_raw: dict[str, float] = {}
     if PM_ODDS_PARQUET.exists():
         pm = pd.read_parquet(PM_ODDS_PARQUET)
         latest = pm[pm["timestamp"] == pm["timestamp"].max()]
-        market = normalize_probs(dict(zip(latest["team"], latest["implied_prob"])))
+        raw = dict(zip(latest["team"], latest["implied_prob"]))
+        market = normalize_probs(raw)  # de-vigged, for the AI-vs-market edge
+        market_raw = raw  # raw price, for tradeable decimal odds
 
     edges = _latest("edges/edges_*.csv")
     edge_by_team = {}
@@ -424,6 +483,7 @@ def _build_champions(sims: dict[str, pd.DataFrame]) -> list[dict]:
             "team": team,
             "ai": round(float(ai_probs.get(team, 0.0)), 4),
             "market": round(float(market.get(team, 0.0)), 4),
+            "market_raw": round(float(market_raw.get(team, 0.0)), 4),
             "edge": edge_by_team.get(team),
             "per_model": per_model_champ.get(team, {}),
             "stages": {
@@ -520,7 +580,16 @@ def build_dashboard(wc_df: pd.DataFrame | None = None) -> dict:
                 float(r["P(group_advance)"]) / len(sims)
             )
 
-    matches = _build_matches(wc_df, model_elos, ens_elo)
+    # Per-match Polymarket moneylines (best-effort; never block the build).
+    moneylines: dict[str, dict] = {}
+    try:
+        from data.fetcher_polymarket import fetch_match_moneylines
+
+        moneylines = fetch_match_moneylines()
+    except Exception as exc:  # noqa: BLE001 — odds are optional decoration
+        log.warning("Polymarket moneyline fetch failed: %s", exc)
+
+    matches = _build_matches(wc_df, model_elos, ens_elo, moneylines)
 
     # Focus matchday: today's (or the next) slate gets the deep-dive treatment
     from data.fetcher_matches import fetch_matches

@@ -3,12 +3,14 @@
 import { useMemo, useState } from "react";
 import { CheckIcon, Flag, StarIcon, XIcon } from "@/components/icons";
 import { CompactCard, FocusCard } from "@/components/MatchCards";
-import type { Data, LiveMap, Match } from "@/lib/types";
+import type { Data, LiveMap, Match, PolyLive } from "@/lib/types";
 import {
   KO_STAGES,
   MODEL_SHORT,
   fmtDay,
+  liveEdge,
   localDateKey,
+  oddsFmt,
   pct,
   todayKey,
   venueDayKey,
@@ -27,7 +29,15 @@ const FILTERS = [
 ] as const;
 type Filter = (typeof FILTERS)[number][0];
 
-export function ScheduleView({ data, live }: { data: Data; live: LiveMap }) {
+export function ScheduleView({
+  data,
+  live,
+  poly,
+}: {
+  data: Data;
+  live: LiveMap;
+  poly: PolyLive;
+}) {
   const [filter, setFilter] = useState<Filter>("focus");
   const [search, setSearch] = useState("");
 
@@ -91,9 +101,9 @@ export function ScheduleView({ data, live }: { data: Data; live: LiveMap }) {
       </div>
 
       {filter === "focus" ? (
-        <FocusList matchday={matchday} matches={focusMatches} data={data} live={live} />
+        <FocusList matchday={matchday} matches={focusMatches} data={data} live={live} poly={poly} />
       ) : visible.length ? (
-        <DayGroupedList matches={visible} data={data} live={live} />
+        <DayGroupedList matches={visible} data={data} live={live} poly={poly} />
       ) : (
         <Empty text="没有符合条件的比赛" />
       )}
@@ -106,11 +116,13 @@ function FocusList({
   matches,
   data,
   live,
+  poly,
 }: {
   matchday: string | null;
   matches: Match[];
   data: Data;
   live: LiveMap;
+  poly: PolyLive;
 }) {
   if (!matchday) return <Empty text="本届赛事已结束 — 战绩见「AI 战绩」页" />;
   if (!matches.length) return <Empty text="没有符合条件的比赛" />;
@@ -124,14 +136,24 @@ function FocusList({
       </div>
       <div className="space-y-4">
         {matches.map((m) => (
-          <FocusCard key={m.espn_id} m={m} meta={data.meta} live={live} />
+          <FocusCard key={m.espn_id} m={m} meta={data.meta} live={live} poly={poly} />
         ))}
       </div>
     </div>
   );
 }
 
-function DayGroupedList({ matches, data, live }: { matches: Match[]; data: Data; live: LiveMap }) {
+function DayGroupedList({
+  matches,
+  data,
+  live,
+  poly,
+}: {
+  matches: Match[];
+  data: Data;
+  live: LiveMap;
+  poly: PolyLive;
+}) {
   const groups: [string, Match[]][] = [];
   for (const m of matches) {
     const day = localDateKey(m.kickoff_utc);
@@ -153,7 +175,7 @@ function DayGroupedList({ matches, data, live }: { matches: Match[]; data: Data;
           </h3>
           <div className="space-y-3">
             {ms.map((m) => (
-              <CompactCard key={m.espn_id} m={m} meta={data.meta} live={live} />
+              <CompactCard key={m.espn_id} m={m} meta={data.meta} live={live} poly={poly} />
             ))}
           </div>
         </section>
@@ -222,12 +244,16 @@ export function GroupsView({ data }: { data: Data }) {
 
 /* ── Champions ─────────────────────────────────────────────────── */
 
-export function ChampionsView({ data }: { data: Data }) {
+export function ChampionsView({ data, poly }: { data: Data; poly: PolyLive }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const rows = data.champions.filter((c) => c.ai > 0.0005 || c.market > 0.0005);
   const shown = showAll ? rows : rows.slice(0, 20);
   const maxP = Math.max(shown[0]?.ai ?? 0.01, shown[0]?.market ?? 0.01);
+
+  // Live raw price (vig included) per team, de-vig sum for the edge recompute.
+  const liveRaw = poly.championFresh ? poly.champion : null;
+  const liveSum = liveRaw ? Object.values(liveRaw).reduce((a, b) => a + b, 0) : 0;
 
   return (
     <div>
@@ -235,13 +261,21 @@ export function ChampionsView({ data }: { data: Data }) {
         <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-400" />
         AI 集成概率
         <span className="ml-2 inline-block h-2.5 w-2.5 rounded-sm bg-zinc-600" />
-        Polymarket 市场
-        {data.meta.volume ? `（总量 $${(data.meta.volume / 1e9).toFixed(2)}B）` : ""}
+        Polymarket 市场（右侧为小数赔率）
+        {data.meta.volume ? `　总量 $${(data.meta.volume / 1e9).toFixed(2)}B` : ""}
+        {poly.championFresh && (
+          <span className="inline-flex items-center gap-1 text-emerald-400">
+            <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            实时
+          </span>
+        )}
         <span className="text-zinc-600">·　点击行展开模型明细</span>
       </p>
       <div className="space-y-2">
         {shown.map((c, i) => {
-          const e = c.edge;
+          const rawPrice = liveRaw?.[c.team] ?? c.market_raw;
+          const marketProb = liveRaw && liveSum > 0 ? rawPrice / liveSum : c.market;
+          const e = liveRaw ? liveEdge(c.ai, marketProb, c.edge?.models_agree ?? 0) : c.edge;
           const open = expanded === c.team;
           return (
             <button
@@ -270,7 +304,7 @@ export function ChampionsView({ data }: { data: Data }) {
                 </span>
                 <span className="shrink-0 text-right text-sm tabular-nums">
                   <b className="text-emerald-400">{pct(c.ai, 1)}</b>
-                  <span className="text-zinc-600"> / {pct(c.market, 1)}</span>
+                  <span className="text-zinc-600"> · 赔率 {oddsFmt(rawPrice)}</span>
                 </span>
               </div>
               <div className="mt-2.5 space-y-1">
@@ -283,7 +317,7 @@ export function ChampionsView({ data }: { data: Data }) {
                 <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800/80">
                   <div
                     className="h-full bg-zinc-600"
-                    style={{ width: `${Math.min(100, (c.market / maxP) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (marketProb / maxP) * 100)}%` }}
                   />
                 </div>
               </div>
@@ -317,7 +351,10 @@ export function ChampionsView({ data }: { data: Data }) {
                       vs 市场：{e.direction === "BUY" ? "AI 认为被低估" : "AI 认为被高估"}{" "}
                       {Math.abs(e.edge_pct).toFixed(1)} 个百分点（{e.models_agree}/
                       {data.meta.models.length} 模型同向
-                      {e.half_kelly > 0 ? `，半凯利仓位 ${pct(e.half_kelly, 1)}` : ""}）
+                      {c.edge && c.edge.half_kelly > 0
+                        ? `，半凯利仓位 ${pct(c.edge.half_kelly, 1)}`
+                        : ""}
+                      ）
                     </div>
                   )}
                 </div>
