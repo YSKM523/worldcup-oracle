@@ -13,19 +13,22 @@ const ZH: Record<string, string> = {
   England: "英格兰", Croatia: "克罗地亚", Ghana: "加纳", Panama: "巴拿马",
 };
 
-const FLAG: Record<string, string> = {
-  Mexico: "🇲🇽", "South Korea": "🇰🇷", "Czech Republic": "🇨🇿", "South Africa": "🇿🇦",
-  "United States": "🇺🇸", Turkey: "🇹🇷", Australia: "🇦🇺", Paraguay: "🇵🇾",
-  Canada: "🇨🇦", Switzerland: "🇨🇭", "Bosnia and Herzegovina": "🇧🇦", Qatar: "🇶🇦",
-  Brazil: "🇧🇷", Morocco: "🇲🇦", Scotland: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", Haiti: "🇭🇹",
-  Germany: "🇩🇪", "Ivory Coast": "🇨🇮", Ecuador: "🇪🇨", "Curaçao": "🇨🇼",
-  Netherlands: "🇳🇱", Japan: "🇯🇵", Sweden: "🇸🇪", Tunisia: "🇹🇳",
-  Belgium: "🇧🇪", Iran: "🇮🇷", Egypt: "🇪🇬", "New Zealand": "🇳🇿",
-  Spain: "🇪🇸", Uruguay: "🇺🇾", "Saudi Arabia": "🇸🇦", "Cape Verde": "🇨🇻",
-  Argentina: "🇦🇷", Algeria: "🇩🇿", Austria: "🇦🇹", Jordan: "🇯🇴",
-  France: "🇫🇷", Senegal: "🇸🇳", Iraq: "🇮🇶", Norway: "🇳🇴",
-  Portugal: "🇵🇹", Colombia: "🇨🇴", Uzbekistan: "🇺🇿", "DR Congo": "🇨🇩",
-  England: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", Croatia: "🇭🇷", Ghana: "🇬🇭", Panama: "🇵🇦",
+// ISO codes → self-hosted SVG flags in public/flags/ (flag emoji don't render
+// on Windows; SVGs are crisp and cross-platform). Scotland/England use the
+// FIFA sub-national codes that flagcdn ships.
+const ISO: Record<string, string> = {
+  Mexico: "mx", "South Korea": "kr", "Czech Republic": "cz", "South Africa": "za",
+  "United States": "us", Turkey: "tr", Australia: "au", Paraguay: "py",
+  Canada: "ca", Switzerland: "ch", "Bosnia and Herzegovina": "ba", Qatar: "qa",
+  Brazil: "br", Morocco: "ma", Scotland: "gb-sct", Haiti: "ht",
+  Germany: "de", "Ivory Coast": "ci", Ecuador: "ec", "Curaçao": "cw",
+  Netherlands: "nl", Japan: "jp", Sweden: "se", Tunisia: "tn",
+  Belgium: "be", Iran: "ir", Egypt: "eg", "New Zealand": "nz",
+  Spain: "es", Uruguay: "uy", "Saudi Arabia": "sa", "Cape Verde": "cv",
+  Argentina: "ar", Algeria: "dz", Austria: "at", Jordan: "jo",
+  France: "fr", Senegal: "sn", Iraq: "iq", Norway: "no",
+  Portugal: "pt", Colombia: "co", Uzbekistan: "uz", "DR Congo": "cd",
+  England: "gb-eng", Croatia: "hr", Ghana: "gh", Panama: "pa",
 };
 
 export const STAGE_ZH: Record<string, string> = {
@@ -62,7 +65,8 @@ export function zh(name: string): string {
   return name;
 }
 
-export const flag = (name: string) => FLAG[name] ?? "•";
+/** ISO code for a team, or null for TBD placeholders (e.g. "Group A Winner"). */
+export const iso = (name: string): string | null => ISO[name] ?? null;
 
 export const pct = (p: number, digits = 0) => `${(p * 100).toFixed(digits)}%`;
 

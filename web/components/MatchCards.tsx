@@ -1,7 +1,8 @@
 "use client";
 
+import { CheckIcon, Flag, XIcon } from "@/components/icons";
 import type { FormEntry, LiveMap, Match, Meta } from "@/lib/types";
-import { KO_STAGES, MODEL_SHORT, STAGE_ZH, flag, fmtTime, pct, zh } from "@/lib/wc";
+import { KO_STAGES, MODEL_SHORT, STAGE_ZH, fmtTime, pct, zh } from "@/lib/wc";
 
 /* ── Shared bits ───────────────────────────────────────────────── */
 
@@ -125,13 +126,25 @@ function ResultLine({ m }: { m: Match }) {
   return (
     <div className="mt-3 text-xs leading-6 text-zinc-400">
       {outcome}{" "}
-      <b className={hit ? "text-emerald-400" : "text-rose-400"}>{hit ? "判对 ✓" : "判错 ✗"}</b>
+      <b
+        className={`inline-flex items-center gap-1 align-middle ${
+          hit ? "text-emerald-400" : "text-rose-400"
+        }`}
+      >
+        {hit ? <CheckIcon className="h-3 w-3" /> : <XIcon className="h-3 w-3" />}
+        {hit ? "判对" : "判错"}
+      </b>
       {lk.pred_score && (
         <>
           {"　比分预测 "}
           {lk.pred_score}{" "}
-          <b className={scoreHit ? "text-emerald-400" : "text-rose-400"}>
-            {scoreHit ? "命中 ✓" : "未中"}
+          <b
+            className={`inline-flex items-center gap-1 align-middle ${
+              scoreHit ? "text-emerald-400" : "text-rose-400"
+            }`}
+          >
+            {scoreHit && <CheckIcon className="h-3 w-3" />}
+            {scoreHit ? "命中" : "未中"}
           </b>
         </>
       )}
@@ -158,13 +171,13 @@ export function CompactCard({ m, meta, live }: { m: Match; meta: Meta; live: Liv
         <span className="truncate text-[11px] text-zinc-500">{venue}</span>
       </div>
       <div className="flex items-center gap-3">
-        <div className={`flex min-w-0 flex-1 items-center gap-2 ${loser === "home" ? "opacity-50" : ""}`}>
-          <span className="text-xl">{flag(m.home)}</span>
+        <div className={`flex min-w-0 flex-1 items-center gap-2.5 ${loser === "home" ? "opacity-50" : ""}`}>
+          <Flag name={m.home} className="h-5 w-7 shrink-0" />
           <span className="truncate font-semibold">{zh(m.home)}</span>
         </div>
         <ScoreMid m={m} live={live} />
-        <div className={`flex min-w-0 flex-1 flex-row-reverse items-center gap-2 ${loser === "away" ? "opacity-50" : ""}`}>
-          <span className="text-xl">{flag(m.away)}</span>
+        <div className={`flex min-w-0 flex-1 flex-row-reverse items-center gap-2.5 ${loser === "away" ? "opacity-50" : ""}`}>
+          <Flag name={m.away} className="h-5 w-7 shrink-0" />
           <span className="truncate font-semibold">{zh(m.away)}</span>
         </div>
       </div>
@@ -231,8 +244,8 @@ function TeamBig({ m, side }: { m: Match; side: "home" | "away" }) {
   const rank = side === "home" ? d?.rank_home : d?.rank_away;
   return (
     <div className="min-w-0 flex-1 text-center">
-      <div className="text-4xl leading-tight">{flag(name)}</div>
-      <div className="mt-1 truncate text-base font-bold">{zh(name)}</div>
+      <Flag name={name} className="mx-auto h-9 w-[3.25rem]" />
+      <div className="mt-1.5 truncate text-base font-bold">{zh(name)}</div>
       {elo ? (
         <div className="mt-0.5 text-[11px] tabular-nums text-zinc-500">
           Elo {elo} · 第 {rank} 位

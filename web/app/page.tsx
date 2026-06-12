@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LogoMark } from "@/components/icons";
 import { ChampionsView, GroupsView, RecordView, ScheduleView } from "@/components/Views";
 import type { Data } from "@/lib/types";
 import { useLive } from "@/lib/useLive";
@@ -31,8 +32,9 @@ export default function Home() {
       <header className="sticky top-0 z-40 -mx-4 border-b border-zinc-800/70 bg-zinc-950/85 px-4 pt-5 backdrop-blur-md">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-lg font-bold tracking-tight">
-              ⚽ WorldCup Oracle
+            <h1 className="flex items-center gap-2 text-lg font-bold tracking-tight">
+              <LogoMark className="h-5 w-5 text-emerald-400" />
+              WorldCup Oracle
             </h1>
             <p className="mt-0.5 text-xs text-zinc-500">2026 世界杯 · AI 预测 vs Polymarket</p>
           </div>

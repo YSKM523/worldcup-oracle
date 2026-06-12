@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CheckIcon, Flag, StarIcon, XIcon } from "@/components/icons";
 import { CompactCard, FocusCard } from "@/components/MatchCards";
 import type { Data, LiveMap, Match } from "@/lib/types";
 import {
   KO_STAGES,
   MODEL_SHORT,
-  flag,
   fmtDay,
   localDateKey,
   pct,
@@ -189,8 +189,10 @@ export function GroupsView({ data }: { data: Data }) {
               {rows.map((r) => (
                 <tr key={r.team} className="border-t border-zinc-800/60">
                   <td className="py-1.5">
-                    <span className="mr-1.5">{flag(r.team)}</span>
-                    {zh(r.team)}
+                    <span className="flex items-center gap-2">
+                      <Flag name={r.team} className="h-3 w-[1.1rem] shrink-0" />
+                      {zh(r.team)}
+                    </span>
                   </td>
                   <td className="text-right tabular-nums text-zinc-400">{r.played}</td>
                   <td className="text-right tabular-nums text-zinc-400">
@@ -229,11 +231,13 @@ export function ChampionsView({ data }: { data: Data }) {
 
   return (
     <div>
-      <p className="mb-4 text-xs text-zinc-500">
-        <span className="text-emerald-400">■</span> AI 集成概率{"　"}
-        <span className="text-zinc-600">■</span> Polymarket 市场
+      <p className="mb-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-zinc-500">
+        <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-400" />
+        AI 集成概率
+        <span className="ml-2 inline-block h-2.5 w-2.5 rounded-sm bg-zinc-600" />
+        Polymarket 市场
         {data.meta.volume ? `（总量 $${(data.meta.volume / 1e9).toFixed(2)}B）` : ""}
-        　·　点击行展开模型明细
+        <span className="text-zinc-600">·　点击行展开模型明细</span>
       </p>
       <div className="space-y-2">
         {shown.map((c, i) => {
@@ -248,16 +252,17 @@ export function ChampionsView({ data }: { data: Data }) {
               <div className="flex items-center gap-3">
                 <span className="w-5 shrink-0 text-xs tabular-nums text-zinc-600">{i + 1}</span>
                 <span className="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap font-semibold">
-                  {flag(c.team)} {zh(c.team)}
+                  <Flag name={c.team} className="h-3.5 w-5 shrink-0" />
+                  {zh(c.team)}
                   {e && (
                     <span
-                      className={`rounded-md border px-1.5 py-px text-[11px] font-bold ${
+                      className={`inline-flex items-center gap-0.5 rounded-md border px-1.5 py-px text-[11px] font-bold ${
                         e.direction === "BUY"
                           ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
                           : "border-rose-500/30 bg-rose-500/10 text-rose-400"
                       }`}
                     >
-                      {e.strength === "STRONG EDGE" ? "★" : ""}
+                      {e.strength === "STRONG EDGE" && <StarIcon className="h-2.5 w-2.5" />}
                       {e.direction === "BUY" ? "低估" : "高估"} {e.edge_pct > 0 ? "+" : ""}
                       {e.edge_pct.toFixed(1)}
                     </span>
@@ -393,8 +398,13 @@ export function RecordView({ data }: { data: Data }) {
                 return (
                   <tr key={`${d.kickoff_utc}-${d.home}`} className="border-t border-zinc-800/60">
                     <td className="px-3 py-2.5">
-                      {flag(d.home)} {zh(d.home)} <span className="text-zinc-600">vs</span>{" "}
-                      {zh(d.away)} {flag(d.away)}
+                      <span className="flex items-center gap-1.5">
+                        <Flag name={d.home} className="h-3 w-[1.1rem] shrink-0" />
+                        {zh(d.home)}
+                        <span className="text-zinc-600">vs</span>
+                        {zh(d.away)}
+                        <Flag name={d.away} className="h-3 w-[1.1rem] shrink-0" />
+                      </span>
                     </td>
                     <td className="px-3 py-2.5 font-bold tabular-nums">{d.score}</td>
                     <td className="px-3 py-2.5 text-zinc-400">
@@ -404,10 +414,22 @@ export function RecordView({ data }: { data: Data }) {
                       )}
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className={d.winner_hit ? "text-emerald-400" : "text-rose-400"}>
-                        {d.winner_hit ? "✓" : "✗"}
+                      <span
+                        className={`inline-flex items-center ${
+                          d.winner_hit ? "text-emerald-400" : "text-rose-400"
+                        }`}
+                      >
+                        {d.winner_hit ? (
+                          <CheckIcon className="h-3.5 w-3.5" />
+                        ) : (
+                          <XIcon className="h-3.5 w-3.5" />
+                        )}
                       </span>
-                      {d.score_hit && <span className="ml-1 text-emerald-400">比分✓</span>}
+                      {d.score_hit && (
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 text-emerald-400">
+                          <CheckIcon className="h-3 w-3" />比分
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 tabular-nums text-zinc-400">
                       {d.brier != null ? d.brier.toFixed(3) : "—"}
@@ -419,7 +441,7 @@ export function RecordView({ data }: { data: Data }) {
           </table>
         </div>
       ) : (
-        <Empty text="还没有已完赛的预测 — 等第一场比赛打完就有了 ⚽" />
+        <Empty text="还没有已完赛的预测 — 等第一场比赛打完就有了" />
       )}
     </div>
   );
