@@ -43,3 +43,16 @@ def remove_overround(probs: list[float]) -> list[float]:
     if total == 0:
         return probs
     return [p / total for p in probs]
+
+
+def normalize_probs(probs: dict[str, float]) -> dict[str, float]:
+    """remove_overround for a {team: prob} dict.
+
+    Polymarket champion prices sum to >1 (overround); AI ensemble probs sum
+    to 1. Every AI-vs-market comparison must normalize the market side first
+    or edges inherit the vig as a systematic bias.
+    """
+    total = sum(probs.values())
+    if total <= 0:
+        return dict(probs)
+    return {k: v / total for k, v in probs.items()}

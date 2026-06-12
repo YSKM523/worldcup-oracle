@@ -30,6 +30,7 @@ from data.elo import build_elo_history, get_latest_elo, resample_weekly
 from data.fetcher_matches import fetch_matches
 from data.fetcher_polymarket import fetch_current_wc_odds, save_odds_snapshot
 from markets.edge_detector import detect_edges, format_edge_report
+from markets.odds_converter import normalize_probs
 
 # Persisted by full model runs; consumed daily for model-agreement scoring and
 # by the Phase B (tournament) pipeline as the per-model Elo baseline.
@@ -138,9 +139,11 @@ def step_run_models(elo: pd.DataFrame) -> tuple[dict[str, float], dict]:
 
     # Monte Carlo for each model
     model_sim_results = {}
-    for model_name, team_elos in tournament_elos.items():
+    for i, (model_name, team_elos) in enumerate(tournament_elos.items()):
         log.info("  Monte Carlo: %s", model_name)
-        sim_df = run_monte_carlo(team_elos, n_simulations=50_000, seed=42)
+        # Per-model seeds — see matchday_run.py: a shared seed correlates
+        # the models' bracket draws and inflates models_agree.
+        sim_df = run_monte_carlo(team_elos, n_simulations=50_000, seed=42 + i * 1000)
         model_sim_results[model_name] = sim_df
 
     # Ensemble
@@ -228,7 +231,7 @@ def main():
     pm_df = step_fetch_odds()
     market_probs = {}
     if pm_df is not None:
-        market_probs = dict(zip(pm_df["team"], pm_df["implied_prob"]))
+        market_probs = normalize_probs(dict(zip(pm_df["team"], pm_df["implied_prob"])))
 
     if is_monday:
         # Monday: full model re-run
@@ -255,7 +258,10 @@ if __name__ == "__main__":
         matches = fetch_matches(force=True)
         elo = build_elo_history(matches, force=True)
         pm_df = step_fetch_odds()
-        market_probs = dict(zip(pm_df["team"], pm_df["implied_prob"])) if pm_df is not None else {}
+        market_probs = (
+            normalize_probs(dict(zip(pm_df["team"], pm_df["implied_prob"])))
+            if pm_df is not None else {}
+        )
         ensemble_probs, model_sim_results = step_run_models(elo)
         step_detect_edges(ensemble_probs, market_probs, model_sim_results)
     else:

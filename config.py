@@ -114,8 +114,11 @@ ELO_HOME_ADVANTAGE = 100
 WC_HOST_HOME_ADVANTAGE_ELO = 80
 
 # ── Bradley-Terry Parameters ────────────────────────────────────────────────
-# Draw parameter nu (Davidson 1970) — calibrated for ~25% draw rate in WC groups
-BRADLEY_TERRY_DRAW_NU = 0.28
+# Davidson (1970) prediction map, MLE-fitted on 2010-2023 internationals with
+# 2024+ holdout (scripts/calibrate_probability_map.py). Equal-teams draw prob
+# = nu/(2+nu) ≈ 28%, matching the observed rate; the old nu=0.28 gave 12%.
+BRADLEY_TERRY_SCALE = 405
+BRADLEY_TERRY_DRAW_NU = 0.79
 
 # Penalty shootout split (for knockout rounds) — slight advantage to higher-rated
 KNOCKOUT_PENALTY_ADVANTAGE = 0.55  # Higher-rated team's share of draw redistribution

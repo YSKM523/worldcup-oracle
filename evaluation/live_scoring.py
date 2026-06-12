@@ -24,6 +24,7 @@ from config import (
     RESULTS_DIR,
     WC_HOST_HOME_ADVANTAGE_ELO,
 )
+from markets.odds_converter import normalize_probs
 from prediction.match_predictor import knockout_probabilities, match_probabilities
 from prediction.score_predictor import ensemble_match_prediction
 
@@ -259,8 +260,9 @@ def update_scoreboard(wc_df: pd.DataFrame) -> pd.DataFrame | None:
         return None
     pm = pd.read_parquet(POLYMARKET_ODDS_PARQUET)
     pm["date"] = pd.to_datetime(pm["timestamp"]).dt.strftime("%Y-%m-%d")
+    # De-vig per snapshot so the Brier comparison is AI(sum=1) vs PM(sum=1)
     pm_by_date = {
-        d: dict(zip(g["team"], g["implied_prob"]))
+        d: normalize_probs(dict(zip(g["team"], g["implied_prob"])))
         for d, g in pm.groupby("date")
     }
 

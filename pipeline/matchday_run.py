@@ -84,6 +84,7 @@ def main():
         update_scoreboard,
     )
     from markets.edge_detector import detect_edges, format_edge_report
+    from markets.odds_converter import normalize_probs
     from pipeline.daily_run import load_model_snapshot, step_forecast_tournament_elos
     from prediction.ensemble import live_model_elos
     from prediction.tournament_simulator import TournamentState, run_monte_carlo
@@ -99,9 +100,11 @@ def main():
     pm_df = fetch_current_wc_odds()
     market_probs: dict[str, float] = {}
     if pm_df is not None:
-        save_odds_snapshot(pm_df)
-        market_probs = dict(zip(pm_df["team"], pm_df["implied_prob"]))
-        log.info("  %d teams, volume $%s", len(pm_df), f"{pm_df['volume'].iloc[0]:,.0f}")
+        save_odds_snapshot(pm_df)  # snapshot keeps raw prices
+        raw = dict(zip(pm_df["team"], pm_df["implied_prob"]))
+        market_probs = normalize_probs(raw)
+        log.info("  %d teams, volume $%s, overround %.3f",
+                 len(pm_df), f"{pm_df['volume'].iloc[0]:,.0f}", sum(raw.values()))
     else:
         log.warning("  Polymarket fetch failed — edges will be skipped.")
 
@@ -136,8 +139,10 @@ def main():
     # ── 6. Conditioned Monte Carlo (remaining tournament only) ──────────
     log.info("Step 6: Conditioned Monte Carlo …")
     model_sim_results: dict[str, pd.DataFrame] = {}
-    for model_name, elos in model_elos.items():
-        sim_df = run_monte_carlo(elos, n_simulations=50_000, seed=42, state=state)
+    for i, (model_name, elos) in enumerate(model_elos.items()):
+        # Per-model seeds: a shared seed gives all models the same random
+        # bracket draws, which inflates the models_agree count in edges.
+        sim_df = run_monte_carlo(elos, n_simulations=50_000, seed=42 + i * 1000, state=state)
         model_sim_results[model_name] = sim_df
         sim_df.to_csv(
             RESULTS_DIR / "simulations" / f"sim_{model_name}_{date_str}.csv",

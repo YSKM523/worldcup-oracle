@@ -8,6 +8,7 @@ import numpy as np
 
 from config import (
     BRADLEY_TERRY_DRAW_NU,
+    BRADLEY_TERRY_SCALE,
     HOST_TEAMS,
     KNOCKOUT_PENALTY_ADVANTAGE,
     WC_HOST_HOME_ADVANTAGE_ELO,
@@ -33,8 +34,8 @@ def match_probabilities(
     -------
     {"win_a": float, "draw": float, "win_b": float} summing to 1.0
     """
-    exp_a = 10.0 ** ((elo_a + home_advantage) / 400.0)
-    exp_b = 10.0 ** (elo_b / 400.0)
+    exp_a = 10.0 ** ((elo_a + home_advantage) / BRADLEY_TERRY_SCALE)
+    exp_b = 10.0 ** (elo_b / BRADLEY_TERRY_SCALE)
 
     denom = exp_a + exp_b + nu * math.sqrt(exp_a * exp_b)
 

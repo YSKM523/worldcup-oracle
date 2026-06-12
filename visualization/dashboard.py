@@ -28,6 +28,7 @@ from config import (
 )
 from data.elo import ELO_PARQUET, get_latest_elo
 from evaluation.live_scoring import KNOCKOUT_STAGES, _host_home_advantage
+from markets.odds_converter import normalize_probs
 from prediction.ensemble import live_model_elos
 from prediction.score_predictor import ensemble_match_prediction
 
@@ -392,7 +393,7 @@ def _build_champions(sims: dict[str, pd.DataFrame]) -> list[dict]:
     if PM_ODDS_PARQUET.exists():
         pm = pd.read_parquet(PM_ODDS_PARQUET)
         latest = pm[pm["timestamp"] == pm["timestamp"].max()]
-        market = dict(zip(latest["team"], latest["implied_prob"]))
+        market = normalize_probs(dict(zip(latest["team"], latest["implied_prob"])))
 
     edges = _latest("edges/edges_*.csv")
     edge_by_team = {}

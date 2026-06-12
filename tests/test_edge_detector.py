@@ -7,6 +7,7 @@ import pytest
 import numpy as np
 
 from markets.edge_detector import kelly_fraction, detect_edges
+from markets.odds_converter import normalize_probs
 
 
 class TestKellyFraction:
@@ -87,3 +88,29 @@ class TestDetectEdges:
         edges = detect_edges(ai, mkt, min_edge_pct=3.0)
         edge_pcts = edges["edge_pct"].abs().tolist()
         assert edge_pcts == sorted(edge_pcts, reverse=True)
+
+
+class TestNormalizeProbs:
+    def test_removes_overround(self):
+        probs = {"A": 0.52, "B": 0.52}  # sums to 1.04 (4% vig)
+        out = normalize_probs(probs)
+        assert sum(out.values()) == pytest.approx(1.0)
+        assert out["A"] == pytest.approx(0.5)
+
+    def test_already_normalized_is_noop(self):
+        probs = {"A": 0.3, "B": 0.7}
+        out = normalize_probs(probs)
+        assert out == pytest.approx(probs)
+
+    def test_zero_total_returned_unchanged(self):
+        probs = {"A": 0.0, "B": 0.0}
+        assert normalize_probs(probs) == probs
+
+    def test_vig_no_longer_fakes_an_edge(self):
+        # AI agrees with the de-vigged market exactly; the raw market
+        # carries 4% overround. Without normalization this showed up as
+        # a phantom SELL edge on every team.
+        ai = {"A": 0.5, "B": 0.5}
+        raw_mkt = {"A": 0.52, "B": 0.52}
+        edges = detect_edges(ai, normalize_probs(raw_mkt), min_edge_pct=1.0)
+        assert len(edges) == 0
