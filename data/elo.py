@@ -107,6 +107,21 @@ def get_latest_elo(elo_history: pd.DataFrame) -> dict[str, float]:
     return latest["elo"].to_dict()
 
 
+def elo_as_of(elo_history: pd.DataFrame, team: str, date) -> float:
+    """Team's Elo from the latest history row STRICTLY BEFORE `date`.
+
+    Returns ELO_INITIAL when the team has no prior row. Used to get a match's
+    pre-match Elo without lookahead.
+    """
+    from config import ELO_INITIAL
+
+    d = pd.Timestamp(date)
+    rows = elo_history[(elo_history["team"] == team) & (pd.to_datetime(elo_history["date"]) < d)]
+    if rows.empty:
+        return float(ELO_INITIAL)
+    return float(rows.sort_values("date")["elo"].iloc[-1])
+
+
 def resample_weekly(
     elo_history: pd.DataFrame, team: str, n_weeks: int | None = None
 ) -> pd.Series:

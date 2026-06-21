@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from data.elo import compute_elo, resample_weekly, _expected_score, _goal_diff_multiplier
+from data.elo import compute_elo, resample_weekly, _expected_score, _goal_diff_multiplier, elo_as_of
+from config import ELO_INITIAL
 
 
 def _make_matches(rows):
@@ -117,3 +118,19 @@ class TestResampleWeekly:
         elo = compute_elo(matches)
         weekly = resample_weekly(elo, "TeamA", n_weeks=52)
         assert len(weekly) == 52
+
+
+def test_elo_as_of_returns_latest_strictly_before():
+    hist = pd.DataFrame([
+        {"date": pd.Timestamp("2014-06-10"), "team": "Brazil", "elo": 2000.0},
+        {"date": pd.Timestamp("2014-06-15"), "team": "Brazil", "elo": 2030.0},
+        {"date": pd.Timestamp("2014-06-20"), "team": "Brazil", "elo": 1990.0},
+    ])
+    # Before any history -> initial
+    assert elo_as_of(hist, "Brazil", "2014-06-09") == ELO_INITIAL
+    # Strictly before 2014-06-15 -> the 06-10 value (not the same-day row)
+    assert elo_as_of(hist, "Brazil", "2014-06-15") == 2000.0
+    # After last -> last value
+    assert elo_as_of(hist, "Brazil", "2014-07-01") == 1990.0
+    # Unknown team -> initial
+    assert elo_as_of(hist, "Nowhere", "2014-06-20") == ELO_INITIAL
