@@ -51,6 +51,29 @@ def step_fetch_results() -> pd.DataFrame:
     return wc_df
 
 
+def step_calibrate(wc_df: pd.DataFrame, now: datetime):
+    """Fit walk-forward calibration on played WC group matches; write artifact."""
+    from config import CALIBRATION_PATH, CALIB_TEMP_PRIOR, CALIB_DRAW_PRIOR
+    from evaluation.live_scoring import build_calibration_records
+    from prediction.calibration import Calibration, fit_calibration, save_calibration
+
+    records = build_calibration_records(wc_df, now)
+    calib, diag = fit_calibration(records, temp_prior=CALIB_TEMP_PRIOR, draw_prior=CALIB_DRAW_PRIOR)
+    diag["as_of"] = now.strftime("%Y-%m-%d")
+    save_calibration(calib, diag, CALIBRATION_PATH)
+    if records:
+        log.info(
+            "Step 2.5: Calibration fit on %d WC matches → T=%.3f δ=%.3f "
+            "(draws obs %.1f%% vs pred %.1f%%, in-sample Brier %.3f→%.3f)",
+            diag["n_wc"], calib.T, calib.delta,
+            100 * diag["draw_rate_observed"], 100 * diag["draw_rate_predicted_raw"],
+            diag["brier_before"], diag["brier_after"],
+        )
+    else:
+        log.info("Step 2.5: No completed WC matches yet — calibration = identity.")
+    return calib
+
+
 def step_update_elo(wc_df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, float]]:
     """Step 2: Refresh match history, merge live results, rebuild Elo."""
     log.info("Step 2: Updating match data + Elo (with live WC results) …")
@@ -94,6 +117,9 @@ def main():
 
     # ── 2. Elo with real WC results ──────────────────────────────────────
     elo, current_elo = step_update_elo(wc_df)
+
+    # ── 2.5 Walk-forward calibration (fit on played matches; future-only) ─────
+    calib = step_calibrate(wc_df, today)
 
     # ── 3. Polymarket odds ───────────────────────────────────────────────
     log.info("Step 3: Fetching Polymarket odds …")
@@ -142,7 +168,7 @@ def main():
     for i, (model_name, elos) in enumerate(model_elos.items()):
         # Per-model seeds: a shared seed gives all models the same random
         # bracket draws, which inflates the models_agree count in edges.
-        sim_df = run_monte_carlo(elos, n_simulations=50_000, seed=42 + i * 1000, state=state)
+        sim_df = run_monte_carlo(elos, n_simulations=50_000, seed=42 + i * 1000, state=state, calib=calib)
         model_sim_results[model_name] = sim_df
         sim_df.to_csv(
             RESULTS_DIR / "simulations" / f"sim_{model_name}_{date_str}.csv",
@@ -180,7 +206,7 @@ def main():
 
     # ── 8. Live scoring ──────────────────────────────────────────────────
     log.info("Step 8: Live scoring …")
-    predict_upcoming_matches(wc_df, current_elo, model_elos=model_elos)
+    predict_upcoming_matches(wc_df, current_elo, model_elos=model_elos, calib=calib)
     score_completed_matches(wc_df)
     update_scoreboard(wc_df)
 

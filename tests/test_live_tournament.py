@@ -369,3 +369,13 @@ class TestBuildCalibrationRecords:
         # naive now → should not raise TypeError after the fix
         records = live_scoring.build_calibration_records(wc_df, now_naive)
         assert len(records) == 1
+
+
+def test_step_calibrate_writes_artifact_and_returns_identity_when_empty(tmp_path, monkeypatch):
+    from pipeline import matchday_run
+    import config
+    monkeypatch.setattr(config, "CALIBRATION_PATH", tmp_path / "calib.json")
+    monkeypatch.setattr(matchday_run, "CALIBRATION_PATH", tmp_path / "calib.json", raising=False)
+    now = datetime.now(timezone.utc)
+    calib = matchday_run.step_calibrate(pd.DataFrame(), now)  # empty wc_df
+    assert calib.is_identity()
