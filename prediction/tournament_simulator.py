@@ -16,6 +16,7 @@ from config import (
     POISSON_AVG_GOALS,
     VENUE_COUNTRY,
 )
+from prediction.calibration import Calibration  # noqa: F401  (type hint only)
 from prediction.match_predictor import (
     get_home_advantage,
     knockout_probabilities,
@@ -222,6 +223,7 @@ def _simulate_group(
     elo_ratings: dict[str, float],
     rng: np.random.Generator,
     played: list[tuple[str, str, int, int]] | None = None,
+    calib: Calibration | None = None,
 ) -> list[tuple[str, int, int, int]]:
     """Simulate a group of 4 teams (round-robin).
 
@@ -264,7 +266,7 @@ def _simulate_group(
             elif b in HOST_TEAMS:
                 ha = -80.0
 
-            probs = match_probabilities(elo_a, elo_b, home_advantage=ha)
+            probs = match_probabilities(elo_a, elo_b, home_advantage=ha, calib=calib)
             score_a, score_b = _simulate_match_score(
                 probs["win_a"], probs["draw"], probs["win_b"], rng
             )
@@ -322,6 +324,7 @@ def _simulate_knockout_match(
     rng: np.random.Generator,
     venue_country: str | None = None,
     known_winners: dict[frozenset, str] | None = None,
+    calib: Calibration | None = None,
 ) -> str:
     """Simulate a knockout match. Returns the winner.
 
@@ -337,7 +340,7 @@ def _simulate_knockout_match(
     elo_b = elo_ratings.get(team_b, 1500)
 
     ha = get_home_advantage(team_a, team_b, venue_country)
-    probs = knockout_probabilities(elo_a, elo_b, home_advantage=ha)
+    probs = knockout_probabilities(elo_a, elo_b, home_advantage=ha, calib=calib)
 
     if rng.random() < probs["win_a"]:
         return team_a
@@ -425,6 +428,7 @@ def simulate_tournament(
     rng: np.random.Generator,
     groups: dict[str, list[str]] | None = None,
     state: TournamentState | None = None,
+    calib: Calibration | None = None,
 ) -> dict[str, str]:
     """Simulate one complete tournament. Returns {team: highest_stage_reached}.
 
@@ -450,7 +454,7 @@ def simulate_tournament(
 
     for group_letter, teams in groups.items():
         played = state.group_played.get(group_letter) if state else None
-        standings = _simulate_group(teams, elo_ratings, rng, played=played)
+        standings = _simulate_group(teams, elo_ratings, rng, played=played, calib=calib)
         winners[group_letter] = standings[0][0]
         runners[group_letter] = standings[1][0]
 
@@ -511,7 +515,8 @@ def simulate_tournament(
         known_r32 = state.ko_winners.get("r32") if state else None
         r32_winners = [
             _simulate_knockout_match(
-                a, b, elo_ratings, rng, _R32_VENUE_COUNTRY[i], known_winners=known_r32
+                a, b, elo_ratings, rng, _R32_VENUE_COUNTRY[i], known_winners=known_r32,
+                calib=calib,
             )
             for i, (a, b) in enumerate(r32_matchups)
         ]
@@ -553,7 +558,8 @@ def simulate_tournament(
     known_r16 = state.ko_winners.get("r16") if state else None
     r16_winners = [
         _simulate_knockout_match(
-            a, b, elo_ratings, rng, r16_venues[i], known_winners=known_r16
+            a, b, elo_ratings, rng, r16_venues[i], known_winners=known_r16,
+            calib=calib,
         )
         for i, (a, b) in enumerate(r16_matchups)
     ]
@@ -566,7 +572,8 @@ def simulate_tournament(
     known_qf = state.ko_winners.get("qf") if state else None
     qf_winners = [
         _simulate_knockout_match(
-            a, b, elo_ratings, rng, qf_venues[i], known_winners=known_qf
+            a, b, elo_ratings, rng, qf_venues[i], known_winners=known_qf,
+            calib=calib,
         )
         for i, (a, b) in enumerate(qf_matchups)
     ]
@@ -579,7 +586,8 @@ def simulate_tournament(
     known_sf = state.ko_winners.get("sf") if state else None
     sf_winners = [
         _simulate_knockout_match(
-            a, b, elo_ratings, rng, sf_venues[i], known_winners=known_sf
+            a, b, elo_ratings, rng, sf_venues[i], known_winners=known_sf,
+            calib=calib,
         )
         for i, (a, b) in enumerate(sf_matchups)
     ]
@@ -590,7 +598,7 @@ def simulate_tournament(
     known_final = state.ko_winners.get("final") if state else None
     champion = _simulate_knockout_match(
         sf_winners[0], sf_winners[1], elo_ratings, rng, final_venue,
-        known_winners=known_final,
+        known_winners=known_final, calib=calib,
     )
     team_stage[champion] = "champion"
 
@@ -603,6 +611,7 @@ def run_monte_carlo(
     seed: int = 42,
     groups: dict[str, list[str]] | None = None,
     state: TournamentState | None = None,
+    calib: Calibration | None = None,
 ) -> pd.DataFrame:
     """Run N tournament simulations and aggregate probabilities.
 
@@ -629,7 +638,7 @@ def run_monte_carlo(
 
     log.info("Running %d Monte Carlo simulations …", n_simulations)
     for sim in range(n_simulations):
-        result = simulate_tournament(elo_ratings, rng, groups=groups, state=state)
+        result = simulate_tournament(elo_ratings, rng, groups=groups, state=state, calib=calib)
 
         for team, stage in result.items():
             team_rank = stage_rank.get(stage, 0)

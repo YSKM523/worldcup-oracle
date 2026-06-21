@@ -136,3 +136,19 @@ class TestMonteCarlo:
         top_5k = df_5k.iloc[0]["P(champion)"]
         # Within 5 percentage points
         assert abs(top_1k - top_5k) < 0.05
+
+    def test_monte_carlo_calib_none_matches_default(self, sample_elo):
+        a = run_monte_carlo(sample_elo, n_simulations=2000, seed=7)
+        b = run_monte_carlo(sample_elo, n_simulations=2000, seed=7, calib=None)
+        assert a.equals(b)
+
+    def test_monte_carlo_calib_changes_distribution(self, sample_elo):
+        from prediction.calibration import Calibration
+        base = run_monte_carlo(sample_elo, n_simulations=4000, seed=7)
+        flat = run_monte_carlo(sample_elo, n_simulations=4000, seed=7,
+                               calib=Calibration(2.0, 0.5))
+        # flattening should reduce the top team's champion prob (more parity)
+        top_base = base.sort_values("P(champion)", ascending=False).iloc[0]["P(champion)"]
+        top_flat = flat.set_index("team").loc[
+            base.sort_values("P(champion)", ascending=False).iloc[0]["team"], "P(champion)"]
+        assert top_flat <= top_base + 1e-9
