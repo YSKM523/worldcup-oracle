@@ -43,7 +43,7 @@ Calibration is applied **at prediction time**. Predictions are locked once in `e
 
 The headline risk of any "calibrate on results" feature is making the model *look* more accurate than it is. These are **enforced, testable invariants**, not conventions. If any is violated the pipeline must fail loudly rather than report an optimistic number.
 
-- **I1 — Disjoint fit / eval, enforced in code.** `fit_calibration` ingests only matches with `kickoff_utc < run_time` plus the static 2024 holdout. A runtime assertion rejects any fit record with `kickoff_utc >= run_time`. The live scoreboard Brier (`live_scoring.score_completed_matches`) is computed on locked predictions on a separate code path and never shares samples with the fit's in-sample Brier.
+- **I1 — Disjoint fit / eval, enforced in code.** `fit_calibration` ingests only matches with `kickoff_utc < run_time`. The fit-set builder asserts every record satisfies this and uses **raw** (pre-calibration) probabilities; the live scoreboard Brier (`live_scoring.score_completed_matches`) is computed on locked **calibrated** predictions on a separate code path and never shares the in-sample Brier number.
 - **I2 — Headline accuracy = locked, out-of-sample only.** The single number ever surfaced as "AI 准确率 / Brier" comes from locked pre-match predictions scored *after* kickoff. The artifact's `brier_before/after` are tagged `"in_sample_fit_diagnostic": true`; the dashboard must never render them as accuracy.
 - **I3 — Immutable locked predictions, with provenance.** Once a fixture's row is written to `match_predictions.csv` it is never mutated by the calibration step. Each row records the `(T, δ)` active at lock time (`calib_T`, `calib_delta` columns) — a real, reproducible audit trail. A test asserts re-running the pipeline does not change any existing row's probabilities.
 - **I4 — No retroactive recalibration of history.** New `(T, δ)` affects only future, not-yet-kicked-off fixtures. There is no job that re-scores past predictions to improve historical Brier.
@@ -73,14 +73,14 @@ Properties (unit-testable):
 
 ## 5. Fitting
 
-`fit_calibration(records, *, draw_prior_weight, temp_prior_weight, wc_weight)`:
+`fit_calibration(records, *, temp_prior, draw_prior)`:
 
-- **Records:** static 2024 holdout matches (replayed from `data/cache/matches.parquet`, same source as the offline script) + played WC-2026 matches (`kickoff_utc < now`). WC records carry weight `wc_weight > 1` so live data dominates as the tournament progresses.
-- **Objective:** weighted mean Brier of calibrated probs vs one-hot outcome, plus L2 priors `temp_prior_weight·(T-1)² + draw_prior_weight·δ²`.
-- **Optimizer:** Nelder-Mead / L-BFGS over 2 params (smooth, well-conditioned). Deterministic.
-- **Shrinkage rationale:** 36 WC matches alone is too few for a stable fit; priors pull (T, δ) toward (1, 0) and the WC up-weighting + accumulating sample size let the data take over naturally over the remaining ~68 matches.
+- **Records — WC-2026 group matches only** (`kickoff_utc < now`), each `{raw 3-way probs, outcome}`.
+- **Why no 2024 holdout in the objective:** the signal we are correcting is *WC-specific* — the World Cup draws more (30.6%) and is more even than the average historical international the base map was calibrated on (`p_draw`≈23.1%). Mixing generic 2024 internationals into the fit would vote "draws are fine, δ≈0" and **dilute the very correction we want**. Stability for small `n` comes from shrinkage priors, not from foreign data.
+- **Objective:** mean Brier of calibrated probs vs one-hot outcome, plus L2 priors pulling toward identity: `+ (temp_prior·(T-1)² + draw_prior·δ²) / n`. Dividing by `n` makes the priors act like a fixed number of pseudo-observations at identity — they dominate when few matches are in, and fade as the tournament progresses.
+- **Optimizer:** Nelder-Mead over 2 params (same optimizer the existing `scripts/calibrate_probability_map.py` uses), deterministic, `x0 = (1.0, 0.0)`.
 
-The priors’ weights are config constants (`CALIB_TEMP_PRIOR`, `CALIB_DRAW_PRIOR`, `CALIB_WC_WEIGHT`) with sane defaults chosen so the early-tournament fit stays close to identity and tightens as `n` grows.
+Prior strengths are config constants (`CALIB_TEMP_PRIOR`, `CALIB_DRAW_PRIOR`) chosen so the early-tournament fit stays close to identity and tightens as `n` grows. Knockout matches are excluded from the fit (no draw outcome, and none played yet); the fitted `(T, δ)` is reused for knockout at apply time (T on the 2-way; δ on the 90-min 3-way before ET/penalty redistribution).
 
 ## 6. Components & Data Flow
 
@@ -113,14 +113,14 @@ The priors’ weights are config constants (`CALIB_TEMP_PRIOR`, `CALIB_DRAW_PRIO
 
 ### New pipeline step: `step_calibrate` in `pipeline/matchday_run.py`
 Runs **before** Monte Carlo / scoring each day:
-1. Build the fit set: played-WC records (raw ensemble probs + outcome) from `match_scores.csv`/`match_predictions.csv` with `kickoff_utc < now` (I1 assertion), plus the static 2024 holdout (single-Elo Davidson replay from `data/cache/matches.parquet`).
+1. Build the fit set: played-WC **group** records (raw ensemble probs + outcome), joining `match_predictions.csv` (raw probs) to completed results in `wc_df`, with `kickoff_utc < now` (I1 assertion).
 2. `fit_calibration(...)` → `(Calibration, diagnostics)`.
 3. Write `results/calibration/calibration_latest.json`:
    ```json
    {
      "as_of": "2026-06-21",
      "T": 1.18, "delta": 0.42,
-     "n_wc": 36, "n_holdout": 412,
+     "n_wc": 36,
      "draw_rate_observed": 0.306, "draw_rate_predicted_raw": 0.231,
      "in_sample_fit_diagnostic": true,
      "brier_before": 0.603, "brier_after": 0.561
