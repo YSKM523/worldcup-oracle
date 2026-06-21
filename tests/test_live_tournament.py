@@ -414,6 +414,26 @@ class TestBuildCalibrationRecords:
         assert records[0]["outcome"] == "win_a"  # Spain 1-0 Croatia
 
 
+from prediction.ensemble import live_model_elos
+
+def test_live_model_elos_form_bumps_none_unchanged():
+    current = {"A": 1600.0, "B": 1500.0}
+    snap = {"actual_elo": {"A": 1590.0, "B": 1505.0},
+            "model_tournament_elo": {"M": {"A": 1620.0, "B": 1495.0}}}
+    a = live_model_elos(current, snap, teams=["A", "B"])
+    b = live_model_elos(current, snap, teams=["A", "B"], form_bumps=None)
+    assert a == b
+
+def test_live_model_elos_applies_form_bump():
+    current = {"A": 1600.0, "B": 1500.0}
+    snap = {"actual_elo": {"A": 1600.0, "B": 1500.0},
+            "model_tournament_elo": {"M": {"A": 1600.0, "B": 1500.0}}}
+    base = live_model_elos(current, snap, teams=["A", "B"])
+    bumped = live_model_elos(current, snap, teams=["A", "B"], form_bumps={"A": 40.0})
+    assert bumped["M"]["A"] == base["M"]["A"] + 40.0
+    assert bumped["M"]["B"] == base["M"]["B"]
+
+
 def test_step_calibrate_writes_artifact_and_returns_identity_when_empty(tmp_path, monkeypatch):
     from pipeline import matchday_run
     import config

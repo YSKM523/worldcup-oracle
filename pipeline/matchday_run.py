@@ -155,7 +155,14 @@ def main():
         except Exception as exc:  # noqa: BLE001 — degrade to Actual-Elo, keep pipeline alive
             log.error("  TSFM refresh failed: %s", exc)
 
-    model_elos = live_model_elos(current_elo, snapshot, teams=list(ALL_TEAMS))
+    from config import FORM_LAMBDA, FORM_CAP, FORM_VARIANT
+    from prediction.form import live_form_bumps
+    form_bumps = live_form_bumps(wc_df, elo, FORM_LAMBDA, FORM_CAP, FORM_VARIANT)
+    model_elos = live_model_elos(current_elo, snapshot, teams=list(ALL_TEAMS), form_bumps=form_bumps)
+    if form_bumps:
+        top = sorted(form_bumps.items(), key=lambda x: -abs(x[1]))[:5]
+        log.info("Step 5: form bumps (top |Δ|): %s",
+                 ", ".join(f"{t} {b:+.0f}" for t, b in top))
     if snapshot and snapshot.get("model_tournament_elo"):
         log.info("Step 5: Live Elo for %d models (snapshot %s + realized delta).",
                  len(model_elos), snapshot["as_of"])

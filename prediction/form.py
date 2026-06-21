@@ -8,6 +8,9 @@ Evidence-gated: with lam=0 the bump is always 0.
 
 from __future__ import annotations
 
+import pandas as pd
+
+from data.elo import elo_as_of
 from prediction.match_predictor import match_probabilities
 from prediction.score_predictor import expected_goals
 
@@ -55,3 +58,30 @@ def team_form_bump(matches: list[dict], lam: float, cap: float, variant: str) ->
     else:
         raise ValueError(f"unknown form variant: {variant!r}")
     return max(-cap, min(cap, lam * residual))
+
+
+def _host_home_adv(home: str, away: str) -> float:
+    from config import HOST_TEAMS, WC_HOST_HOME_ADVANTAGE_ELO
+    if home in HOST_TEAMS:
+        return float(WC_HOST_HOME_ADVANTAGE_ELO)
+    if away in HOST_TEAMS:
+        return -float(WC_HOST_HOME_ADVANTAGE_ELO)
+    return 0.0
+
+
+def live_form_bumps(wc_df, elo_history, lam: float, cap: float, variant: str) -> dict[str, float]:
+    """Per-team Elo bump from completed WC matches (pre-match Elo via elo_as_of)."""
+    if lam == 0.0 or wc_df is None or wc_df.empty:
+        return {}
+    done = wc_df[wc_df["completed"]]
+    prior: dict[str, list] = {}
+    for _, r in done.iterrows():
+        home, away = r["home_team"], r["away_team"]
+        hs, as_ = int(r["home_score"]), int(r["away_score"])
+        d = r["kickoff_utc"]
+        eh = elo_as_of(elo_history, home, d)
+        ea = elo_as_of(elo_history, away, d)
+        ha = _host_home_adv(home, away)
+        prior.setdefault(home, []).append({"own_elo": eh, "opp_elo": ea, "home_adv": ha, "gf": hs, "ga": as_})
+        prior.setdefault(away, []).append({"own_elo": ea, "opp_elo": eh, "home_adv": -ha, "gf": as_, "ga": hs})
+    return {t: team_form_bump(ms, lam, cap, variant) for t, ms in prior.items()}

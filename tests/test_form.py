@@ -41,3 +41,24 @@ def test_form_bump_variant_gd():
 def test_form_bump_unknown_variant_raises():
     with pytest.raises(ValueError):
         team_form_bump([EVEN_WIN], lam=50.0, cap=100.0, variant="bogus")
+
+
+import pandas as pd
+from prediction.form import live_form_bumps
+
+def test_live_form_bumps_empty_when_lambda_zero():
+    wc = pd.DataFrame([{"completed": True, "home_team": "A", "away_team": "B",
+                        "home_score": 2, "away_score": 0, "kickoff_utc": "2026-06-12T18:00:00+00:00",
+                        "date": "2026-06-12"}])
+    hist = pd.DataFrame([{"date": pd.Timestamp("2026-06-01"), "team": "A", "elo": 1600.0},
+                         {"date": pd.Timestamp("2026-06-01"), "team": "B", "elo": 1500.0}])
+    assert live_form_bumps(wc, hist, lam=0.0, cap=100.0, variant="points") == {}
+
+def test_live_form_bumps_nonzero_for_overperformer():
+    wc = pd.DataFrame([{"completed": True, "home_team": "A", "away_team": "B",
+                        "home_score": 3, "away_score": 0, "kickoff_utc": "2026-06-12T18:00:00+00:00",
+                        "date": "2026-06-12"}])
+    hist = pd.DataFrame([{"date": pd.Timestamp("2026-06-01"), "team": "A", "elo": 1500.0},
+                         {"date": pd.Timestamp("2026-06-01"), "team": "B", "elo": 1500.0}])
+    bumps = live_form_bumps(wc, hist, lam=50.0, cap=100.0, variant="points")
+    assert bumps["A"] > 0.0 and bumps["B"] < 0.0

@@ -116,6 +116,8 @@ def elo_as_of(elo_history: pd.DataFrame, team: str, date) -> float:
     from config import ELO_INITIAL
 
     d = pd.Timestamp(date)
+    if d.tz is not None:
+        d = d.tz_convert("UTC").tz_localize(None)
     rows = elo_history[(elo_history["team"] == team) & (pd.to_datetime(elo_history["date"]) < d)]
     if rows.empty:
         return float(ELO_INITIAL)
