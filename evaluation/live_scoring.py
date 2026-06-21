@@ -221,7 +221,10 @@ def build_calibration_records(wc_df: pd.DataFrame, now: datetime) -> list[dict]:
         if r["stage"] in KNOCKOUT_STAGES:
             continue  # group-only fit (3-way)
         ko = datetime.fromisoformat(r["kickoff_utc"])
-        assert ko < now, f"I1 violation: fit record kickoff {ko} >= now {now}"
+        if ko.tzinfo is None:
+            ko = ko.replace(tzinfo=timezone.utc)
+        now_utc = now if now.tzinfo is not None else now.replace(tzinfo=timezone.utc)
+        assert ko < now_utc, f"I1 violation: fit record kickoff {ko} >= now {now_utc}"
         # RAW probs: legacy rows (locked before this feature) have no *_raw -> raw==locked
         ph = r.get("p_home_raw"); ph = r["p_home"] if pd.isna(ph) else ph
         pdr = r.get("p_draw_raw"); pdr = r["p_draw"] if pd.isna(pdr) else pdr

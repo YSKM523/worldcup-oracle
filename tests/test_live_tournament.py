@@ -206,3 +206,166 @@ def test_predictions_are_immutable_on_rerun(tmp_path, monkeypatch):
     assert len(after) == 1
     assert after.iloc[0]["p_home"] == first["p_home"]
     assert after.iloc[0]["calib_T"] == first["calib_T"]
+
+
+# ---------------------------------------------------------------------------
+# Tests for build_calibration_records
+# ---------------------------------------------------------------------------
+
+def _make_preds_csv(path, rows):
+    """Write a match_predictions.csv with required columns."""
+    pd.DataFrame(rows).to_csv(path, index=False)
+
+
+def _wc_df_completed(rows):
+    """Build a minimal wc_df with completed group-stage matches."""
+    return pd.DataFrame(rows)
+
+
+class TestBuildCalibrationRecords:
+    def _past_ko(self, now, days=1):
+        """Return a kickoff_utc string for a match `days` ago (tz-aware)."""
+        return (now - timedelta(days=days)).isoformat()
+
+    def test_win_a_outcome(self, tmp_path, monkeypatch):
+        """A past group match where home wins produces outcome='win_a'."""
+        now = datetime.now(timezone.utc)
+        monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+        ko = self._past_ko(now)
+        _make_preds_csv(tmp_path / "mp.csv", [{
+            "kickoff_utc": ko, "stage": "group",
+            "home_team": "Spain", "away_team": "Croatia",
+            "p_home": 0.50, "p_draw": 0.25, "p_away": 0.25,
+            "p_home_raw": 0.48, "p_draw_raw": 0.26, "p_away_raw": 0.26,
+        }])
+        wc_df = _wc_df_completed([{
+            "kickoff_utc": ko, "home_team": "Spain", "away_team": "Croatia",
+            "home_score": 2, "away_score": 0,
+            "completed": True, "stage": "group",
+        }])
+        records = live_scoring.build_calibration_records(wc_df, now)
+        assert len(records) == 1
+        assert records[0]["outcome"] == "win_a"
+        assert set(records[0]["probs"].keys()) == {"win_a", "draw", "win_b"}
+        assert records[0]["probs"]["win_a"] == pytest.approx(0.48)
+
+    def test_draw_outcome(self, tmp_path, monkeypatch):
+        """A past group match ending in draw produces outcome='draw'."""
+        now = datetime.now(timezone.utc)
+        monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+        ko = self._past_ko(now)
+        _make_preds_csv(tmp_path / "mp.csv", [{
+            "kickoff_utc": ko, "stage": "group",
+            "home_team": "Spain", "away_team": "Croatia",
+            "p_home": 0.50, "p_draw": 0.25, "p_away": 0.25,
+            "p_home_raw": 0.48, "p_draw_raw": 0.26, "p_away_raw": 0.26,
+        }])
+        wc_df = _wc_df_completed([{
+            "kickoff_utc": ko, "home_team": "Spain", "away_team": "Croatia",
+            "home_score": 1, "away_score": 1,
+            "completed": True, "stage": "group",
+        }])
+        records = live_scoring.build_calibration_records(wc_df, now)
+        assert records[0]["outcome"] == "draw"
+
+    def test_win_b_outcome(self, tmp_path, monkeypatch):
+        """A past group match where away wins produces outcome='win_b'."""
+        now = datetime.now(timezone.utc)
+        monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+        ko = self._past_ko(now)
+        _make_preds_csv(tmp_path / "mp.csv", [{
+            "kickoff_utc": ko, "stage": "group",
+            "home_team": "Spain", "away_team": "Croatia",
+            "p_home": 0.50, "p_draw": 0.25, "p_away": 0.25,
+            "p_home_raw": 0.48, "p_draw_raw": 0.26, "p_away_raw": 0.26,
+        }])
+        wc_df = _wc_df_completed([{
+            "kickoff_utc": ko, "home_team": "Spain", "away_team": "Croatia",
+            "home_score": 0, "away_score": 3,
+            "completed": True, "stage": "group",
+        }])
+        records = live_scoring.build_calibration_records(wc_df, now)
+        assert records[0]["outcome"] == "win_b"
+
+    def test_raw_column_fallback(self, tmp_path, monkeypatch):
+        """Legacy rows without *_raw columns fall back to locked p_home/p_draw/p_away."""
+        now = datetime.now(timezone.utc)
+        monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+        ko = self._past_ko(now)
+        # Deliberately omit p_home_raw / p_draw_raw / p_away_raw
+        _make_preds_csv(tmp_path / "mp.csv", [{
+            "kickoff_utc": ko, "stage": "group",
+            "home_team": "Brazil", "away_team": "Argentina",
+            "p_home": 0.55, "p_draw": 0.20, "p_away": 0.25,
+        }])
+        wc_df = _wc_df_completed([{
+            "kickoff_utc": ko, "home_team": "Brazil", "away_team": "Argentina",
+            "home_score": 1, "away_score": 0,
+            "completed": True, "stage": "group",
+        }])
+        records = live_scoring.build_calibration_records(wc_df, now)
+        assert len(records) == 1
+        # Without raw columns, probs should equal the locked calibrated values
+        assert records[0]["probs"]["win_a"] == pytest.approx(0.55)
+        assert records[0]["probs"]["draw"] == pytest.approx(0.20)
+        assert records[0]["probs"]["win_b"] == pytest.approx(0.25)
+
+    def test_knockout_row_is_skipped(self, tmp_path, monkeypatch):
+        """A knockout-stage prediction row is excluded from calibration records."""
+        now = datetime.now(timezone.utc)
+        monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+        ko = self._past_ko(now)
+        _make_preds_csv(tmp_path / "mp.csv", [{
+            "kickoff_utc": ko, "stage": "r16",
+            "home_team": "France", "away_team": "England",
+            "p_home": 0.60, "p_draw": 0.0, "p_away": 0.40,
+            "p_home_raw": 0.60, "p_draw_raw": 0.0, "p_away_raw": 0.40,
+        }])
+        wc_df = _wc_df_completed([{
+            "kickoff_utc": ko, "home_team": "France", "away_team": "England",
+            "home_score": 2, "away_score": 1,
+            "completed": True, "stage": "r16",
+        }])
+        records = live_scoring.build_calibration_records(wc_df, now)
+        assert records == []
+
+    def test_aware_now_does_not_raise(self, tmp_path, monkeypatch):
+        """Passing timezone-aware now works without TypeError (covers Finding 1)."""
+        now = datetime.now(timezone.utc)
+        monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+        ko = self._past_ko(now)
+        _make_preds_csv(tmp_path / "mp.csv", [{
+            "kickoff_utc": ko, "stage": "group",
+            "home_team": "Spain", "away_team": "Croatia",
+            "p_home": 0.50, "p_draw": 0.25, "p_away": 0.25,
+            "p_home_raw": 0.48, "p_draw_raw": 0.26, "p_away_raw": 0.26,
+        }])
+        wc_df = _wc_df_completed([{
+            "kickoff_utc": ko, "home_team": "Spain", "away_team": "Croatia",
+            "home_score": 1, "away_score": 0,
+            "completed": True, "stage": "group",
+        }])
+        # aware now → must not raise TypeError
+        records = live_scoring.build_calibration_records(wc_df, now)
+        assert len(records) == 1
+
+    def test_naive_now_does_not_raise(self, tmp_path, monkeypatch):
+        """Passing a naive now is coerced to UTC and no longer raises (covers Finding 1)."""
+        now_naive = datetime.utcnow()  # naive
+        now_aware = now_naive.replace(tzinfo=timezone.utc)
+        monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+        ko = self._past_ko(now_aware)
+        _make_preds_csv(tmp_path / "mp.csv", [{
+            "kickoff_utc": ko, "stage": "group",
+            "home_team": "Spain", "away_team": "Croatia",
+            "p_home": 0.50, "p_draw": 0.25, "p_away": 0.25,
+            "p_home_raw": 0.48, "p_draw_raw": 0.26, "p_away_raw": 0.26,
+        }])
+        wc_df = _wc_df_completed([{
+            "kickoff_utc": ko, "home_team": "Spain", "away_team": "Croatia",
+            "home_score": 1, "away_score": 0,
+            "completed": True, "stage": "group",
+        }])
+        # naive now → should not raise TypeError after the fix
+        records = live_scoring.build_calibration_records(wc_df, now_naive)
+        assert len(records) == 1
