@@ -13,14 +13,16 @@ import pandas as pd
 
 from config import (
     ELO_INITIAL,
+    FORM_CAP,
     FOUNDATION_MODELS,
     MONTE_CARLO_SIMULATIONS,
     RESULTS_DIR,
     TSFM_CONTEXT_WEEKS,
     TSFM_FORECAST_HORIZON,
 )
-from data.elo import compute_elo, get_latest_elo, resample_weekly
+from data.elo import compute_elo, elo_as_of, get_latest_elo, resample_weekly
 from evaluation.metrics import brier_score, calibration_error, log_loss, multiclass_brier
+from prediction.form import team_form_bump
 from prediction.match_predictor import match_probabilities, knockout_probabilities
 
 log = logging.getLogger(__name__)
@@ -707,6 +709,69 @@ def run_full_backtest(
 
     pd.DataFrame(rows).to_csv(eval_dir / "backtest_all.csv", index=False)
     log.info("Results saved to %s", eval_dir / "backtest_all.csv")
+
+
+def _three_way_brier(probs: dict, gf: int, ga: int) -> float:
+    o_home = 1.0 if gf > ga else 0.0
+    o_draw = 1.0 if gf == ga else 0.0
+    o_away = 1.0 if gf < ga else 0.0
+    return ((probs["win_a"] - o_home) ** 2
+            + (probs["draw"] - o_draw) ** 2
+            + (probs["win_b"] - o_away) ** 2)
+
+
+def walk_forward_form_backtest(years, grid, matches=None):
+    """Walk-forward match-Brier over historical WCs for each (variant, lam).
+
+    For each year, Elo is computed once over all matches up to and including
+    that WC; each WC match is predicted using elo_as_of(< its date) plus the
+    form bump from the team's STRICTLY-earlier WC matches this tournament.
+    Returns a tidy DataFrame; lam=0 rows are the baseline.
+    """
+    if matches is None:
+        matches = pd.read_parquet("data/cache/matches.parquet")
+    matches = matches.copy()
+    matches["date"] = pd.to_datetime(matches["date"])
+
+    rows = []
+    for year in years:
+        wc = matches[(matches["tournament"] == "FIFA World Cup")
+                     & (matches["date"].dt.year == year)].sort_values("date")
+        if wc.empty:
+            continue
+        # Elo history through this WC (rows are post-match; elo_as_of takes < date).
+        relevant = matches[matches["date"] <= wc["date"].max()]
+        history = compute_elo(relevant.sort_values("date"))
+
+        for variant, lam in grid:
+            prior = defaultdict(list)  # team -> list of played-match records
+            total_brier, n = 0.0, 0
+            for _, m in wc.iterrows():
+                home, away = m["home_team"], m["away_team"]
+                hs, as_ = int(m["home_score"]), int(m["away_score"])
+                eh = elo_as_of(history, home, m["date"])
+                ea = elo_as_of(history, away, m["date"])
+                bump_h = team_form_bump(prior[home], lam, FORM_CAP, variant)
+                bump_a = team_form_bump(prior[away], lam, FORM_CAP, variant)
+                probs = match_probabilities(eh + bump_h, ea + bump_a)
+                total_brier += _three_way_brier(probs, hs, as_)
+                n += 1
+                # record for future residuals (neutral venue in backtest)
+                prior[home].append({"own_elo": eh, "opp_elo": ea, "home_adv": 0.0, "gf": hs, "ga": as_})
+                prior[away].append({"own_elo": ea, "opp_elo": eh, "home_adv": 0.0, "gf": as_, "ga": hs})
+            rows.append({"year": year, "variant": variant, "lam": lam,
+                         "mean_brier": total_brier / n if n else 0.0, "n_matches": n})
+
+    return pd.DataFrame(rows)
+
+
+def run_form_backtest_and_save():
+    """Sweep the default grid on 2014/2018/2022 and write form_backtest.csv."""
+    grid = [(v, lam) for v in ("points", "gd") for lam in (0.0, 25.0, 50.0, 100.0, 150.0)]
+    df = walk_forward_form_backtest([2014, 2018, 2022], grid)
+    out_path = RESULTS_DIR / "evaluations" / "form_backtest.csv"
+    df.to_csv(out_path, index=False)
+    return df, out_path
 
 
 if __name__ == "__main__":
