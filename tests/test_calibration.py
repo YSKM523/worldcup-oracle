@@ -1,4 +1,3 @@
-import math
 import pytest
 from prediction.calibration import Calibration, calibrate, fit_calibration, save_calibration, load_calibration
 

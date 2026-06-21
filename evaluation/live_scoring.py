@@ -53,7 +53,7 @@ def predict_upcoming_matches(
     elo_ratings: dict[str, float],
     horizon_days: int = 3,
     model_elos: dict[str, dict[str, float]] | None = None,
-    calib: "Calibration | None" = None,
+    calib: Calibration | None = None,
 ) -> int:
     """Store pre-match probabilities for upcoming fixtures. Returns # added.
 
@@ -224,7 +224,10 @@ def build_calibration_records(wc_df: pd.DataFrame, now: datetime) -> list[dict]:
         if ko.tzinfo is None:
             ko = ko.replace(tzinfo=timezone.utc)
         now_utc = now if now.tzinfo is not None else now.replace(tzinfo=timezone.utc)
-        assert ko < now_utc, f"I1 violation: fit record kickoff {ko} >= now {now_utc}"
+        if ko >= now_utc:
+            log.error("Calibration I1 guard: skipping fit record with kickoff %s >= now %s "
+                      "(%s vs %s)", ko, now_utc, r["home_team"], r["away_team"])
+            continue
         # RAW probs: legacy rows (locked before this feature) have no *_raw -> raw==locked
         ph = r.get("p_home_raw"); ph = r["p_home"] if pd.isna(ph) else ph
         pdr = r.get("p_draw_raw"); pdr = r["p_draw"] if pd.isna(pdr) else pdr

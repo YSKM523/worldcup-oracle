@@ -55,7 +55,7 @@ def step_calibrate(wc_df: pd.DataFrame, now: datetime):
     """Fit walk-forward calibration on played WC group matches; write artifact."""
     from config import CALIBRATION_PATH, CALIB_TEMP_PRIOR, CALIB_DRAW_PRIOR
     from evaluation.live_scoring import build_calibration_records
-    from prediction.calibration import Calibration, fit_calibration, save_calibration
+    from prediction.calibration import fit_calibration, save_calibration
 
     records = build_calibration_records(wc_df, now)
     calib, diag = fit_calibration(records, temp_prior=CALIB_TEMP_PRIOR, draw_prior=CALIB_DRAW_PRIOR)

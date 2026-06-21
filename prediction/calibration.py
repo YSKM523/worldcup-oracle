@@ -23,7 +23,7 @@ class Calibration:
         return self.T == 1.0 and self.delta == 0.0
 
 
-def calibrate(probs: dict[str, float], calib: "Calibration | None") -> dict[str, float]:
+def calibrate(probs: dict[str, float], calib: Calibration | None) -> dict[str, float]:
     """Apply temperature + draw-bias calibration.
 
     probs : {"win_a","draw","win_b"} (3-way) or {"win_a","win_b"} (2-way).

@@ -370,6 +370,49 @@ class TestBuildCalibrationRecords:
         records = live_scoring.build_calibration_records(wc_df, now_naive)
         assert len(records) == 1
 
+    def test_future_kickoff_row_is_silently_skipped(self, tmp_path, monkeypatch):
+        """I1 guard: a 'completed' row with kickoff >= now is skipped (not raised).
+
+        The fail-safe replaces the old bare assert so that data/clock-skew rows
+        do not abort the daily cron. A valid past row in the same call is still
+        included.
+        """
+        now = datetime.now(timezone.utc)
+        monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+
+        past_ko = self._past_ko(now, days=1)
+        future_ko = (now + timedelta(days=1)).isoformat()
+
+        _make_preds_csv(tmp_path / "mp.csv", [
+            {   # past row — should be included
+                "kickoff_utc": past_ko, "stage": "group",
+                "home_team": "Spain", "away_team": "Croatia",
+                "p_home": 0.50, "p_draw": 0.25, "p_away": 0.25,
+                "p_home_raw": 0.48, "p_draw_raw": 0.26, "p_away_raw": 0.26,
+            },
+            {   # future kickoff but marked completed (data/clock-skew) — should be skipped
+                "kickoff_utc": future_ko, "stage": "group",
+                "home_team": "Brazil", "away_team": "France",
+                "p_home": 0.45, "p_draw": 0.30, "p_away": 0.25,
+                "p_home_raw": 0.44, "p_draw_raw": 0.30, "p_away_raw": 0.26,
+            },
+        ])
+        wc_df = _wc_df_completed([
+            {
+                "kickoff_utc": past_ko, "home_team": "Spain", "away_team": "Croatia",
+                "home_score": 1, "away_score": 0, "completed": True, "stage": "group",
+            },
+            {
+                "kickoff_utc": future_ko, "home_team": "Brazil", "away_team": "France",
+                "home_score": 2, "away_score": 1, "completed": True, "stage": "group",
+            },
+        ])
+
+        # Must NOT raise; future-kickoff row must be excluded; past row still included
+        records = live_scoring.build_calibration_records(wc_df, now)
+        assert len(records) == 1
+        assert records[0]["outcome"] == "win_a"  # Spain 1-0 Croatia
+
 
 def test_step_calibrate_writes_artifact_and_returns_identity_when_empty(tmp_path, monkeypatch):
     from pipeline import matchday_run

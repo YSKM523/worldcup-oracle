@@ -2,9 +2,9 @@
 """Evidence run: fit calibration on real played matches and report the honest deltas.
 
 Prints (a) the fitted (T, delta), (b) in-sample Brier before/after on the fit set,
-(c) observed vs predicted draw rate, (d) a champion-prob sanity check (top-5 still
-sensible). This is a diagnostic — the HEADLINE live Brier remains the out-of-sample
-number from live_scoring.score_completed_matches on locked predictions (I2/I6).
+(c) observed vs predicted draw rate. This is a diagnostic — the HEADLINE live Brier
+remains the out-of-sample number from live_scoring.score_completed_matches on locked
+predictions (I2/I6).
 """
 import sys
 from pathlib import Path
@@ -12,7 +12,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from datetime import datetime, timezone
-import pandas as pd
 
 from config import CALIB_TEMP_PRIOR, CALIB_DRAW_PRIOR
 from data.fetcher_wc_results import fetch_wc_results
