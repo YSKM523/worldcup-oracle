@@ -126,3 +126,40 @@ def test_ensemble_calibration_lifts_draw_and_conditions_scoreline():
     # scoreline conditioned on calibrated probs -> 1-1/0-0 mass shifts up
     assert cal["scoreline"]["most_likely"] is not None
     assert abs(cal["p_home"] + cal["p_draw"] + cal["p_away"] - 1.0) < 1e-9
+
+
+# ── Task 1: Dixon-Coles low-score correction ────────────────────────────────
+from config import POISSON_AVG_GOALS  # noqa: E402
+from prediction.score_predictor import effective_goal_rate  # noqa: E402
+
+
+def test_score_grid_rho_zero_is_outer_product():
+    a = score_grid(1.6, 1.2)
+    b = score_grid(1.6, 1.2, rho=0.0)
+    assert np.allclose(a, b) and np.array_equal(a, b)
+
+
+def test_score_grid_sums_to_one_with_dc():
+    g = score_grid(1.6, 1.2, rho=-0.1)
+    assert abs(g.sum() - 1.0) < 1e-9
+
+
+def test_dc_negative_rho_inflates_draws_deflates_split():
+    base = score_grid(1.5, 1.5)
+    dc = score_grid(1.5, 1.5, rho=-0.1)
+    assert dc[0, 0] + dc[1, 1] > base[0, 0] + base[1, 1]   # 0-0 and 1-1 up
+    assert dc[0, 1] + dc[1, 0] < base[0, 1] + base[1, 0]   # 1-0 and 0-1 down
+
+
+def test_dc_grid_nonnegative_extreme_rho():
+    g = score_grid(3.0, 3.0, rho=-0.2)
+    assert (g >= 0).all() and abs(g.sum() - 1.0) < 1e-9
+
+
+def test_effective_goal_rate_blend_zero_is_static():
+    assert effective_goal_rate(3.03, 0.0) == POISSON_AVG_GOALS
+
+
+def test_effective_goal_rate_blends():
+    r = effective_goal_rate(3.0, 0.5)
+    assert r == 0.5 * POISSON_AVG_GOALS + 0.5 * 3.0

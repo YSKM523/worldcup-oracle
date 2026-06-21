@@ -153,6 +153,10 @@ TSFM_FORECAST_HORIZON = 20
 MONTE_CARLO_SIMULATIONS = 50_000
 POISSON_AVG_GOALS = 2.5  # Average total goals per World Cup match
 
+# ── Phase 4: scoreline quality (evidence-gated; default OFF) ──────────────────
+DC_RHO = 0.0             # Dixon-Coles low-score correlation. 0 = independent Poisson (no-op).
+GOAL_RATE_BLEND = 0.0    # weight on observed tournament goal rate vs static POISSON_AVG_GOALS. 0 = static.
+
 # ── Model Specs ──────────────────────────────────────────────────────────────
 FOUNDATION_MODELS = [
     ("models.chronos2_sports", "Chronos2SportsForecaster"),

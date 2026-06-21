@@ -42,13 +42,32 @@ def expected_goals(
     return lam_a, lam_b
 
 
-def score_grid(lam_a: float, lam_b: float, max_goals: int = MAX_GOALS) -> np.ndarray:
-    """Independent-Poisson score grid, grid[i, j] = P(A scores i, B scores j)."""
+def score_grid(lam_a: float, lam_b: float, max_goals: int = MAX_GOALS, rho: float = 0.0) -> np.ndarray:
+    """Score grid, grid[i, j] = P(A scores i, B scores j).
+
+    Independent Poisson when rho == 0. With rho != 0 a Dixon-Coles (1997)
+    low-score correction is applied to the (0-0, 0-1, 1-0, 1-1) cells:
+    rho < 0 inflates 0-0 and 1-1 and deflates 1-0 / 0-1.
+    """
     goals = np.arange(max_goals + 1)
     pa = np.exp(-lam_a) * lam_a ** goals / np.array([math.factorial(g) for g in goals])
     pb = np.exp(-lam_b) * lam_b ** goals / np.array([math.factorial(g) for g in goals])
     grid = np.outer(pa, pb)
+    if rho != 0.0:
+        grid[0, 0] *= 1.0 - lam_a * lam_b * rho
+        grid[0, 1] *= 1.0 + lam_a * rho
+        grid[1, 0] *= 1.0 + lam_b * rho
+        grid[1, 1] *= 1.0 - rho
+        grid = np.clip(grid, 0.0, None)  # extreme rho could drive a cell negative
     return grid / grid.sum()
+
+
+def effective_goal_rate(observed_rate: float, blend: float) -> float:
+    """Shrinkage blend of the static prior and the observed tournament rate.
+
+    blend=0 -> POISSON_AVG_GOALS (static, byte-identical to pre-Phase-4).
+    """
+    return (1.0 - blend) * POISSON_AVG_GOALS + blend * observed_rate
 
 
 def condition_grid(
