@@ -96,3 +96,33 @@ class TestEnsemble:
         pred = ensemble_match_prediction(self.PAIRS)
         mean_home = np.mean([m["p_home"] for m in pred["per_model"]])
         assert pred["p_home"] == pytest.approx(mean_home, abs=1e-3)
+
+
+# ── Task 4: calibration tests ────────────────────────────────────────────────
+from prediction.calibration import Calibration  # noqa: E402
+
+PAIRS = [(1700, 1500), (1680, 1520), (1720, 1490)]
+
+
+def test_ensemble_calib_none_byte_identical():
+    a = ensemble_match_prediction(PAIRS)
+    b = ensemble_match_prediction(PAIRS, calib=None)
+    # ignore the new *_raw keys when comparing to the legacy shape
+    for k in ("p_home", "p_draw", "p_away", "scoreline"):
+        assert a[k] == b[k]
+
+
+def test_ensemble_exposes_raw_equal_to_calibrated_at_identity():
+    out = ensemble_match_prediction(PAIRS)
+    assert out["p_home_raw"] == out["p_home"]
+    assert out["p_draw_raw"] == out["p_draw"]
+
+
+def test_ensemble_calibration_lifts_draw_and_conditions_scoreline():
+    raw = ensemble_match_prediction(PAIRS)
+    cal = ensemble_match_prediction(PAIRS, calib=Calibration(1.3, 0.6))
+    assert cal["p_draw"] > raw["p_draw"]
+    assert cal["p_draw_raw"] == raw["p_draw"]  # raw is unchanged
+    # scoreline conditioned on calibrated probs -> 1-1/0-0 mass shifts up
+    assert cal["scoreline"]["most_likely"] is not None
+    assert abs(cal["p_home"] + cal["p_draw"] + cal["p_away"] - 1.0) < 1e-9

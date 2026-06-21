@@ -12,6 +12,7 @@ import math
 import numpy as np
 
 from config import POISSON_AVG_GOALS
+from prediction.calibration import Calibration, calibrate
 from prediction.match_predictor import knockout_probabilities, match_probabilities
 
 # Elo points of (effective) rating difference per expected goal of superiority.
@@ -118,37 +119,49 @@ def ensemble_match_prediction(
     elo_pairs: list[tuple[float, float]],
     home_advantage: float = 0.0,
     knockout: bool = False,
+    calib: "Calibration | None" = None,
 ) -> dict:
     """One match, several models: average outcome probs + a shared scoreline.
 
     elo_pairs : per-model (elo_home, elo_away) live ratings.
 
-    Outcome probs are the mean of the per-model Davidson probs; the scoreline
-    grid is the mean of the per-model Poisson grids, conditioned on the
-    ensemble 90-minute probs. Knockout matches additionally get a 2-way
-    advance probability (draws split via ET/penalty model).
+    Outcome probs are the mean of the per-model Davidson probs (kept RAW per
+    model); the ensemble average is then calibrated. The scoreline grid is the
+    mean of the per-model Poisson grids, conditioned on the CALIBRATED ensemble
+    90-minute probs. Knockout matches additionally get a 2-way advance
+    probability (draws split via ET/penalty model, calibrated per model).
+
+    The output always includes the uncalibrated ensemble as
+    p_home_raw/p_draw_raw/p_away_raw alongside the calibrated p_home/p_draw/p_away.
     """
     per_model = []
     grids = []
     lams = []
     for elo_h, elo_a in elo_pairs:
-        probs = match_probabilities(elo_h, elo_a, home_advantage)
+        probs = match_probabilities(elo_h, elo_a, home_advantage)   # RAW per model
         m = {
             "p_home": round(probs["win_a"], 4),
             "p_draw": round(probs["draw"], 4),
             "p_away": round(probs["win_b"], 4),
         }
         if knockout:
-            adv = knockout_probabilities(elo_h, elo_a, home_advantage)
+            adv = knockout_probabilities(elo_h, elo_a, home_advantage, calib=calib)
             m["p_adv_home"] = round(adv["win_a"], 4)
         per_model.append(m)
         lam = expected_goals(elo_h, elo_a, home_advantage)
         lams.append(lam)
         grids.append(score_grid(*lam))
 
-    p_home = float(np.mean([m["p_home"] for m in per_model]))
-    p_draw = float(np.mean([m["p_draw"] for m in per_model]))
-    p_away = float(np.mean([m["p_away"] for m in per_model]))
+    # Ensemble RAW 3-way
+    p_home_raw = float(np.mean([m["p_home"] for m in per_model]))
+    p_draw_raw = float(np.mean([m["p_draw"] for m in per_model]))
+    p_away_raw = float(np.mean([m["p_away"] for m in per_model]))
+
+    # Calibrate the ensemble (the object the honest match-Brier is computed on)
+    cal3 = calibrate(
+        {"win_a": p_home_raw, "draw": p_draw_raw, "win_b": p_away_raw}, calib
+    )
+    p_home, p_draw, p_away = cal3["win_a"], cal3["draw"], cal3["win_b"]
 
     grid = condition_grid(np.mean(grids, axis=0), p_home, p_draw, p_away)
     top = top_scorelines(grid, n=6)
@@ -159,6 +172,9 @@ def ensemble_match_prediction(
         "p_home": round(p_home, 4),
         "p_draw": round(p_draw, 4),
         "p_away": round(p_away, 4),
+        "p_home_raw": round(p_home_raw, 4),
+        "p_draw_raw": round(p_draw_raw, 4),
+        "p_away_raw": round(p_away_raw, 4),
         "scoreline": {
             "top_scores": [
                 {"score": f"{a}-{b}", "p": round(p, 4)} for a, b, p in top
