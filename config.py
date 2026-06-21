@@ -120,6 +120,11 @@ WC_HOST_HOME_ADVANTAGE_ELO = 80
 BRADLEY_TERRY_SCALE = 405
 BRADLEY_TERRY_DRAW_NU = 0.79
 
+# ── Phase 2: residual form strength (evidence-gated; default OFF) ─────────────
+FORM_LAMBDA = 0.0          # Elo points per unit residual. 0 = feature off (no-op).
+FORM_CAP = 100.0           # max |Elo bump| from form
+FORM_VARIANT = "points"    # "points" or "gd" — chosen by the walk-forward backtest
+
 # ── Live Calibration (Phase 1) ───────────────────────────────────────────────
 # Shrinkage priors pulling (T, delta) toward identity (1, 0). Acts like a fixed
 # number of pseudo-observations at identity: dominates early, fades as n grows.
