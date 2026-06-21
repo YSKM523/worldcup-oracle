@@ -5,6 +5,7 @@ from __future__ import annotations
 import gc
 import importlib
 import logging
+import math
 import time
 from collections import defaultdict
 
@@ -16,6 +17,7 @@ from config import (
     FORM_CAP,
     FOUNDATION_MODELS,
     MONTE_CARLO_SIMULATIONS,
+    POISSON_AVG_GOALS,
     RESULTS_DIR,
     TSFM_CONTEXT_WEEKS,
     TSFM_FORECAST_HORIZON,
@@ -24,6 +26,7 @@ from data.elo import compute_elo, elo_as_of, get_latest_elo, resample_weekly
 from evaluation.metrics import brier_score, calibration_error, log_loss, multiclass_brier
 from prediction.form import team_form_bump
 from prediction.match_predictor import match_probabilities, knockout_probabilities
+from prediction.score_predictor import expected_goals, score_grid, condition_grid, effective_goal_rate
 
 log = logging.getLogger(__name__)
 
@@ -770,6 +773,70 @@ def run_form_backtest_and_save():
     grid = [(v, lam) for v in ("points", "gd") for lam in (0.0, 25.0, 50.0, 100.0, 150.0)]
     df = walk_forward_form_backtest([2014, 2018, 2022], grid)
     out_path = RESULTS_DIR / "evaluations" / "form_backtest.csv"
+    df.to_csv(out_path, index=False)
+    return df, out_path
+
+
+def _scoreline_nll(grid, hs, as_):
+    """Negative log-likelihood of the actual scoreline under the conditioned grid."""
+    n = grid.shape[0]
+    i = min(int(hs), n - 1)
+    j = min(int(as_), n - 1)
+    return -math.log(max(float(grid[i, j]), 1e-12))
+
+
+def walk_forward_scoreline_backtest(years, grid, matches=None):
+    """Walk-forward scoreline NLL + exact-hit over historical WCs per (rho, blend).
+
+    Each WC match is predicted with elo_as_of(< its date) outcome probs and a
+    conditioned Dixon-Coles grid whose goal rate blends the static prior with
+    the observed rate from STRICTLY-earlier matches that tournament. Returns a
+    tidy DataFrame; (rho=0, blend=0) is the baseline.
+    """
+    if matches is None:
+        matches = pd.read_parquet("data/cache/matches.parquet")
+    matches = matches.copy()
+    matches["date"] = pd.to_datetime(matches["date"])
+
+    rows = []
+    for year in years:
+        wc = matches[(matches["tournament"] == "FIFA World Cup")
+                     & (matches["date"].dt.year == year)].sort_values("date")
+        if wc.empty:
+            continue
+        relevant = matches[matches["date"] <= wc["date"].max()]
+        history = compute_elo(relevant.sort_values("date"))
+
+        for rho, blend in grid:
+            prior_goals = []  # total goals of strictly-earlier WC matches this year
+            total_nll, hits, n = 0.0, 0, 0
+            for _, m in wc.iterrows():
+                home, away = m["home_team"], m["away_team"]
+                hs, as_ = int(m["home_score"]), int(m["away_score"])
+                eh = elo_as_of(history, home, m["date"])
+                ea = elo_as_of(history, away, m["date"])
+                probs = match_probabilities(eh, ea)
+                observed = sum(prior_goals) / len(prior_goals) if prior_goals else POISSON_AVG_GOALS
+                rate = effective_goal_rate(observed, blend)
+                lam_a, lam_b = expected_goals(eh, ea, total_goals=rate)
+                g = condition_grid(score_grid(lam_a, lam_b, rho=rho),
+                                   probs["win_a"], probs["draw"], probs["win_b"])
+                total_nll += _scoreline_nll(g, hs, as_)
+                gi, gj = (g == g.max()).nonzero()
+                if int(gi[0]) == min(hs, g.shape[0] - 1) and int(gj[0]) == min(as_, g.shape[0] - 1):
+                    hits += 1
+                n += 1
+                prior_goals.append(hs + as_)
+            rows.append({"year": year, "rho": rho, "blend": blend,
+                         "mean_nll": total_nll / n if n else 0.0,
+                         "hit_rate": hits / n if n else 0.0, "n_matches": n})
+    return pd.DataFrame(rows)
+
+
+def run_scoreline_backtest_and_save():
+    grid = [(rho, blend) for rho in (0.0, -0.05, -0.1, -0.15) for blend in (0.0, 0.5, 1.0)]
+    df = walk_forward_scoreline_backtest([2014, 2018, 2022], grid)
+    out_path = RESULTS_DIR / "evaluations" / "scoreline_backtest.csv"
     df.to_csv(out_path, index=False)
     return df, out_path
 
