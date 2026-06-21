@@ -96,3 +96,28 @@ class TestPredictMatchWithUncertainty:
         # Both should still sum to ~1.0
         assert abs(sum(p_narrow.values()) - 1.0) < 0.02
         assert abs(sum(p_wide.values()) - 1.0) < 0.02
+
+
+# Task 3: calib parameter tests
+from prediction.calibration import Calibration, calibrate
+
+
+def test_match_probs_calib_none_unchanged():
+    a = match_probabilities(1700, 1500)
+    b = match_probabilities(1700, 1500, calib=None)
+    assert a == b
+
+
+def test_match_probs_calib_applied():
+    raw = match_probabilities(1700, 1500)
+    c = Calibration(1.5, 0.3)
+    got = match_probabilities(1700, 1500, calib=c)
+    assert got == calibrate(raw, c)
+
+
+def test_knockout_calibrates_before_redistribution():
+    # delta raises the 90-min draw mass, which then redistributes into advance probs
+    base = knockout_probabilities(1700, 1500)
+    with_delta = knockout_probabilities(1700, 1500, calib=Calibration(1.0, 0.8))
+    assert abs(sum(with_delta.values()) - 1.0) < 1e-9
+    assert with_delta != base

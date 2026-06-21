@@ -13,6 +13,7 @@ from config import (
     KNOCKOUT_PENALTY_ADVANTAGE,
     WC_HOST_HOME_ADVANTAGE_ELO,
 )
+from prediction.calibration import Calibration, calibrate
 
 
 def match_probabilities(
@@ -20,6 +21,7 @@ def match_probabilities(
     elo_b: float,
     home_advantage: float = 0.0,
     nu: float = BRADLEY_TERRY_DRAW_NU,
+    calib: "Calibration | None" = None,
 ) -> dict[str, float]:
     """Bradley-Terry model with draws (Davidson 1970).
 
@@ -29,6 +31,7 @@ def match_probabilities(
     elo_b : Elo rating for team B
     home_advantage : Elo bonus for team A (e.g., 80 for host nation)
     nu : Draw parameter (higher = more draws)
+    calib : Optional calibration (temperature + draw bias). None = identity.
 
     Returns
     -------
@@ -39,11 +42,12 @@ def match_probabilities(
 
     denom = exp_a + exp_b + nu * math.sqrt(exp_a * exp_b)
 
-    return {
+    raw = {
         "win_a": exp_a / denom,
         "draw": nu * math.sqrt(exp_a * exp_b) / denom,
         "win_b": exp_b / denom,
     }
+    return calibrate(raw, calib)
 
 
 def knockout_probabilities(
@@ -52,13 +56,15 @@ def knockout_probabilities(
     home_advantage: float = 0.0,
     nu: float = BRADLEY_TERRY_DRAW_NU,
     penalty_adv: float = KNOCKOUT_PENALTY_ADVANTAGE,
+    calib: "Calibration | None" = None,
 ) -> dict[str, float]:
     """Match probabilities for knockout rounds (no draws — ET/penalties decide).
 
     Draws are redistributed: the higher-rated team gets a slight edge
-    in extra time/penalties.
+    in extra time/penalties. Calibration is applied to the 90-min 3-way
+    probabilities before ET/penalty redistribution.
     """
-    base = match_probabilities(elo_a, elo_b, home_advantage, nu)
+    base = match_probabilities(elo_a, elo_b, home_advantage, nu, calib=calib)
 
     if elo_a + home_advantage >= elo_b:
         extra_a = base["draw"] * penalty_adv
