@@ -107,19 +107,23 @@ def predict_scoreline(
     elo_b: float,
     home_advantage: float = 0.0,
     outcome_probs: dict[str, float] | None = None,
+    rho: float = 0.0,
+    total_goals: float = POISSON_AVG_GOALS,
 ) -> dict:
     """Full scoreline prediction for one match.
 
     outcome_probs : optional {"win_a", "draw", "win_b"} to condition on
         (e.g. an ensemble average); defaults to the Davidson model on the
         same Elo inputs.
+    rho : Dixon-Coles low-score correction (0.0 = independent Poisson).
+    total_goals : expected average total goals (default = POISSON_AVG_GOALS).
     """
     if outcome_probs is None:
         outcome_probs = match_probabilities(elo_a, elo_b, home_advantage)
 
-    lam_a, lam_b = expected_goals(elo_a, elo_b, home_advantage)
+    lam_a, lam_b = expected_goals(elo_a, elo_b, home_advantage, total_goals=total_goals)
     grid = condition_grid(
-        score_grid(lam_a, lam_b),
+        score_grid(lam_a, lam_b, rho=rho),
         outcome_probs["win_a"], outcome_probs["draw"], outcome_probs["win_b"],
     )
     top = top_scorelines(grid)
@@ -139,6 +143,8 @@ def ensemble_match_prediction(
     home_advantage: float = 0.0,
     knockout: bool = False,
     calib: "Calibration | None" = None,
+    rho: float = 0.0,
+    total_goals: float | None = None,
 ) -> dict:
     """One match, several models: average outcome probs + a shared scoreline.
 
@@ -152,7 +158,11 @@ def ensemble_match_prediction(
 
     The output always includes the uncalibrated ensemble as
     p_home_raw/p_draw_raw/p_away_raw alongside the calibrated p_home/p_draw/p_away.
+
+    rho : Dixon-Coles low-score correction (0.0 = independent Poisson, default).
+    total_goals : expected average total goals; None means use POISSON_AVG_GOALS.
     """
+    rate = POISSON_AVG_GOALS if total_goals is None else total_goals
     per_model = []
     grids = []
     lams = []
@@ -167,9 +177,9 @@ def ensemble_match_prediction(
             adv = knockout_probabilities(elo_h, elo_a, home_advantage, calib=calib)
             m["p_adv_home"] = round(adv["win_a"], 4)
         per_model.append(m)
-        lam = expected_goals(elo_h, elo_a, home_advantage)
+        lam = expected_goals(elo_h, elo_a, home_advantage, total_goals=rate)
         lams.append(lam)
-        grids.append(score_grid(*lam))
+        grids.append(score_grid(*lam, rho=rho))
 
     # Ensemble RAW 3-way
     p_home_raw = float(np.mean([m["p_home"] for m in per_model]))

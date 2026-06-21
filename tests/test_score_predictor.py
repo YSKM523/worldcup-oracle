@@ -163,3 +163,41 @@ def test_effective_goal_rate_blend_zero_is_static():
 def test_effective_goal_rate_blends():
     r = effective_goal_rate(3.0, 0.5)
     assert r == 0.5 * POISSON_AVG_GOALS + 0.5 * 3.0
+
+
+# ── Task 2: thread rho + total_goals through public predictors ───────────────
+
+def test_ensemble_defaults_byte_identical():
+    # rho=0, total_goals=None must reproduce the pre-Phase-4 output
+    a = ensemble_match_prediction(PAIRS)
+    b = ensemble_match_prediction(PAIRS, rho=0.0, total_goals=None)
+    assert a["scoreline"] == b["scoreline"]
+    assert a["p_home"] == b["p_home"] and a["p_draw"] == b["p_draw"]
+
+
+def test_ensemble_wdl_invariant_under_rho_and_rate():
+    # rho / rate reshape the scoreline but NOT the conditioned W/D/L masses
+    base = ensemble_match_prediction(PAIRS)
+    changed = ensemble_match_prediction(PAIRS, rho=-0.12, total_goals=3.2)
+    assert changed["p_home"] == base["p_home"]
+    assert changed["p_draw"] == base["p_draw"]
+    assert changed["p_away"] == base["p_away"]
+
+
+def test_ensemble_rho_changes_scoreline():
+    base = ensemble_match_prediction(PAIRS)
+    dc = ensemble_match_prediction(PAIRS, rho=-0.12)
+    assert dc["scoreline"]["p_btts"] != base["scoreline"]["p_btts"] \
+        or dc["scoreline"]["most_likely"] != base["scoreline"]["most_likely"]
+
+
+def test_higher_rate_raises_over25():
+    base = ensemble_match_prediction(PAIRS, total_goals=2.0)
+    hi = ensemble_match_prediction(PAIRS, total_goals=3.5)
+    assert hi["scoreline"]["p_over25"] > base["scoreline"]["p_over25"]
+
+
+def test_predict_scoreline_defaults_unchanged():
+    a = predict_scoreline(1700, 1500)
+    b = predict_scoreline(1700, 1500, rho=0.0, total_goals=POISSON_AVG_GOALS)
+    assert a == b
