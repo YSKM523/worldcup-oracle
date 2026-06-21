@@ -117,7 +117,10 @@ def elo_as_of(elo_history: pd.DataFrame, team: str, date) -> float:
 
     d = pd.Timestamp(date)
     if d.tz is not None:
-        d = d.tz_convert("UTC").tz_localize(None)
+        # Strip tz and normalize to midnight so a tz-aware kickoff time (e.g. 18:00 UTC)
+        # is treated at the date level — strictly-before then excludes the same-day
+        # post-match Elo row (which is written at midnight), matching the backtest path.
+        d = d.tz_convert("UTC").tz_localize(None).normalize()
     rows = elo_history[(elo_history["team"] == team) & (pd.to_datetime(elo_history["date"]) < d)]
     if rows.empty:
         return float(ELO_INITIAL)

@@ -100,6 +100,12 @@ Because live strength remains a single scalar Elo per team, the bump flows into 
 - **Backtest harness test:** on a tiny synthetic 2-matchday fixture, the walk-forward predicts matchday 2 using only matchday-1 results (asserts no lookahead) and produces a Brier number; λ=0 vs λ>0 produce different numbers only when results deviate from Elo.
 - **Evidence run:** execute `walk_forward_form_backtest` on 2014/2018/2022, capture the real table, apply the §7 gate, set `FORM_LAMBDA` accordingly. Full existing suite stays green.
 
+## 10. Out of Scope → Later
+
+- **Phase 3:** extend edge detection from the champion market to per-match markets.
+- **Phase 4:** Dixon-Coles low-score correlation + re-estimate Poisson goal rates from observed WC scoring.
+- Daily TSFM snapshot refresh (deferred — low marginal value, the realized delta is already daily-fresh).
+
 ## 11. Backtest result
 
 Walk-forward match-Brier table from `scripts/run_form_backtest.py` (2026-06-21, deterministic):
@@ -133,9 +139,3 @@ gd     lam=150.0: beats_all=False  avg_brier_improvement=-0.0305
 ```
 
 **Decision: no-op shipped — `FORM_LAMBDA = 0.0`.**  Every (variant, λ) candidate shows `beats_all=False` with a negative average Brier improvement (form bumps *hurt* prediction accuracy across all three World Cups), confirming that Elo's K=60 World-Cup update already prices in the in-tournament signal and adding a residual nudge only introduces noise.
-
-## 10. Out of Scope → Later
-
-- **Phase 3:** extend edge detection from the champion market to per-match markets.
-- **Phase 4:** Dixon-Coles low-score correlation + re-estimate Poisson goal rates from observed WC scoring.
-- Daily TSFM snapshot refresh (deferred — low marginal value, the realized delta is already daily-fresh).

@@ -134,3 +134,28 @@ def test_elo_as_of_returns_latest_strictly_before():
     assert elo_as_of(hist, "Brazil", "2014-07-01") == 1990.0
     # Unknown team -> initial
     assert elo_as_of(hist, "Nowhere", "2014-06-20") == ELO_INITIAL
+
+
+def test_elo_as_of_tz_aware_timestamp_does_not_raise_and_respects_strictly_before():
+    """Fix 3: a tz-aware timestamp must not raise against tz-naive history dates.
+
+    Passing a UTC kickoff time (e.g. 18:00 UTC) to elo_as_of must:
+    1. Not raise a TypeError about comparing tz-aware with tz-naive.
+    2. Treat the timestamp at the date level — strictly-before semantics must
+       exclude any history row on the same date (matching backtest behaviour).
+    """
+    hist = pd.DataFrame([
+        {"date": pd.Timestamp("2014-06-14"), "team": "Brazil", "elo": 1950.0},  # day before
+        {"date": pd.Timestamp("2014-06-15"), "team": "Brazil", "elo": 2000.0},  # match day (post-match)
+    ])
+    tz_aware = pd.Timestamp("2014-06-15T18:00:00+00:00")
+
+    # Must not raise
+    result = elo_as_of(hist, "Brazil", tz_aware)
+
+    # Strictly before 2014-06-15 (date-level) -> the 06-14 value (1950.0),
+    # NOT the same-day post-match row (2000.0)
+    assert result == 1950.0, (
+        f"Expected 1950.0 (pre-match Elo from 06-14), got {result}. "
+        "tz-aware timestamp should be stripped to UTC date midnight before comparison."
+    )

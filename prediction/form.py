@@ -48,16 +48,20 @@ def gd_residual(matches: list[dict]) -> float:
 
 
 def team_form_bump(matches: list[dict], lam: float, cap: float, variant: str) -> float:
-    """Clamped Elo bump from a team's form residual. lam=0 -> 0 (feature off)."""
-    if lam == 0.0 or not matches:
-        return 0.0
+    """Clamped Elo bump from a team's form residual. lam=0 -> 0 (feature off).
+
+    variant is validated before the lam==0 short-circuit so an unknown variant
+    raises even when the feature is off (prevents silent misconfiguration).
+    """
     if variant == "points":
-        residual = points_residual(matches)
+        residual_fn = points_residual
     elif variant == "gd":
-        residual = gd_residual(matches)
+        residual_fn = gd_residual
     else:
         raise ValueError(f"unknown form variant: {variant!r}")
-    return max(-cap, min(cap, lam * residual))
+    if lam == 0.0 or not matches:
+        return 0.0
+    return max(-cap, min(cap, lam * residual_fn(matches)))
 
 
 def _host_home_adv(home: str, away: str) -> float:
@@ -78,7 +82,11 @@ def live_form_bumps(wc_df, elo_history, lam: float, cap: float, variant: str) ->
     for _, r in done.iterrows():
         home, away = r["home_team"], r["away_team"]
         hs, as_ = int(r["home_score"]), int(r["away_score"])
-        d = r["kickoff_utc"]
+        # Use the date-only (midnight) key matching how merge_into_matches dates
+        # Elo-history rows: `pd.Timestamp(kickoff_date)` is midnight tz-naive.
+        # `elo_as_of` uses strictly-before (<), so date-only midnight excludes
+        # the same-day post-match row, matching what the backtest does via m["date"].
+        d = pd.Timestamp(r["date"]).normalize()
         eh = elo_as_of(elo_history, home, d)
         ea = elo_as_of(elo_history, away, d)
         ha = _host_home_adv(home, away)

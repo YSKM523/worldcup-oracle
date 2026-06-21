@@ -43,6 +43,12 @@ def test_form_bump_unknown_variant_raises():
         team_form_bump([EVEN_WIN], lam=50.0, cap=100.0, variant="bogus")
 
 
+def test_form_bump_unknown_variant_raises_even_when_lambda_zero():
+    """Fix 4: variant is validated before lam==0 short-circuit (no silent misconfiguration)."""
+    with pytest.raises(ValueError):
+        team_form_bump([EVEN_WIN], lam=0.0, cap=100.0, variant="bogus")
+
+
 import pandas as pd
 from prediction.form import live_form_bumps
 
@@ -62,3 +68,58 @@ def test_live_form_bumps_nonzero_for_overperformer():
                          {"date": pd.Timestamp("2026-06-01"), "team": "B", "elo": 1500.0}])
     bumps = live_form_bumps(wc, hist, lam=50.0, cap=100.0, variant="points")
     assert bumps["A"] > 0.0 and bumps["B"] < 0.0
+
+
+def test_live_form_bumps_uses_prematch_elo_not_postmatch():
+    """Fix 1: live_form_bumps must use pre-match Elo, not post-match (no same-day lookahead).
+
+    Setup: team A played on 2026-06-12.  Elo history has:
+      - pre-match row:  date=2026-06-11  elo=1500  (what the residual should use)
+      - post-match row: date=2026-06-12  elo=1600  (same day as the match — must NOT be read)
+
+    Using the post-match elo (1600) would inflate own_elo and reduce the residual.
+    Using the pre-match elo (1500) correctly computes the residual from the true
+    pre-match expectation.
+    """
+    from prediction.form import points_residual, match_probabilities
+
+    # Construct elo history with both a pre-match and a post-match row on the match day
+    hist = pd.DataFrame([
+        {"date": pd.Timestamp("2026-06-11"), "team": "A", "elo": 1500.0},  # pre-match
+        {"date": pd.Timestamp("2026-06-12"), "team": "A", "elo": 1600.0},  # post-match (same day as match)
+        {"date": pd.Timestamp("2026-06-11"), "team": "B", "elo": 1500.0},
+        {"date": pd.Timestamp("2026-06-12"), "team": "B", "elo": 1400.0},
+    ])
+
+    wc = pd.DataFrame([{
+        "completed": True,
+        "home_team": "A",
+        "away_team": "B",
+        "home_score": 3,
+        "away_score": 0,
+        "kickoff_utc": "2026-06-12T18:00:00+00:00",
+        "date": pd.Timestamp("2026-06-12"),
+    }])
+
+    bumps = live_form_bumps(wc, hist, lam=50.0, cap=200.0, variant="points")
+
+    # Compute what the bump SHOULD be using pre-match Elo (1500 vs 1500)
+    expected_bump = team_form_bump(
+        [{"own_elo": 1500.0, "opp_elo": 1500.0, "home_adv": 0.0, "gf": 3, "ga": 0}],
+        lam=50.0, cap=200.0, variant="points"
+    )
+
+    # If the buggy kickoff_utc path were used, own_elo would be 1600 (post-match row),
+    # yielding a different (smaller) bump because a strong favourite winning is less surprising.
+    wrong_bump = team_form_bump(
+        [{"own_elo": 1600.0, "opp_elo": 1500.0, "home_adv": 0.0, "gf": 3, "ga": 0}],
+        lam=50.0, cap=200.0, variant="points"
+    )
+
+    # The correct and wrong bumps differ (this proves the fixture is meaningful)
+    assert expected_bump != wrong_bump, "Fixture not discriminating — pre/post Elo must yield different bumps"
+    # live_form_bumps must yield the pre-match bump
+    assert abs(bumps["A"] - expected_bump) < 1e-6, (
+        f"Expected pre-match bump {expected_bump:.4f} but got {bumps['A']:.4f} "
+        f"(post-match wrong bump would be {wrong_bump:.4f})"
+    )
