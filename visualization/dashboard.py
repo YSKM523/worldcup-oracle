@@ -554,6 +554,22 @@ def _build_performance(matches: list[dict]) -> dict:
     return perf
 
 
+def _load_calibration_meta() -> dict | None:
+    from config import CALIBRATION_PATH
+    import json as _json
+    if not CALIBRATION_PATH.exists():
+        return None
+    try:
+        d = _json.loads(CALIBRATION_PATH.read_text())
+        return {
+            "T": d.get("T"), "delta": d.get("delta"), "n_wc": d.get("n_wc"),
+            "draw_rate_observed": d.get("draw_rate_observed"),
+            "draw_rate_predicted_raw": d.get("draw_rate_predicted_raw"),
+        }
+    except (ValueError, OSError):
+        return None
+
+
 # ── Entry points ─────────────────────────────────────────────────────────────
 def build_dashboard(wc_df: pd.DataFrame | None = None) -> dict:
     """Assemble dashboard/data.json. Returns the data dict."""
@@ -619,6 +635,7 @@ def build_dashboard(wc_df: pd.DataFrame | None = None) -> dict:
             "matchday": matchday,
             "n_matches": len(matches),
             "n_completed": sum(1 for m in matches if m["completed"]),
+            "calibration": _load_calibration_meta(),
             **market_meta,
         },
         "matches": matches,

@@ -169,6 +169,14 @@ export interface Performance {
   } | null;
 }
 
+export interface CalibrationMeta {
+  T: number;
+  delta: number;
+  n_wc: number;
+  draw_rate_observed: number | null;
+  draw_rate_predicted_raw: number | null;
+}
+
 export interface Meta {
   generated_at: string;
   models: string[];
@@ -179,6 +187,7 @@ export interface Meta {
   n_completed: number;
   odds_time?: string;
   volume?: number;
+  calibration?: CalibrationMeta | null;
 }
 
 export interface Data {

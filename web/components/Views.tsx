@@ -396,8 +396,19 @@ export function RecordView({ data }: { data: Data }) {
     ]);
   }
 
+  const cal = data.meta.calibration;
+  const showCal =
+    cal != null &&
+    (Math.abs(cal.T - 1) > 0.02 || Math.abs(cal.delta) > 0.02);
+
   return (
     <div>
+      {showCal && cal && (
+        <p className="mb-4 text-xs text-zinc-400">
+          已按 {cal.n_wc} 场实战校准（T={cal.T.toFixed(2)}
+          {cal.delta > 0 ? `，平局+${cal.delta.toFixed(2)}` : ""}）
+        </p>
+      )}
       {cards.length > 0 && (
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {cards.map(([v, label]) => (
