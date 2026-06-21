@@ -120,6 +120,14 @@ WC_HOST_HOME_ADVANTAGE_ELO = 80
 BRADLEY_TERRY_SCALE = 405
 BRADLEY_TERRY_DRAW_NU = 0.79
 
+# ── Live Calibration (Phase 1) ───────────────────────────────────────────────
+# Shrinkage priors pulling (T, delta) toward identity (1, 0). Acts like a fixed
+# number of pseudo-observations at identity: dominates early, fades as n grows.
+CALIB_TEMP_PRIOR = 1.5
+CALIB_DRAW_PRIOR = 1.5
+# Where the daily-fitted calibration artifact is written/read.
+CALIBRATION_PATH = RESULTS_DIR / "calibration" / "calibration_latest.json"
+
 # Penalty shootout split (for knockout rounds) — slight advantage to higher-rated
 KNOCKOUT_PENALTY_ADVANTAGE = 0.55  # Higher-rated team's share of draw redistribution
 
