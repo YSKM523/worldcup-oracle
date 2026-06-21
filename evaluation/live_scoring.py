@@ -25,6 +25,7 @@ from config import (
     WC_HOST_HOME_ADVANTAGE_ELO,
 )
 from markets.odds_converter import normalize_probs
+from prediction.calibration import Calibration, calibrate
 from prediction.match_predictor import knockout_probabilities, match_probabilities
 from prediction.score_predictor import ensemble_match_prediction
 
@@ -52,6 +53,7 @@ def predict_upcoming_matches(
     elo_ratings: dict[str, float],
     horizon_days: int = 3,
     model_elos: dict[str, dict[str, float]] | None = None,
+    calib: "Calibration | None" = None,
 ) -> int:
     """Store pre-match probabilities for upcoming fixtures. Returns # added.
 
@@ -92,24 +94,32 @@ def predict_upcoming_matches(
                 (m.get(home, 1500.0), m.get(away, 1500.0))
                 for m in model_elos.values()
             ]
-            pred = ensemble_match_prediction(elo_pairs, home_advantage=ha, knockout=is_ko)
+            pred = ensemble_match_prediction(elo_pairs, home_advantage=ha,
+                                             knockout=is_ko, calib=calib)
             if is_ko:
                 p_home, p_draw, p_away = pred["p_adv_home"], 0.0, pred["p_adv_away"]
+                ph_raw, pd_raw, pa_raw = pred["p_adv_home"], 0.0, pred["p_adv_away"]
             else:
                 p_home, p_draw, p_away = pred["p_home"], pred["p_draw"], pred["p_away"]
+                ph_raw, pd_raw, pa_raw = pred["p_home_raw"], pred["p_draw_raw"], pred["p_away_raw"]
             pred_score = pred["scoreline"]["most_likely"]
             pred_score_p = pred["scoreline"]["most_likely_p"]
         else:
             elo_h = elo_ratings.get(home, 1500.0)
             elo_a = elo_ratings.get(away, 1500.0)
             if is_ko:
-                probs = knockout_probabilities(elo_h, elo_a, home_advantage=ha)
-                p_home, p_draw, p_away = probs["win_a"], 0.0, probs["win_b"]
+                raw = knockout_probabilities(elo_h, elo_a, home_advantage=ha)
+                cal = knockout_probabilities(elo_h, elo_a, home_advantage=ha, calib=calib)
+                p_home, p_draw, p_away = cal["win_a"], 0.0, cal["win_b"]
+                ph_raw, pd_raw, pa_raw = raw["win_a"], 0.0, raw["win_b"]
             else:
-                probs = match_probabilities(elo_h, elo_a, home_advantage=ha)
-                p_home, p_draw, p_away = probs["win_a"], probs["draw"], probs["win_b"]
+                raw = match_probabilities(elo_h, elo_a, home_advantage=ha)
+                cal = calibrate(raw, calib)
+                p_home, p_draw, p_away = cal["win_a"], cal["draw"], cal["win_b"]
+                ph_raw, pd_raw, pa_raw = raw["win_a"], raw["draw"], raw["win_b"]
             pred_score, pred_score_p = None, None
 
+        _cal = calib or Calibration()
         rows.append({
             "predicted_at": now.isoformat(),
             "kickoff_utc": r["kickoff_utc"],
@@ -119,6 +129,11 @@ def predict_upcoming_matches(
             "p_home": round(p_home, 4),
             "p_draw": round(p_draw, 4),
             "p_away": round(p_away, 4),
+            "p_home_raw": round(ph_raw, 4),
+            "p_draw_raw": round(pd_raw, 4),
+            "p_away_raw": round(pa_raw, 4),
+            "calib_T": _cal.T,
+            "calib_delta": _cal.delta,
             "pred_score": pred_score,
             "pred_score_p": pred_score_p,
         })
@@ -182,6 +197,46 @@ def score_completed_matches(wc_df: pd.DataFrame) -> pd.DataFrame | None:
         len(scores), scores["brier"].mean(),
     )
     return scores
+
+
+def build_calibration_records(wc_df: pd.DataFrame, now: datetime) -> list[dict]:
+    """WC group records {raw 3-way probs, outcome} for matches kicked off before now.
+
+    Uses RAW probabilities (pre-calibration) so the fit never sees its own output.
+    Enforces kickoff_utc < now (I1).
+    """
+    if wc_df is None or wc_df.empty or not MATCH_PREDS_CSV.exists():
+        return []
+    preds = pd.read_csv(MATCH_PREDS_CSV)
+    done = wc_df[wc_df["completed"]]
+    if preds.empty or done.empty:
+        return []
+
+    merged = preds.merge(
+        done[["kickoff_utc", "home_team", "away_team", "home_score", "away_score"]],
+        on=["kickoff_utc", "home_team", "away_team"], how="inner",
+    )
+    records = []
+    for _, r in merged.iterrows():
+        if r["stage"] in KNOCKOUT_STAGES:
+            continue  # group-only fit (3-way)
+        ko = datetime.fromisoformat(r["kickoff_utc"])
+        assert ko < now, f"I1 violation: fit record kickoff {ko} >= now {now}"
+        # RAW probs: legacy rows (locked before this feature) have no *_raw -> raw==locked
+        ph = r.get("p_home_raw"); ph = r["p_home"] if pd.isna(ph) else ph
+        pdr = r.get("p_draw_raw"); pdr = r["p_draw"] if pd.isna(pdr) else pdr
+        pa = r.get("p_away_raw"); pa = r["p_away"] if pd.isna(pa) else pa
+        if r["home_score"] > r["away_score"]:
+            outcome = "win_a"
+        elif r["home_score"] == r["away_score"]:
+            outcome = "draw"
+        else:
+            outcome = "win_b"
+        records.append({
+            "probs": {"win_a": float(ph), "draw": float(pdr), "win_b": float(pa)},
+            "outcome": outcome,
+        })
+    return records
 
 
 def real_eliminations(wc_df: pd.DataFrame) -> dict[str, str]:

@@ -165,3 +165,44 @@ class TestLiveScoring:
             "stage": "group", "group": "A",
         }])
         assert real_eliminations(wc_df) == {}
+
+
+from datetime import datetime, timedelta, timezone
+from prediction.calibration import Calibration
+from evaluation import live_scoring
+
+
+def _future_match_df(now):
+    ko = (now + timedelta(days=1)).isoformat()
+    return pd.DataFrame([{
+        "kickoff_utc": ko, "stage": "group", "completed": False,
+        "home_team": "Spain", "away_team": "Croatia",
+    }])
+
+
+def test_locked_prediction_records_provenance(tmp_path, monkeypatch):
+    monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+    now = datetime.now(timezone.utc)
+    df = _future_match_df(now)
+    elos = {"Spain": 1900, "Croatia": 1650}
+    live_scoring.predict_upcoming_matches(df, elos, calib=Calibration(1.3, 0.5))
+    out = pd.read_csv(tmp_path / "mp.csv")
+    assert {"p_home_raw", "p_draw_raw", "p_away_raw", "calib_T", "calib_delta"} <= set(out.columns)
+    assert out.iloc[0]["calib_T"] == 1.3 and out.iloc[0]["calib_delta"] == 0.5
+    # calibrated draw > raw draw (delta>0)
+    assert out.iloc[0]["p_draw"] > out.iloc[0]["p_draw_raw"]
+
+
+def test_predictions_are_immutable_on_rerun(tmp_path, monkeypatch):
+    monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+    now = datetime.now(timezone.utc)
+    df = _future_match_df(now)
+    elos = {"Spain": 1900, "Croatia": 1650}
+    live_scoring.predict_upcoming_matches(df, elos, calib=Calibration(1.3, 0.5))
+    first = pd.read_csv(tmp_path / "mp.csv").iloc[0].to_dict()
+    # re-run with a DIFFERENT calibration -> existing row must not change (I3)
+    live_scoring.predict_upcoming_matches(df, elos, calib=Calibration(2.0, 0.0))
+    after = pd.read_csv(tmp_path / "mp.csv")
+    assert len(after) == 1
+    assert after.iloc[0]["p_home"] == first["p_home"]
+    assert after.iloc[0]["calib_T"] == first["calib_T"]
