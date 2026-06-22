@@ -38,6 +38,7 @@ MATCH_PREDS_CSV = RESULTS_DIR / "predictions" / "match_predictions.csv"
 MATCH_SCORES_CSV = RESULTS_DIR / "evaluations" / "match_scores.csv"
 SCOREBOARD_CSV = RESULTS_DIR / "evaluations" / "scoreboard.csv"
 POLYMARKET_ODDS_PARQUET = CACHE_DIR / "polymarket_odds.parquet"
+MATCH_EDGE_SCOREBOARD_CSV = RESULTS_DIR / "evaluations" / "match_edge_scoreboard.csv"
 
 KNOCKOUT_STAGES = ("r32", "r16", "qf", "sf", "third", "final")
 
@@ -219,6 +220,72 @@ def score_completed_matches(wc_df: pd.DataFrame) -> pd.DataFrame | None:
         len(scores), scores["brier"].mean(),
     )
     return scores
+
+
+def score_match_edges(wc_df):
+    """AI-vs-PM per-match 3-way Brier on locked predictions that captured a market.
+
+    Only completed matches whose locked row has a real (non-NaN) mkt_* are scored
+    (I6/I7 — missing markets are skipped, never imputed). Returns aggregate dict.
+    """
+    if wc_df is None or wc_df.empty or not MATCH_PREDS_CSV.exists():
+        return None
+    preds = pd.read_csv(MATCH_PREDS_CSV)
+    if preds.empty or "mkt_home" not in preds.columns:
+        return None
+    done = wc_df[wc_df["completed"]]
+    if done.empty:
+        return None
+    merged = preds.merge(
+        done[["kickoff_utc", "home_team", "away_team", "home_score", "away_score"]],
+        on=["kickoff_utc", "home_team", "away_team"], how="inner",
+    )
+    if merged.empty:
+        return None
+
+    def _brier3(ph, pd_, pa, hs, as_):
+        oh = 1.0 if hs > as_ else 0.0
+        od = 1.0 if hs == as_ else 0.0
+        oa = 1.0 if hs < as_ else 0.0
+        return (ph - oh) ** 2 + (pd_ - od) ** 2 + (pa - oa) ** 2
+
+    ai_sum = pm_sum = 0.0
+    n = hits = flagged = n_no_market = 0
+    rows = []
+    for _, r in merged.iterrows():
+        if pd.isna(r.get("mkt_home")):
+            n_no_market += 1
+            continue
+        hs, as_ = int(r["home_score"]), int(r["away_score"])
+        ai_b = _brier3(r["p_home"], r["p_draw"], r["p_away"], hs, as_)
+        pm_b = _brier3(r["mkt_home"], r["mkt_draw"], r["mkt_away"], hs, as_)
+        ai_sum += ai_b
+        pm_sum += pm_b
+        n += 1
+        # edge hit-rate: the strongest AI>market side, did it realise?
+        diffs = {"home": r["p_home"] - r["mkt_home"], "draw": r["p_draw"] - r["mkt_draw"],
+                 "away": r["p_away"] - r["mkt_away"]}
+        side = max(diffs, key=diffs.get)
+        if diffs[side] * 100.0 >= 2.0:
+            flagged += 1
+            realised = (hs > as_ and side == "home") or (hs == as_ and side == "draw") \
+                or (hs < as_ and side == "away")
+            if realised:
+                hits += 1
+        rows.append({"kickoff_utc": r["kickoff_utc"], "home_team": r["home_team"],
+                     "away_team": r["away_team"], "ai_brier": round(ai_b, 4),
+                     "pm_brier": round(pm_b, 4)})
+
+    if n == 0:
+        return {"ai_brier": None, "pm_brier": None, "n_scored": 0,
+                "edge_hit_rate": None, "n_no_market": n_no_market}
+    pd.DataFrame(rows).to_csv(MATCH_EDGE_SCOREBOARD_CSV, index=False)
+    out = {"ai_brier": round(ai_sum / n, 4), "pm_brier": round(pm_sum / n, 4),
+           "n_scored": n, "edge_hit_rate": round(hits / flagged, 4) if flagged else None,
+           "n_no_market": n_no_market}
+    log.info("Match-edge scoreboard: %d scored, AI Brier %.4f vs PM %.4f (%d no-market)",
+             n, out["ai_brier"], out["pm_brier"], n_no_market)
+    return out
 
 
 def build_calibration_records(wc_df: pd.DataFrame, now: datetime) -> list[dict]:

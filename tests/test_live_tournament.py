@@ -523,3 +523,44 @@ def test_lock_no_market_stores_nan(tmp_path, monkeypatch):
     live_scoring.predict_upcoming_matches(wc, elos, model_elos={"M": elos}, moneylines=None)
     row = pd.read_csv(tmp_path / "mp.csv").iloc[0]
     assert _math.isnan(row["mkt_home"])  # never fabricated (I6)
+
+
+# ── Phase 3: per-match AI-vs-PM Brier scoreboard ──
+from evaluation.live_scoring import score_match_edges  # noqa: E402
+
+
+def _seed_preds(path, rows):
+    pd.DataFrame(rows).to_csv(path, index=False)
+
+
+def test_score_match_edges_ai_vs_pm_brier(tmp_path, monkeypatch):
+    monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+    monkeypatch.setattr(live_scoring, "MATCH_EDGE_SCOREBOARD_CSV", tmp_path / "sb.csv")
+    ko = "2026-06-25T18:00:00+00:00"
+    _seed_preds(tmp_path / "mp.csv", [{
+        "kickoff_utc": ko, "stage": "group", "home_team": "Spain", "away_team": "Croatia",
+        "p_home": 0.6, "p_draw": 0.25, "p_away": 0.15,
+        "mkt_home": 0.5, "mkt_draw": 0.27, "mkt_away": 0.23,
+    }])
+    wc = pd.DataFrame([{"kickoff_utc": ko, "home_team": "Spain", "away_team": "Croatia",
+                        "home_score": 2, "away_score": 0, "completed": True}])
+    out = score_match_edges(wc)
+    assert out["n_scored"] == 1
+    # home won -> AI (0.6 on home) has lower Brier than PM (0.5 on home)
+    assert out["ai_brier"] < out["pm_brier"]
+
+
+def test_score_match_edges_skips_nan_market(tmp_path, monkeypatch):
+    monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+    monkeypatch.setattr(live_scoring, "MATCH_EDGE_SCOREBOARD_CSV", tmp_path / "sb.csv")
+    ko = "2026-06-25T18:00:00+00:00"
+    _seed_preds(tmp_path / "mp.csv", [{
+        "kickoff_utc": ko, "stage": "group", "home_team": "A", "away_team": "B",
+        "p_home": 0.6, "p_draw": 0.25, "p_away": 0.15,
+        "mkt_home": float("nan"), "mkt_draw": float("nan"), "mkt_away": float("nan"),
+    }])
+    wc = pd.DataFrame([{"kickoff_utc": ko, "home_team": "A", "away_team": "B",
+                        "home_score": 1, "away_score": 0, "completed": True}])
+    out = score_match_edges(wc)
+    assert out is None or out["n_scored"] == 0   # NaN market not scored (I6/I7)
+    assert (out or {}).get("n_no_market", 0) >= 1
