@@ -91,3 +91,50 @@ Since the scoreline flows through the same `ensemble_match_prediction` chokepoin
 
 - **Phase 3:** extend edge detection from the champion market to per-match markets (independent of scoreline work).
 - Bivariate-Poisson / team-level attack-defence ratings; in-play scoreline models.
+
+## 11. Backtest result
+
+Walk-forward evidence run on 2014/2018/2022 World Cups (48 group matches per WC). Grid: ρ ∈ {0.00, −0.05, −0.10, −0.15} × blend ∈ {0.0, 0.5, 1.0}.
+
+### mean NLL per year (lower = better)
+
+| rho   | blend | 2014     | 2018     | 2022     | avg      |
+|-------|-------|----------|----------|----------|----------|
+| -0.15 | 0.0   | 2.943919 | 2.890034 | 3.055592 | 2.963182 |
+| -0.15 | 0.5   | 2.961111 | 2.917435 | 3.074092 | 2.984212 |
+| -0.15 | 1.0   | 3.003827 | 2.949936 | 3.099389 | 3.017717 |
+| -0.10 | 0.0   | 2.944828 | 2.882730 | 3.055803 | 2.961121 |
+| -0.10 | 0.5   | 2.960923 | 2.909109 | 3.074516 | 2.981516 |
+| -0.10 | 1.0   | 3.002585 | 2.940470 | 3.100299 | 3.014451 |
+| -0.05 | 0.0   | 2.946473 | 2.876347 | 3.057528 | 2.960116 |
+| -0.05 | 0.5   | 2.961889 | 2.901850 | 3.076649 | 2.980130 |
+| -0.05 | 1.0   | 3.003008 | 2.932300 | 3.103119 | 3.012809 |
+|  0.00 | 0.0   | 2.948857 | 2.870711 | 3.060491 | 2.960019 | ← baseline |
+|  0.00 | 0.5   | 2.964034 | 2.895461 | 3.080237 | 2.979911 |
+|  0.00 | 1.0   | 3.005164 | 2.925179 | 3.107641 | 3.012661 |
+
+### exact-hit rate (headline only)
+
+All candidates (rho, blend) produce hit rates of 6.25%/12.50%/17.19% for 2014/2018/2022 respectively, except (rho=0.0, blend=1.0) which produces 6.25%/10.94%/15.63% (worse).
+
+### go/no-go lines (verbatim)
+
+```
+rho=-0.15 blend=0.0: beats_all=False avg_nll_improvement=-0.0032
+rho=-0.15 blend=0.5: beats_all=False avg_nll_improvement=-0.0242
+rho=-0.15 blend=1.0: beats_all=False avg_nll_improvement=-0.0577
+rho=-0.1  blend=0.0: beats_all=False avg_nll_improvement=-0.0011
+rho=-0.1  blend=0.5: beats_all=False avg_nll_improvement=-0.0215
+rho=-0.1  blend=1.0: beats_all=False avg_nll_improvement=-0.0544
+rho=-0.05 blend=0.0: beats_all=False avg_nll_improvement=-0.0001
+rho=-0.05 blend=0.5: beats_all=False avg_nll_improvement=-0.0201
+rho=-0.05 blend=1.0: beats_all=False avg_nll_improvement=-0.0528
+rho=0.0   blend=0.5: beats_all=False avg_nll_improvement=-0.0199
+rho=0.0   blend=1.0: beats_all=False avg_nll_improvement=-0.0526
+```
+
+### Gate decision: NO-OP shipped
+
+`DC_RHO = 0.0`, `GOAL_RATE_BLEND = 0.0` (unchanged).
+
+No candidate passes: every (rho, blend) combination fails `beats_all=True` — each loses on at least one WC (negative avg_nll_improvement means candidates are on average WORSE than baseline, not better). The DC correction and goal-rate blend do not improve scoreline NLL consistently across all three historical World Cups; shipping them would be anti-evidence.
