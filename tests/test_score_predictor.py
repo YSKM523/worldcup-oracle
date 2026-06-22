@@ -160,6 +160,12 @@ def test_effective_goal_rate_blend_zero_is_static():
     assert effective_goal_rate(3.03, 0.0) == POISSON_AVG_GOALS
 
 
+def test_effective_goal_rate_blend_zero_nan_safe():
+    """blend=0 short-circuits before touching observed_rate, so NaN is harmless."""
+    result = effective_goal_rate(float("nan"), 0.0)
+    assert result == POISSON_AVG_GOALS
+
+
 def test_effective_goal_rate_blends():
     r = effective_goal_rate(3.0, 0.5)
     assert r == 0.5 * POISSON_AVG_GOALS + 0.5 * 3.0

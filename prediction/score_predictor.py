@@ -66,7 +66,10 @@ def effective_goal_rate(observed_rate: float, blend: float) -> float:
     """Shrinkage blend of the static prior and the observed tournament rate.
 
     blend=0 -> POISSON_AVG_GOALS (static, byte-identical to pre-Phase-4).
+    Short-circuits at blend==0 so NaN observed_rate is harmless.
     """
+    if blend == 0.0:
+        return POISSON_AVG_GOALS
     return (1.0 - blend) * POISSON_AVG_GOALS + blend * observed_rate
 
 

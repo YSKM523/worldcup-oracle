@@ -458,4 +458,16 @@ def test_predict_upcoming_default_knobs_unchanged(tmp_path, monkeypatch):
     model_elos = {"M1": elos, "M2": elos}
     live_scoring.predict_upcoming_matches(wc, elos, model_elos=model_elos)
     out = pd.read_csv(tmp_path / "mp.csv")
-    assert len(out) == 1 and out.iloc[0]["pred_score"]  # produced a scoreline, no error
+    assert len(out) == 1
+
+    # pred_score must be a valid "N-M" scoreline string
+    pred_score = out.iloc[0]["pred_score"]
+    assert isinstance(pred_score, str) and "-" in pred_score
+    parts = pred_score.split("-")
+    assert len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit()
+
+    # Re-running with dedup must not add a row or mutate the stored prediction
+    live_scoring.predict_upcoming_matches(wc, elos, model_elos=model_elos)
+    out2 = pd.read_csv(tmp_path / "mp.csv")
+    assert len(out2) == 1
+    assert out2.iloc[0]["pred_score"] == pred_score

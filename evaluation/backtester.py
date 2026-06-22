@@ -822,8 +822,8 @@ def walk_forward_scoreline_backtest(years, grid, matches=None):
                 g = condition_grid(score_grid(lam_a, lam_b, rho=rho),
                                    probs["win_a"], probs["draw"], probs["win_b"])
                 total_nll += _scoreline_nll(g, hs, as_)
-                gi, gj = (g == g.max()).nonzero()
-                if int(gi[0]) == min(hs, g.shape[0] - 1) and int(gj[0]) == min(as_, g.shape[0] - 1):
+                gi, gj = np.unravel_index(g.argmax(), g.shape)
+                if int(gi) == min(hs, g.shape[0] - 1) and int(gj) == min(as_, g.shape[0] - 1):
                     hits += 1
                 n += 1
                 prior_goals.append(hs + as_)
@@ -834,6 +834,7 @@ def walk_forward_scoreline_backtest(years, grid, matches=None):
 
 
 def run_scoreline_backtest_and_save():
+    """Sweep (rho, blend) grid on 2014/2018/2022 and write scoreline_backtest.csv."""
     grid = [(rho, blend) for rho in (0.0, -0.05, -0.1, -0.15) for blend in (0.0, 0.5, 1.0)]
     df = walk_forward_scoreline_backtest([2014, 2018, 2022], grid)
     out_path = RESULTS_DIR / "evaluations" / "scoreline_backtest.csv"
