@@ -203,6 +203,7 @@ export interface Meta {
     pm_brier: number | null;
     n_scored: number;
     edge_hit_rate: number | null;
+    n_no_market?: number;
   } | null;
 }
 
