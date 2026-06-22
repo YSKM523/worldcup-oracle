@@ -350,6 +350,40 @@ def save_odds_snapshot(df: pd.DataFrame) -> None:
     log.info("Saved Polymarket odds snapshot (%d rows total)", len(combined))
 
 
+def find_moneyline(moneylines, kickoff, home, away):
+    """Raw moneyline for a fixture, oriented to (home, away). None if absent.
+
+    moneylines: {kickoff_iso: {slug, home_name, away_name, home_price,
+                 draw_price, away_price, volume}} from fetch_match_moneylines.
+    Matched by kickoff epoch + team set; prices oriented to our (home, away).
+    """
+    import pandas as pd
+
+    if not moneylines:
+        return None
+    try:
+        target = pd.Timestamp(kickoff).value
+    except (ValueError, TypeError):
+        return None
+    teams = {home, away}
+    for ko, ml in moneylines.items():
+        try:
+            if pd.Timestamp(ko).value != target:
+                continue
+        except (ValueError, TypeError):
+            continue
+        if {ml["home_name"], ml["away_name"]} != teams:
+            continue
+        if ml["home_name"] == away and ml["away_name"] == home:
+            hp, ap = ml["away_price"], ml["home_price"]
+        else:
+            hp, ap = ml["home_price"], ml["away_price"]
+        return {"slug": ml["slug"], "home": round(hp, 4),
+                "draw": round(ml["draw_price"], 4), "away": round(ap, 4),
+                "volume": round(ml["volume"])}
+    return None
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s")
 

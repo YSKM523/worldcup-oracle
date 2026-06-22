@@ -471,3 +471,55 @@ def test_predict_upcoming_default_knobs_unchanged(tmp_path, monkeypatch):
     out2 = pd.read_csv(tmp_path / "mp.csv")
     assert len(out2) == 1
     assert out2.iloc[0]["pred_score"] == pred_score
+
+
+# ── Phase 3: capture de-vig market at lock (find_moneyline + mkt_* columns) ──
+import math as _math  # noqa: E402
+from data.fetcher_polymarket import find_moneyline  # noqa: E402
+
+
+def _ml(kickoff, h, a):
+    return {kickoff: {"slug": "x", "home_name": h, "away_name": a,
+                      "home_price": 0.45, "draw_price": 0.28, "away_price": 0.35,
+                      "volume": 5_000_000}}
+
+
+def test_find_moneyline_orients_to_fixture():
+    ko = "2026-06-25T18:00:00+00:00"
+    got = find_moneyline(_ml(ko, "Spain", "Croatia"), ko, "Spain", "Croatia")
+    assert got and got["home"] == 0.45 and got["away"] == 0.35
+    rev = find_moneyline(_ml(ko, "Croatia", "Spain"), ko, "Spain", "Croatia")
+    assert rev and rev["home"] == 0.35 and rev["away"] == 0.45
+
+
+def test_find_moneyline_missing_returns_none():
+    assert find_moneyline({}, "2026-06-25T18:00:00+00:00", "A", "B") is None
+
+
+def test_lock_stores_devig_market(tmp_path, monkeypatch):
+    monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+    now = datetime.now(timezone.utc)
+    ko = (now + timedelta(days=1)).replace(microsecond=0).isoformat()
+    wc = pd.DataFrame([{"kickoff_utc": ko, "stage": "group", "completed": False,
+                        "home_team": "Spain", "away_team": "Croatia",
+                        "date": now.date().isoformat()}])
+    elos = {"Spain": 1900, "Croatia": 1650}
+    live_scoring.predict_upcoming_matches(wc, elos, model_elos={"M": elos},
+                                          moneylines=_ml(ko, "Spain", "Croatia"))
+    row = pd.read_csv(tmp_path / "mp.csv").iloc[0]
+    assert abs(row["mkt_home"] - 0.45 / 1.08) < 1e-3
+    # de-vig sums to 1.0 before storage; stored values are 4dp-rounded (like p_*)
+    assert abs(row["mkt_home"] + row["mkt_draw"] + row["mkt_away"] - 1.0) < 2e-3
+
+
+def test_lock_no_market_stores_nan(tmp_path, monkeypatch):
+    monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+    now = datetime.now(timezone.utc)
+    ko = (now + timedelta(days=1)).replace(microsecond=0).isoformat()
+    wc = pd.DataFrame([{"kickoff_utc": ko, "stage": "group", "completed": False,
+                        "home_team": "Spain", "away_team": "Croatia",
+                        "date": now.date().isoformat()}])
+    elos = {"Spain": 1900, "Croatia": 1650}
+    live_scoring.predict_upcoming_matches(wc, elos, model_elos={"M": elos}, moneylines=None)
+    row = pd.read_csv(tmp_path / "mp.csv").iloc[0]
+    assert _math.isnan(row["mkt_home"])  # never fabricated (I6)

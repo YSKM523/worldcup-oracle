@@ -57,6 +57,7 @@ def predict_upcoming_matches(
     horizon_days: int = 3,
     model_elos: dict[str, dict[str, float]] | None = None,
     calib: Calibration | None = None,
+    moneylines: dict | None = None,
 ) -> int:
     """Store pre-match probabilities for upcoming fixtures. Returns # added.
 
@@ -96,6 +97,13 @@ def predict_upcoming_matches(
             continue  # first prediction stands — no revision after the fact
 
         home, away = r["home_team"], r["away_team"]
+        mkt_h = mkt_d = mkt_a = float("nan")
+        if moneylines:
+            from data.fetcher_polymarket import find_moneyline
+            ml = find_moneyline(moneylines, r["kickoff_utc"], home, away)
+            if ml:
+                dv = normalize_probs({"home": ml["home"], "draw": ml["draw"], "away": ml["away"]})
+                mkt_h, mkt_d, mkt_a = dv["home"], dv["draw"], dv["away"]
         ha = _host_home_advantage(home, away)
         is_ko = r["stage"] in KNOCKOUT_STAGES
 
@@ -147,6 +155,9 @@ def predict_upcoming_matches(
             "calib_delta": _cal.delta,
             "pred_score": pred_score,
             "pred_score_p": pred_score_p,
+            "mkt_home": round(mkt_h, 4) if mkt_h == mkt_h else float("nan"),
+            "mkt_draw": round(mkt_d, 4) if mkt_d == mkt_d else float("nan"),
+            "mkt_away": round(mkt_a, 4) if mkt_a == mkt_a else float("nan"),
         })
 
     if rows:
