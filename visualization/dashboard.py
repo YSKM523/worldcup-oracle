@@ -334,6 +334,7 @@ def _build_matches(
     model_elos: dict[str, dict[str, float]],
     ens_elo: dict[str, float],
     moneylines: dict[str, dict] | None = None,
+    calib=None,
 ) -> list[dict]:
     ml_by_epoch = _index_moneylines(moneylines or {})
     locked = pd.read_csv(MATCH_PREDS_CSV) if MATCH_PREDS_CSV.exists() else pd.DataFrame()
@@ -383,10 +384,25 @@ def _build_matches(
             elo_pairs = [
                 (m.get(home, 1500.0), m.get(away, 1500.0)) for m in model_elos.values()
             ]
-            pred = ensemble_match_prediction(elo_pairs, home_advantage=ha, knockout=is_ko)
+            pred = ensemble_match_prediction(elo_pairs, home_advantage=ha,
+                                             knockout=is_ko, calib=calib)
             pred["elo_home"] = round(ens_elo.get(home, 1500.0))
             pred["elo_away"] = round(ens_elo.get(away, 1500.0))
             row["pred"] = pred
+
+            # Per-match AI-vs-Polymarket edge (de-vig + detect_edges; [] if no market)
+            if "market" in row:
+                from markets.match_edge import match_edge
+                ai_probs = {"home": pred["p_home"], "draw": pred["p_draw"],
+                            "away": pred["p_away"]}
+                model_probs = {
+                    f"m{i}": {"home": pm["p_home"], "draw": pm["p_draw"], "away": pm["p_away"]}
+                    for i, pm in enumerate(pred.get("per_model", []))
+                }
+                edges = match_edge(ai_probs, row["market"], model_probs,
+                                   volume=row["market"]["volume"])
+                if edges:
+                    row["edge"] = edges
 
         # Locked (pre-match) prediction for completed matches — what we're
         # actually scored on. Never recomputed after kickoff.
@@ -571,7 +587,7 @@ def _load_calibration_meta() -> dict | None:
 
 
 # ── Entry points ─────────────────────────────────────────────────────────────
-def build_dashboard(wc_df: pd.DataFrame | None = None) -> dict:
+def build_dashboard(wc_df: pd.DataFrame | None = None, moneylines: dict | None = None) -> dict:
     """Assemble dashboard/data.json. Returns the data dict."""
     wc_df = _load_wc_df(wc_df)
     if wc_df.empty:
@@ -597,15 +613,22 @@ def build_dashboard(wc_df: pd.DataFrame | None = None) -> dict:
             )
 
     # Per-match Polymarket moneylines (best-effort; never block the build).
-    moneylines: dict[str, dict] = {}
-    try:
-        from data.fetcher_polymarket import fetch_match_moneylines
+    # Reuse a pre-fetched dict (from the pipeline) so we don't double-fetch.
+    if moneylines is None:
+        moneylines = {}
+        try:
+            from data.fetcher_polymarket import fetch_match_moneylines
 
-        moneylines = fetch_match_moneylines()
-    except Exception as exc:  # noqa: BLE001 — odds are optional decoration
-        log.warning("Polymarket moneyline fetch failed: %s", exc)
+            moneylines = fetch_match_moneylines()
+        except Exception as exc:  # noqa: BLE001 — odds are optional decoration
+            log.warning("Polymarket moneyline fetch failed: %s", exc)
 
-    matches = _build_matches(wc_df, model_elos, ens_elo, moneylines)
+    # Calibration so the displayed pred (and the edge) use our real calibrated probs.
+    from config import CALIBRATION_PATH
+    from prediction.calibration import load_calibration
+    calib = load_calibration(CALIBRATION_PATH)
+
+    matches = _build_matches(wc_df, model_elos, ens_elo, moneylines, calib=calib)
 
     # Focus matchday: today's (or the next) slate gets the deep-dive treatment
     from data.fetcher_matches import fetch_matches
@@ -626,6 +649,13 @@ def build_dashboard(wc_df: pd.DataFrame | None = None) -> dict:
             "volume": float(latest["volume"].iloc[0]),
         }
 
+    match_edge_meta = None
+    try:
+        from evaluation.live_scoring import score_match_edges
+        match_edge_meta = score_match_edges(wc_df)
+    except Exception as exc:  # noqa: BLE001 — scoreboard is optional decoration
+        log.warning("Match-edge scoreboard failed: %s", exc)
+
     data = {
         "meta": {
             "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -636,6 +666,7 @@ def build_dashboard(wc_df: pd.DataFrame | None = None) -> dict:
             "n_matches": len(matches),
             "n_completed": sum(1 for m in matches if m["completed"]),
             "calibration": _load_calibration_meta(),
+            "match_edge": match_edge_meta,
             **market_meta,
         },
         "matches": matches,
