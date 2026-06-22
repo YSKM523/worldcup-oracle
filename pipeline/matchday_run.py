@@ -104,6 +104,7 @@ def main():
     from evaluation.live_scoring import (
         predict_upcoming_matches,
         score_completed_matches,
+        score_match_edges,
         update_scoreboard,
     )
     from markets.edge_detector import detect_edges, format_edge_report
@@ -213,16 +214,25 @@ def main():
 
     # ── 8. Live scoring ──────────────────────────────────────────────────
     log.info("Step 8: Live scoring …")
-    predict_upcoming_matches(wc_df, current_elo, model_elos=model_elos, calib=calib)
+    # Per-match moneylines, fetched once: captured at lock + reused by the dashboard.
+    moneylines = {}
+    try:
+        from data.fetcher_polymarket import fetch_match_moneylines
+        moneylines = fetch_match_moneylines()
+    except Exception as exc:  # noqa: BLE001 — odds are optional decoration
+        log.warning("  Moneyline fetch failed: %s", exc)
+    predict_upcoming_matches(wc_df, current_elo, model_elos=model_elos, calib=calib,
+                             moneylines=moneylines)
     score_completed_matches(wc_df)
     update_scoreboard(wc_df)
+    score_match_edges(wc_df)
 
     # ── 9. Dashboard ─────────────────────────────────────────────────────
     log.info("Step 9: Building dashboard …")
     try:
         from visualization.dashboard import build_dashboard, deploy_dashboard
 
-        build_dashboard(wc_df=wc_df)
+        build_dashboard(wc_df=wc_df, moneylines=moneylines)
         deploy_dashboard()
     except Exception as exc:  # noqa: BLE001 — dashboard must never kill the run
         log.error("  Dashboard step failed: %s", exc)
