@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, Flag, XIcon } from "@/components/icons";
+import { CheckIcon, Flag, StarIcon, XIcon } from "@/components/icons";
 import type { FormEntry, LiveMap, Match, Meta, PolyLive } from "@/lib/types";
 import {
   KO_STAGES,
@@ -183,6 +183,24 @@ function MarketOdds({ m, poly }: { m: Match; poly: PolyLive }) {
       <span className="tabular-nums">
         客 <b className="text-zinc-300">{oddsFmt(prices.away)}</b>
       </span>
+      {m.edge && m.edge.length > 0 && (() => {
+        const top = [...m.edge].sort((a, b) => Math.abs(b.edge_pct) - Math.abs(a.edge_pct))[0];
+        const sideZh = top.side === "home" ? "主" : top.side === "draw" ? "平" : "客";
+        return (
+          <span
+            className={`inline-flex items-center gap-0.5 rounded-md border px-1.5 py-px font-bold ${
+              top.direction === "BUY"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                : "border-rose-500/30 bg-rose-500/10 text-rose-400"
+            }`}
+          >
+            {top.strength === "STRONG EDGE" && <StarIcon className="h-2.5 w-2.5" />}
+            {top.direction === "BUY" ? "低估" : "高估"}
+            {sideZh} {top.edge_pct > 0 ? "+" : ""}
+            {top.edge_pct.toFixed(1)}
+          </span>
+        );
+      })()}
     </div>
   );
 }

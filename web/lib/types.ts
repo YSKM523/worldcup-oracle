@@ -98,6 +98,7 @@ export interface Match {
   locked?: Locked;
   detail?: Detail;
   market?: MatchMarket;
+  edge?: MatchEdge[];
 }
 
 export interface GroupRow {
@@ -119,6 +120,15 @@ export interface Edge {
   strength: string;
   models_agree: number;
   half_kelly: number;
+}
+
+export interface MatchEdge {
+  side: "home" | "draw" | "away";
+  edge_pct: number;
+  direction: "BUY" | "SELL";
+  half_kelly: number;
+  models_agree: number;
+  strength: string;
 }
 
 export interface Champion {
@@ -188,6 +198,12 @@ export interface Meta {
   odds_time?: string;
   volume?: number;
   calibration?: CalibrationMeta | null;
+  match_edge?: {
+    ai_brier: number | null;
+    pm_brier: number | null;
+    n_scored: number;
+    edge_hit_rate: number | null;
+  } | null;
 }
 
 export interface Data {

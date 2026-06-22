@@ -396,6 +396,16 @@ export function RecordView({ data }: { data: Data }) {
     ]);
   }
 
+  const me = data.meta.match_edge;
+  if (me && me.n_scored > 0) {
+    const hit =
+      me.edge_hit_rate != null ? `，命中率 ${(me.edge_hit_rate * 100).toFixed(0)}%` : "";
+    cards.push([
+      (me.ai_brier ?? 1) < (me.pm_brier ?? 1) ? "AI 领先" : "市场领先",
+      `单场盘 Brier：AI ${me.ai_brier} vs 市场 ${me.pm_brier}（${me.n_scored} 场${hit}）`,
+    ]);
+  }
+
   const cal = data.meta.calibration;
   const showCal =
     cal != null &&
