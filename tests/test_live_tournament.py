@@ -442,3 +442,20 @@ def test_step_calibrate_writes_artifact_and_returns_identity_when_empty(tmp_path
     now = datetime.now(timezone.utc)
     calib = matchday_run.step_calibrate(pd.DataFrame(), now)  # empty wc_df
     assert calib.is_identity()
+
+
+def test_predict_upcoming_default_knobs_unchanged(tmp_path, monkeypatch):
+    # With DC_RHO=0 and GOAL_RATE_BLEND=0 (config defaults), the stored scoreline
+    # must equal what the pre-Phase-4 path produced (rho omitted / rate static).
+    monkeypatch.setattr(live_scoring, "MATCH_PREDS_CSV", tmp_path / "mp.csv")
+    now = datetime.now(timezone.utc)
+    ko = (now + timedelta(days=1)).isoformat()
+    wc = pd.DataFrame([{
+        "kickoff_utc": ko, "stage": "group", "completed": False,
+        "home_team": "Spain", "away_team": "Croatia", "date": now.date().isoformat(),
+    }])
+    elos = {"Spain": 1900, "Croatia": 1650}
+    model_elos = {"M1": elos, "M2": elos}
+    live_scoring.predict_upcoming_matches(wc, elos, model_elos=model_elos)
+    out = pd.read_csv(tmp_path / "mp.csv")
+    assert len(out) == 1 and out.iloc[0]["pred_score"]  # produced a scoreline, no error

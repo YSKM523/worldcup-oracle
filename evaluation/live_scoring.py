@@ -19,15 +19,18 @@ import pandas as pd
 from config import (
     ALL_TEAMS,
     CACHE_DIR,
+    DC_RHO,
+    GOAL_RATE_BLEND,
     GROUPS,
     HOST_TEAMS,
+    POISSON_AVG_GOALS,
     RESULTS_DIR,
     WC_HOST_HOME_ADVANTAGE_ELO,
 )
 from markets.odds_converter import normalize_probs
 from prediction.calibration import Calibration, calibrate
 from prediction.match_predictor import knockout_probabilities, match_probabilities
-from prediction.score_predictor import ensemble_match_prediction
+from prediction.score_predictor import effective_goal_rate, ensemble_match_prediction
 
 log = logging.getLogger(__name__)
 
@@ -72,6 +75,13 @@ def predict_upcoming_matches(
     if not existing.empty:
         seen = set(zip(existing["kickoff_utc"], existing["home_team"], existing["away_team"]))
 
+    done = wc_df[wc_df["completed"]] if "completed" in wc_df.columns else wc_df.iloc[0:0]
+    if not done.empty:
+        observed_rate = float((done["home_score"] + done["away_score"]).mean())
+    else:
+        observed_rate = POISSON_AVG_GOALS
+    score_rate = effective_goal_rate(observed_rate, GOAL_RATE_BLEND)
+
     rows = []
     for _, r in wc_df.iterrows():
         if r["completed"]:
@@ -95,7 +105,8 @@ def predict_upcoming_matches(
                 for m in model_elos.values()
             ]
             pred = ensemble_match_prediction(elo_pairs, home_advantage=ha,
-                                             knockout=is_ko, calib=calib)
+                                             knockout=is_ko, calib=calib,
+                                             rho=DC_RHO, total_goals=score_rate)
             if is_ko:
                 p_home, p_draw, p_away = pred["p_adv_home"], 0.0, pred["p_adv_away"]
                 ph_raw, pd_raw, pa_raw = pred["p_adv_home"], 0.0, pred["p_adv_away"]
