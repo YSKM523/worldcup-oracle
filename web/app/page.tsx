@@ -3,15 +3,18 @@
 import { useEffect, useState } from "react";
 import { LogoMark } from "@/components/icons";
 import { ChampionsView, GroupsView, RecordView, ScheduleView } from "@/components/Views";
+import { WeatherLabView } from "@/components/WeatherLab";
 import type { Data } from "@/lib/types";
 import { useLive } from "@/lib/useLive";
 import { usePolymarket } from "@/lib/usePolymarket";
+import { useWeather } from "@/lib/useWeather";
 
 const TABS = [
   ["matches", "赛程预测"],
   ["groups", "小组积分"],
   ["champions", "夺冠概率"],
   ["record", "AI 战绩"],
+  ["weather", "天气研究"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -21,6 +24,7 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>("matches");
   const live = useLive();
   const poly = usePolymarket(data?.matches ?? []);
+  const weather = useWeather();
 
   useEffect(() => {
     fetch(`/data.json?v=${Math.floor(Date.now() / 3600e3)}`)
@@ -85,13 +89,17 @@ export default function Home() {
         ) : !data ? (
           <p className="py-20 text-center text-sm text-zinc-600">加载中…</p>
         ) : tab === "matches" ? (
-          <ScheduleView data={data} live={live} poly={poly} />
+          <ScheduleView data={data} live={live} poly={poly} weather={weather} />
         ) : tab === "groups" ? (
           <GroupsView data={data} />
         ) : tab === "champions" ? (
           <ChampionsView data={data} poly={poly} />
-        ) : (
+        ) : tab === "record" ? (
           <RecordView data={data} />
+        ) : weather ? (
+          <WeatherLabView wx={weather} />
+        ) : (
+          <p className="py-20 text-center text-sm text-zinc-600">天气研究数据加载中…</p>
         )}
       </main>
 

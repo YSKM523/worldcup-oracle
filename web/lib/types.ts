@@ -215,6 +215,60 @@ export interface Data {
   performance: Performance;
 }
 
+/* ── 天气研究 (research/weather_effect → weather.json) ─────────── */
+
+export interface MatchWeather {
+  temp_c: number;
+  humidity_pct: number;
+  apparent_c: number;
+  hot: boolean;
+  forecast: boolean;
+  /** 实验性 favorite 概率修正 (pp, 负=酷热削 favorite)。不计入官方预测。 */
+  exp_delta_pp: number;
+}
+
+export interface WeatherCorr {
+  rho?: number;
+  r?: number;
+  p: number;
+  n: number;
+}
+
+export interface WeatherAdjust {
+  slope_pp_per_degC: number;
+  t_stat: number;
+  shrink_factor: number;
+  slope_shrunk_pp_per_degC: number;
+  ref_temp_c: number;
+  cap_pp: number;
+  n: number;
+  note: string;
+}
+
+export interface WeatherStudy {
+  n_matches: number;
+  n_physical: number;
+  dist_vs_apparent: WeatherCorr;
+  dist_vs_temp: WeatherCorr;
+  sprint_vs_temp: WeatherCorr;
+  slope_km_per_degC: number;
+  dist_buckets: Record<string, { n: number; mean_temp: number; mean_dist_km: number }>;
+  altitude_partial: WeatherCorr;
+  altitude_excl_high: WeatherCorr & { excluded_cities?: string[] };
+  upset_partial: WeatherCorr;
+  upset_buckets: Record<string, { n: number; upset_rate: number; ci: number[] }>;
+  goals_vs_temp: WeatherCorr;
+  h2_share_vs_temp: { stat: number; p: number; n: number };
+  calib_buckets: Record<string, { n: number; mean_brier: number; mean_calib_resid: number }>;
+}
+
+export interface WeatherData {
+  generated_at: string;
+  study: WeatherStudy;
+  adjust: WeatherAdjust;
+  matches: Record<string, MatchWeather>;
+}
+
 export interface LiveEntry {
   state: "pre" | "in" | "post";
   completed: boolean;

@@ -233,9 +233,26 @@ def main():
         from visualization.dashboard import build_dashboard, deploy_dashboard
 
         build_dashboard(wc_df=wc_df, moneylines=moneylines)
+        _export_weather()  # weather.json must land in web/out before deploy
         deploy_dashboard()
     except Exception as exc:  # noqa: BLE001 — dashboard must never kill the run
         log.error("  Dashboard step failed: %s", exc)
+
+
+def _export_weather() -> None:
+    """Refresh the weather-research export (weather.json + figs). Best-effort."""
+    import subprocess
+    import sys
+
+    scripts = Path(__file__).resolve().parent.parent / "research/weather_effect/scripts"
+    for name in ("01_build_dataset.py", "02_analyze.py", "08_export_web.py"):
+        try:
+            subprocess.run([sys.executable, str(scripts / name)],
+                           check=True, capture_output=True, timeout=600)
+        except Exception as exc:  # noqa: BLE001 — decoration, never blocks deploy
+            log.warning("  Weather export step %s failed: %s", name, exc)
+            return
+    log.info("  Weather export refreshed (weather.json + figs).")
 
     log.info("Matchday run complete.")
 

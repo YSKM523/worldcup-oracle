@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, Flag, StarIcon, XIcon } from "@/components/icons";
-import type { FormEntry, LiveMap, Match, Meta, PolyLive } from "@/lib/types";
+import type { FormEntry, LiveMap, Match, MatchWeather, Meta, PolyLive, WeatherData } from "@/lib/types";
 import {
   KO_STAGES,
   MODEL_SHORT,
@@ -14,6 +14,45 @@ import {
 } from "@/lib/wc";
 
 /* ── Shared bits ───────────────────────────────────────────────── */
+
+/** 开球时天气小徽章：温度+湿度，≥27°C 标酷热。预报值加 ~ 前缀。 */
+function WeatherChip({ w }: { w?: MatchWeather }) {
+  if (!w) return null;
+  return (
+    <span
+      className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium tabular-nums ${
+        w.hot ? "bg-orange-500/15 text-orange-300" : "bg-zinc-800/80 text-zinc-400"
+      }`}
+      title={`开球时${w.forecast ? "预报" : "实测"}：气温 ${w.temp_c}°C · 湿度 ${w.humidity_pct}% · 体感 ${w.apparent_c}°C`}
+    >
+      {w.hot ? "🔥" : "🌡"} {w.forecast ? "~" : ""}
+      {Math.round(w.temp_c)}°C {w.humidity_pct}%
+    </span>
+  );
+}
+
+/** 天气实验室：实验性 favorite 修正行（仅未开赛且 |Δ|≥0.5pp 时展示，不改官方预测）。 */
+function WeatherLabLine({ m, w }: { m: Match; w?: MatchWeather }) {
+  const p = m.pred;
+  if (!w || !p || m.completed || Math.abs(w.exp_delta_pp) < 0.5) return null;
+  const ko = KO_STAGES.has(m.stage);
+  const pHome = ko ? (p.p_adv_home ?? p.p_home) : p.p_home;
+  const pAway = ko ? (p.p_adv_away ?? p.p_away) : p.p_away;
+  const favHome = pHome >= pAway;
+  const pFav = favHome ? pHome : pAway;
+  const adj = Math.min(0.97, Math.max(0.03, pFav + w.exp_delta_pp / 100));
+  return (
+    <div className="mt-2 text-[11px] leading-4 text-zinc-600">
+      🌡️ 天气实验室（实验性·不计官方）：{w.hot ? "酷热" : w.temp_c < 22 ? "凉爽" : "温和"}场{" "}
+      {zh(favHome ? m.home : m.away)}
+      {ko ? "晋级" : "胜"}率 {pct(pFav)} → <b className="text-zinc-400">{pct(adj)}</b>{" "}
+      <span className="tabular-nums">
+        ({w.exp_delta_pp > 0 ? "+" : ""}
+        {w.exp_delta_pp}pp)
+      </span>
+    </div>
+  );
+}
 
 function StageBadge({ m }: { m: Match }) {
   const label =
@@ -212,13 +251,16 @@ export function CompactCard({
   meta,
   live,
   poly,
+  weather,
 }: {
   m: Match;
   meta: Meta;
   live: LiveMap;
   poly: PolyLive;
+  weather?: WeatherData | null;
 }) {
   const p = m.pred;
+  const wx = weather?.matches[m.espn_id];
   const venue = [m.venue, m.city].filter(Boolean).join(" · ");
   const loser =
     m.completed && m.winner ? (m.winner === m.home ? "away" : "home")
@@ -230,7 +272,10 @@ export function CompactCard({
     <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <StageBadge m={m} />
-        <span className="truncate text-[11px] text-zinc-500">{venue}</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-[11px] text-zinc-500">{venue}</span>
+          <WeatherChip w={wx} />
+        </span>
       </div>
       <div className="flex items-center gap-3">
         <div className={`flex min-w-0 flex-1 items-center gap-2.5 ${loser === "home" ? "opacity-50" : ""}`}>
@@ -256,6 +301,7 @@ export function CompactCard({
           </div>
           <ModelRow m={m} meta={meta} />
           <MarketOdds m={m} poly={poly} />
+          <WeatherLabLine m={m} w={wx} />
         </div>
       )}
     </div>
@@ -324,14 +370,17 @@ export function FocusCard({
   meta,
   live,
   poly,
+  weather,
 }: {
   m: Match;
   meta: Meta;
   live: LiveMap;
   poly: PolyLive;
+  weather?: WeatherData | null;
 }) {
   const p = m.pred;
   const d = m.detail;
+  const wx = weather?.matches[m.espn_id];
   const venue = [m.venue, m.city].filter(Boolean).join(" · ");
   const h2h = d?.h2h;
   const h2hLine = h2h
@@ -352,7 +401,10 @@ export function FocusCard({
     <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
       <div className="mb-4 flex items-center justify-between gap-2">
         <StageBadge m={m} />
-        <span className="truncate text-[11px] text-zinc-500">{venue}</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-[11px] text-zinc-500">{venue}</span>
+          <WeatherChip w={wx} />
+        </span>
       </div>
 
       <div className="flex items-start gap-3">
@@ -402,6 +454,7 @@ export function FocusCard({
 
           <ModelRow m={m} meta={meta} />
           <MarketOdds m={m} poly={poly} />
+          <WeatherLabLine m={m} w={wx} />
         </div>
       ) : null}
 

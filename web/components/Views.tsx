@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { CheckIcon, Flag, StarIcon, XIcon } from "@/components/icons";
 import { CompactCard, FocusCard } from "@/components/MatchCards";
-import type { Data, LiveMap, Match, PolyLive } from "@/lib/types";
+import type { Data, LiveMap, Match, PolyLive, WeatherData } from "@/lib/types";
 import {
   KO_STAGES,
   MODEL_SHORT,
@@ -33,10 +33,12 @@ export function ScheduleView({
   data,
   live,
   poly,
+  weather,
 }: {
   data: Data;
   live: LiveMap;
   poly: PolyLive;
+  weather?: WeatherData | null;
 }) {
   const [filter, setFilter] = useState<Filter>("focus");
   const [search, setSearch] = useState("");
@@ -101,9 +103,9 @@ export function ScheduleView({
       </div>
 
       {filter === "focus" ? (
-        <FocusList matchday={matchday} matches={focusMatches} data={data} live={live} poly={poly} />
+        <FocusList matchday={matchday} matches={focusMatches} data={data} live={live} poly={poly} weather={weather} />
       ) : visible.length ? (
-        <DayGroupedList matches={visible} data={data} live={live} poly={poly} />
+        <DayGroupedList matches={visible} data={data} live={live} poly={poly} weather={weather} />
       ) : (
         <Empty text="没有符合条件的比赛" />
       )}
@@ -117,12 +119,14 @@ function FocusList({
   data,
   live,
   poly,
+  weather,
 }: {
   matchday: string | null;
   matches: Match[];
   data: Data;
   live: LiveMap;
   poly: PolyLive;
+  weather?: WeatherData | null;
 }) {
   if (!matchday) return <Empty text="本届赛事已结束 — 战绩见「AI 战绩」页" />;
   if (!matches.length) return <Empty text="没有符合条件的比赛" />;
@@ -136,7 +140,7 @@ function FocusList({
       </div>
       <div className="space-y-4">
         {matches.map((m) => (
-          <FocusCard key={m.espn_id} m={m} meta={data.meta} live={live} poly={poly} />
+          <FocusCard key={m.espn_id} m={m} meta={data.meta} live={live} poly={poly} weather={weather} />
         ))}
       </div>
     </div>
@@ -148,11 +152,13 @@ function DayGroupedList({
   data,
   live,
   poly,
+  weather,
 }: {
   matches: Match[];
   data: Data;
   live: LiveMap;
   poly: PolyLive;
+  weather?: WeatherData | null;
 }) {
   const groups: [string, Match[]][] = [];
   for (const m of matches) {
@@ -175,7 +181,7 @@ function DayGroupedList({
           </h3>
           <div className="space-y-3">
             {ms.map((m) => (
-              <CompactCard key={m.espn_id} m={m} meta={data.meta} live={live} poly={poly} />
+              <CompactCard key={m.espn_id} m={m} meta={data.meta} live={live} poly={poly} weather={weather} />
             ))}
           </div>
         </section>
