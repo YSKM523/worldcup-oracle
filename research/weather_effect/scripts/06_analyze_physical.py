@@ -14,30 +14,13 @@ from scipy import stats
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-RS = np.random.RandomState(42)
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).parent))
+from _stats_utils import perm_corr, residualize, wilson, ci_mean, demean_by, np_json, RS
 ROOT = Path("/home/ubuntu/worldcup-oracle/research/weather_effect")
 FIG = ROOT / "figs"
 m = pd.read_csv(ROOT / "out/matches_weather_physical.csv")
 d = m.dropna(subset=["combined_dist_km"]).copy()
-
-def perm_corr(x, y, method="spearman", n=20000):
-    x=np.asarray(x,float); y=np.asarray(y,float)
-    msk=~(np.isnan(x)|np.isnan(y)); x,y=x[msk],y[msk]; k=len(x)
-    if k<5: return np.nan,np.nan,k
-    if method=="spearman": x=stats.rankdata(x); y=stats.rankdata(y)
-    xc=x-x.mean(); yc=y-y.mean(); den=np.sqrt((xc**2).sum()*(yc**2).sum())
-    obs=float((xc*yc).sum()/den) if den>0 else 0.0
-    perms=np.array([RS.permutation(yc) for _ in range(n)]); stat=perms@xc/den
-    return obs, float((np.sum(np.abs(stat)>=abs(obs)-1e-12)+1)/(n+1)), k
-
-def residualize(y, ctrl):
-    y=np.asarray(y,float); c=np.asarray(ctrl,float); msk=~(np.isnan(y)|np.isnan(c))
-    b=np.polyfit(c[msk],y[msk],1); r=np.full_like(y,np.nan); r[msk]=y[msk]-np.polyval(b,c[msk]); return r
-
-def ci_mean(a):
-    a=np.asarray(a,float); a=a[~np.isnan(a)]; n=len(a)
-    if n<2: return (np.nan,np.nan,np.nan)
-    se=a.std(ddof=1)/np.sqrt(n); return a.mean(), a.mean()-1.96*se, a.mean()+1.96*se
 
 S={"n_matches": len(d), "note": "仅小组赛(FIFA PMSR 已发布), 双方合计"}
 S["descriptive"]={k:dict(min=round(d[k].min(),1),max=round(d[k].max(),1),mean=round(d[k].mean(),1))
@@ -91,7 +74,7 @@ ax[1].set(title=f"Combined sprint distance vs temp (rho={r2:.2f}, p={p2:.3f}, n=
 fig.tight_layout(); fig.savefig(FIG/"fig6_physical.png"); plt.close(fig)
 
 json.dump(S,open(ROOT/"out/stats_physical.json","w"),ensure_ascii=False,indent=2,
-          default=lambda o:int(o) if isinstance(o,np.integer) else float(o) if isinstance(o,np.floating) else o.tolist())
+          default=np_json)
 print(json.dumps(S,ensure_ascii=False,indent=2,
-      default=lambda o:int(o) if isinstance(o,np.integer) else float(o) if isinstance(o,np.floating) else o.tolist()))
+      default=np_json))
 print("\nfig -> fig6_physical.png")

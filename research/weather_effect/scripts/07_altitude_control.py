@@ -18,7 +18,9 @@ import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 
-RS = np.random.RandomState(42)
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).parent))
+from _stats_utils import perm_corr, residualize, wilson, ci_mean, demean_by, np_json, RS
 ROOT = Path("/home/ubuntu/worldcup-oracle/research/weather_effect")
 FIG = ROOT / "figs"
 m = pd.read_csv(ROOT / "out/matches_weather_physical.csv")
@@ -38,23 +40,6 @@ d["altitude_m"] = d.venue_city.map(elev)
 print("城市海拔(m):")
 for c, e in sorted(elev.items(), key=lambda kv: -kv[1]):
     print(f"  {c:32s} {e:6.0f}")
-
-def perm_corr(x, y, method="pearson", n=20000):
-    x=np.asarray(x,float); y=np.asarray(y,float)
-    msk=~(np.isnan(x)|np.isnan(y)); x,y=x[msk],y[msk]; k=len(x)
-    if k<5: return np.nan,np.nan,k
-    if method=="spearman": x=stats.rankdata(x); y=stats.rankdata(y)
-    xc=x-x.mean(); yc=y-y.mean(); den=np.sqrt((xc**2).sum()*(yc**2).sum())
-    obs=float((xc*yc).sum()/den) if den>0 else 0.0
-    perms=np.array([RS.permutation(yc) for _ in range(n)]); stat=perms@xc/den
-    return obs, float((np.sum(np.abs(stat)>=abs(obs)-1e-12)+1)/(n+1)), k
-
-def residualize(y, ctrl):
-    y=np.asarray(y,float); c=np.asarray(ctrl,float); msk=~(np.isnan(y)|np.isnan(c))
-    b=np.polyfit(c[msk],y[msk],1); r=np.full_like(y,np.nan); r[msk]=y[msk]-np.polyval(b,c[msk]); return r
-
-def demean_by(df, col, grp):
-    return df[col] - df.groupby(grp)[col].transform("mean")
 
 S = {"n": len(d)}
 
@@ -124,7 +109,7 @@ ax[1].set(title=f"Within-city (FE): dist vs temp (r={rr['r']}, p={rr['p']})",
 fig.tight_layout(); fig.savefig(FIG/"fig7_altitude_control.png"); plt.close(fig)
 
 json.dump(S,open(ROOT/"out/stats_altitude.json","w"),ensure_ascii=False,indent=2,
-          default=lambda o:int(o) if isinstance(o,np.integer) else float(o) if isinstance(o,np.floating) else o.tolist())
+          default=np_json)
 print(json.dumps(S,ensure_ascii=False,indent=2,
-      default=lambda o:int(o) if isinstance(o,np.integer) else float(o) if isinstance(o,np.floating) else o.tolist()))
+      default=np_json))
 print("\nfig -> fig7_altitude_control.png")

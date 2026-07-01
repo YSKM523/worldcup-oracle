@@ -17,46 +17,15 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-RS = np.random.RandomState(42)   # 固定随机种子, 结果可复现
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).parent))
+from _stats_utils import perm_corr, residualize, wilson, ci_mean, demean_by, np_json, RS
 ROOT = Path("/home/ubuntu/worldcup-oracle/research/weather_effect")
 df = pd.read_csv(ROOT / "out/matches_weather.csv")
 FIG = ROOT / "figs"; FIG.mkdir(exist_ok=True)
 S = {"n_total": len(df)}
 
 # ------- 工具函数 -------
-def wilson(k, n, z=1.96):
-    if n == 0: return (np.nan, np.nan, np.nan)
-    p = k / n
-    d = 1 + z*z/n
-    c = (p + z*z/(2*n)) / d
-    h = z*np.sqrt(p*(1-p)/n + z*z/(4*n*n)) / d
-    return p, max(0, c-h), min(1, c+h)
-
-def perm_corr(x, y, method="spearman", n=20000):
-    """相关系数 + 置换 p 值(双尾)。向量化: Spearman=秩上的Pearson, 一次性置换。"""
-    x = np.asarray(x, float); y = np.asarray(y, float)
-    m = ~(np.isnan(x) | np.isnan(y)); x, y = x[m], y[m]
-    k = len(x)
-    if k < 5: return np.nan, np.nan, k
-    if method == "spearman":
-        x = stats.rankdata(x); y = stats.rankdata(y)
-    xc = x - x.mean(); yc = y - y.mean()
-    denom = np.sqrt((xc**2).sum() * (yc**2).sum())
-    obs = float((xc * yc).sum() / denom) if denom > 0 else 0.0
-    # 一次性生成 n 个 y 的置换, 矩阵化算相关
-    perms = np.array([RS.permutation(yc) for _ in range(n)])   # (n,k)
-    stat = perms @ xc / denom                                   # (n,)  分母不变(置换不改yc平方和)
-    p = (np.sum(np.abs(stat) >= abs(obs) - 1e-12) + 1) / (n + 1)
-    return obs, float(p), k
-
-def residualize(y, ctrl):
-    """把 y 对 ctrl 做线性回归取残差(扣掉 ctrl 的影响)"""
-    y = np.asarray(y, float); ctrl = np.asarray(ctrl, float)
-    m = ~(np.isnan(y) | np.isnan(ctrl));
-    b = np.polyfit(ctrl[m], y[m], 1)
-    r = np.full_like(y, np.nan); r[m] = y[m] - np.polyval(b, ctrl[m])
-    return r
-
 WX = {"temp_c": "气温(°C)", "humidity_pct": "相对湿度(%)",
       "apparent_c": "体感温度(°C)", "heat_humidity_index": "热湿指数",
       "local_hour": "本地开球小时"}
@@ -174,11 +143,6 @@ ax.set(title=f"Model Brier vs humidity (Spearman rho={r:.2f}, p={p:.2f}, n={len(
        xlabel="Relative humidity (%)", ylabel="Brier score (lower=better)")
 fig.tight_layout(); fig.savefig(FIG/"fig4_brier_vs_humidity.png"); plt.close(fig)
 
-def _np(o):
-    if isinstance(o, (np.integer,)): return int(o)
-    if isinstance(o, (np.floating,)): return float(o)
-    if isinstance(o, np.ndarray): return o.tolist()
-    raise TypeError(str(type(o)))
-json.dump(S, open(ROOT/"out/stats.json","w"), ensure_ascii=False, indent=2, default=_np)
-print(json.dumps(S, ensure_ascii=False, indent=2, default=_np))
+json.dump(S, open(ROOT/"out/stats.json","w"), ensure_ascii=False, indent=2, default=np_json)
+print(json.dumps(S, ensure_ascii=False, indent=2, default=np_json))
 print("\nfigs:", [p.name for p in sorted(FIG.glob('*.png'))])

@@ -15,26 +15,12 @@ from scipy import stats
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-RS = np.random.RandomState(42)
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).parent))
+from _stats_utils import perm_corr, residualize, wilson, ci_mean, demean_by, np_json, RS
 ROOT = Path("/home/ubuntu/worldcup-oracle/research/weather_effect")
 m = pd.read_csv(ROOT / "out/matches_weather_halves.csv")
 FIG = ROOT / "figs"
-
-def wilson(k, n, z=1.96):
-    if n == 0: return (np.nan, np.nan, np.nan)
-    p=k/n; d=1+z*z/n; c=(p+z*z/(2*n))/d; h=z*np.sqrt(p*(1-p)/n+z*z/(4*n*n))/d
-    return p, max(0,c-h), min(1,c+h)
-
-def perm_corr(x, y, method="spearman", n=20000):
-    x=np.asarray(x,float); y=np.asarray(y,float)
-    msk=~(np.isnan(x)|np.isnan(y)); x,y=x[msk],y[msk]; k=len(x)
-    if k<5: return np.nan,np.nan,k
-    if method=="spearman": x=stats.rankdata(x); y=stats.rankdata(y)
-    xc=x-x.mean(); yc=y-y.mean(); den=np.sqrt((xc**2).sum()*(yc**2).sum())
-    obs=float((xc*yc).sum()/den) if den>0 else 0.0
-    perms=np.array([RS.permutation(yc) for _ in range(n)])
-    stat=perms@xc/den
-    return obs, float((np.sum(np.abs(stat)>=abs(obs)-1e-12)+1)/(n+1)), k
 
 # 常规时间进球分母
 m["reg2_goals"] = m.h1_goals + m.h2_goals            # 上+下(不含加时)
@@ -97,7 +83,7 @@ ax[1].set(title="Share of matches with a 75'+ goal, by temp",ylabel="Match rate 
 fig.tight_layout(); fig.savefig(FIG/"fig5_fatigue.png"); plt.close(fig)
 
 json.dump(S, open(ROOT/"out/stats_fatigue.json","w"), ensure_ascii=False, indent=2,
-          default=lambda o:int(o) if isinstance(o,np.integer) else float(o) if isinstance(o,np.floating) else o.tolist())
+          default=np_json)
 print(json.dumps(S, ensure_ascii=False, indent=2,
-      default=lambda o:int(o) if isinstance(o,np.integer) else float(o) if isinstance(o,np.floating) else o.tolist()))
+      default=np_json))
 print("\nfig -> fig5_fatigue.png")
