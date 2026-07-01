@@ -1,0 +1,46 @@
+{
+  "n": 71,
+  "temp_vs_altitude": {
+    "rho": -0.084,
+    "p": 0.4876,
+    "note": "正相关=高原偏热, 混杂存在"
+  },
+  "altitude_vs_dist": {
+    "rho": -0.128,
+    "p": 0.2804
+  },
+  "A_baseline_temp_vs_dist": {
+    "rho": -0.314,
+    "p": 0.0087,
+    "n": 71
+  },
+  "A_partial_controlling_altitude": {
+    "r": -0.373,
+    "p": 0.0017,
+    "n": 71
+  },
+  "B_city_fixed_effects": {
+    "r": -0.157,
+    "p": 0.1898,
+    "n": 71,
+    "mean_within_city_temp_sd": 2.63,
+    "note": "只用城内温度波动识别; 城内温差有限->检验力偏低"
+  },
+  "C_exclude_high_altitude": {
+    "excluded_cities": [
+      "Mexico City",
+      "Guadalajara"
+    ],
+    "r": -0.384,
+    "p": 0.0021,
+    "n": 64
+  },
+  "D_multiple_regression_std_beta": {
+    "beta_temp": -0.381,
+    "beta_altitude": -0.286,
+    "r2": 0.168,
+    "note": "标准化系数, 同尺度可比谁贡献大"
+  },
+  "D_slope_temp_km_per_degC_controlling_alt": -0.758,
+  "D_slope_alt_km_per_100m": -0.439
+}

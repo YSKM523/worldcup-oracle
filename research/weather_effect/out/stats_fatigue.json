@@ -1,0 +1,119 @@
+{
+  "n_total": 79,
+  "n_scored": 72,
+  "baseline": {
+    "total_h1": 101,
+    "total_h2": 130,
+    "total_et": 0,
+    "h2_share_overall": 0.563,
+    "late2h_goals": 61,
+    "matches_with_late_goal": 46
+  },
+  "h2_share_vs_weather": {
+    "temp_c": {
+      "stat": -0.138,
+      "p": 0.251,
+      "n": 72
+    },
+    "humidity_pct": {
+      "stat": 0.157,
+      "p": 0.1878,
+      "n": 72
+    },
+    "apparent_c": {
+      "stat": -0.1,
+      "p": 0.3999,
+      "n": 72
+    },
+    "heat_humidity_index": {
+      "stat": 0.1,
+      "p": 0.4065,
+      "n": 72
+    }
+  },
+  "late_share_vs_weather": {
+    "temp_c": {
+      "stat": -0.098,
+      "p": 0.4134,
+      "n": 72
+    },
+    "humidity_pct": {
+      "stat": 0.014,
+      "p": 0.9039,
+      "n": 72
+    },
+    "apparent_c": {
+      "stat": -0.096,
+      "p": 0.4217,
+      "n": 72
+    },
+    "heat_humidity_index": {
+      "stat": -0.036,
+      "p": 0.7609,
+      "n": 72
+    }
+  },
+  "h2_minus_h1_vs_weather": {
+    "temp_c": {
+      "stat": -0.16,
+      "p": 0.1551,
+      "n": 79
+    },
+    "humidity_pct": {
+      "stat": 0.16,
+      "p": 0.1593,
+      "n": 79
+    },
+    "apparent_c": {
+      "stat": -0.115,
+      "p": 0.303,
+      "n": 79
+    },
+    "heat_humidity_index": {
+      "stat": 0.088,
+      "p": 0.4468,
+      "n": 79
+    }
+  },
+  "temp_buckets": {
+    "cool(<22)": {
+      "n_scored": 20,
+      "n": 22,
+      "mean_h2_share": 0.648,
+      "mean_late_share": 0.322,
+      "mean_h2_minus_h1": 1.0,
+      "late_goal_match_rate": 0.682,
+      "late_ci": [
+        0.473,
+        0.836
+      ],
+      "mean_temp": 19.4
+    },
+    "mild(22-27)": {
+      "n_scored": 25,
+      "n": 28,
+      "mean_h2_share": 0.499,
+      "mean_late_share": 0.254,
+      "mean_h2_minus_h1": 0.07,
+      "late_goal_match_rate": 0.536,
+      "late_ci": [
+        0.358,
+        0.705
+      ],
+      "mean_temp": 24.3
+    },
+    "hot(>=27)": {
+      "n_scored": 27,
+      "n": 29,
+      "mean_h2_share": 0.558,
+      "mean_late_share": 0.227,
+      "mean_h2_minus_h1": 0.17,
+      "late_goal_match_rate": 0.552,
+      "late_ci": [
+        0.375,
+        0.716
+      ],
+      "mean_temp": 30.0
+    }
+  }
+}

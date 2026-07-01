@@ -1,0 +1,139 @@
+{
+  "n_matches": 71,
+  "note": "仅小组赛(FIFA PMSR 已发布), 双方合计",
+  "descriptive": {
+    "combined_dist_km": {
+      "min": 202.0,
+      "max": 242.6,
+      "mean": 224.3
+    },
+    "combined_sprint_km": {
+      "min": 29.3,
+      "max": 32.6,
+      "mean": 30.7
+    },
+    "temp_c": {
+      "min": 15.9,
+      "max": 33.2,
+      "mean": 24.7
+    },
+    "humidity_pct": {
+      "min": 29.0,
+      "max": 96.0,
+      "mean": 61.3
+    }
+  },
+  "corr": {
+    "combined_dist_km": {
+      "temp_c": {
+        "rho": -0.314,
+        "p": 0.0092,
+        "n": 71
+      },
+      "humidity_pct": {
+        "rho": -0.116,
+        "p": 0.3308,
+        "n": 71
+      },
+      "apparent_c": {
+        "rho": -0.396,
+        "p": 0.0007,
+        "n": 71
+      },
+      "local_hour": {
+        "rho": 0.209,
+        "p": 0.0822,
+        "n": 71
+      }
+    },
+    "combined_sprint_km": {
+      "temp_c": {
+        "rho": -0.099,
+        "p": 0.41,
+        "n": 71
+      },
+      "humidity_pct": {
+        "rho": -0.212,
+        "p": 0.0744,
+        "n": 71
+      },
+      "apparent_c": {
+        "rho": -0.186,
+        "p": 0.1219,
+        "n": 71
+      },
+      "local_hour": {
+        "rho": -0.066,
+        "p": 0.5842,
+        "n": 71
+      }
+    }
+  },
+  "partial_corr_controlling_goals": {
+    "combined_dist_km": {
+      "temp_c": {
+        "r": -0.303,
+        "p": 0.0102,
+        "n": 71
+      }
+    },
+    "combined_sprint_km": {
+      "temp_c": {
+        "r": -0.11,
+        "p": 0.3649,
+        "n": 71
+      }
+    }
+  },
+  "temp_buckets": {
+    "cool(<22)": {
+      "n": 21,
+      "mean_temp": 19.6,
+      "mean_dist_km": 228.0,
+      "dist_ci": [
+        223.5,
+        232.5
+      ],
+      "mean_sprint_km": 30.8,
+      "sprint_ci": [
+        30.54,
+        31.07
+      ]
+    },
+    "mild(22-27)": {
+      "n": 27,
+      "mean_temp": 24.3,
+      "mean_dist_km": 224.2,
+      "dist_ci": [
+        221.2,
+        227.1
+      ],
+      "mean_sprint_km": 30.6,
+      "sprint_ci": [
+        30.33,
+        30.87
+      ]
+    },
+    "hot(>=27)": {
+      "n": 23,
+      "mean_temp": 29.7,
+      "mean_dist_km": 221.1,
+      "dist_ci": [
+        218.5,
+        223.8
+      ],
+      "mean_sprint_km": 30.65,
+      "sprint_ci": [
+        30.32,
+        30.97
+      ]
+    }
+  },
+  "team_level_dist_vs_temp": {
+    "rho": -0.295,
+    "p": 0.0003,
+    "n": 142,
+    "caveat": "同场两队共享温度, 观测非独立, p 偏乐观"
+  },
+  "slope_dist_per_degC_km": -0.603
+}
