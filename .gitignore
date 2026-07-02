@@ -21,3 +21,15 @@ results/logs/*.log
 # OS
 .DS_Store
 Thumbs.db
+
+# design-sync (claude.ai/design) — staged scripts, build output, machine state
+.ds-sync/
+/ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+web/.ds-styles.css
+web/.ds-tw-input.css
+
+# weather research — isolated OCR venv (numpy 2.x, see research/weather_effect/scripts/11)
+research/weather_effect/.ocr-venv/

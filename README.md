@@ -4,7 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-76%20passed-brightgreen.svg)](#backtest-validation-3-past-world-cups)
 
-An AI system that predicts every aspect of the 2026 FIFA World Cup using **time series foundation models** (Chronos-2, TimesFM 2.5, FlowState), then compares predictions against **Polymarket odds** ($1.9B volume) to find mispriced markets.
+An AI system that predicts every aspect of the 2026 FIFA World Cup using **time series foundation models** (Chronos-2, TimesFM 2.5, FlowState), then compares predictions against **Polymarket odds** ($3.6B volume and counting) to find mispriced markets.
 
 **🔴 Live dashboard: [worldcup-oracle.pages.dev](https://worldcup-oracle.pages.dev)** — per-match win/draw/loss + scoreline predictions for all 104 matches, live group tables, champion odds vs the market, the AI's running track record, and a **weather-research tab** (see below). Rebuilt daily by the in-tournament pipeline; in-play scores stream client-side from ESPN, and in-window Polymarket odds stream **tick-by-tick over the CLOB WebSocket** (order-book midpoints, ~68 msg/s on matchdays, 2s-throttled).
 
@@ -12,7 +12,11 @@ An AI system that predicts every aspect of the 2026 FIFA World Cup using **time 
 
 ---
 
-## Current AI Predictions (TSFM Ensemble)
+## Pre-Tournament AI Predictions (TSFM Ensemble)
+
+> **Snapshot from before kickoff (June 2026).** The tournament is live — for current
+> per-match predictions, standings, champion odds and the AI-vs-market scoreboard, see
+> the **[live dashboard](https://worldcup-oracle.pages.dev)**, rebuilt daily at 06:00 UTC.
 
 | Rank | Team | AI Win % | Polymarket | Edge | Signal |
 |---:|:---|---:|---:|---:|:---|
@@ -40,7 +44,7 @@ An AI system that predicts every aspect of the 2026 FIFA World Cup using **time 
 | 22 | Belgium | 0.5% | 1.9% | -1.4% | — |
 | 23-48 | Others | <0.5% each | — | — | — |
 
-## Biggest Edges: Where AI Disagrees Most with the Market
+## Pre-Tournament Edges: Where AI Disagreed Most with the Market
 
 | Team | AI | Polymarket | Edge | Direction | Kelly | Models Agree | Signal |
 |:---|---:|---:|---:|:---|---:|---:|:---|
@@ -125,30 +129,53 @@ Before trusting the model, we backtested on the 2014, 2018, and 2022 World Cups 
 
 ## Weather Study: Does American Heat Move Results?
 
-A six-angle observational study (`research/weather_effect/`, full write-up in
-[REPORT.md](research/weather_effect/REPORT.md)) tested whether kickoff temperature,
-humidity, and daypart relate to match outcomes across the first 79 completed matches,
-joining Open-Meteo hourly weather, ESPN per-goal timing, and FIFA's official
-post-match running data (71 group-stage PMSR reports parsed).
+A two-round observational study (`research/weather_effect/`, full write-up in
+[REPORT.md](research/weather_effect/REPORT.md)): six angles on the first 81 completed
+matches (v1), then a deep-dive (v2) adding wet-bulb temperature, venue-environment
+stratification, schedule-fatigue controls, coach/tempo/discipline outcomes, and
+player-level OCR of FIFA's post-match reports (953 players, double-validated).
 
-**Headline: heat taxes the players' bodies, but the tax is absorbed before it reaches
-the scoreboard.**
+**Headline: heat visibly taxes players' bodies and reshapes how teams play — but the
+tax is absorbed before it reaches the scoreboard.**
 
-| Angle | Verdict |
+The causal chain, every link measured:
+
+> Humid heat (wet-bulb temp) → **open-air players run less** (ρ=−0.55, p<0.0001;
+> −0.78 km/°C) → **sprint *count* drops** (ρ=−0.49, p=0.002) while **top speed is
+> untouched** → teams **pass instead of run** (passes +0.31, line breaks +0.33, xG flat)
+> → favorites' running edge evaporates (interaction p=0.08) → only a faint upset ripple
+> (p≈0.2) → **no scoreboard alpha**.
+
+| Test | Verdict |
 |:---|:---|
-| ⑥ Physical: apparent temp vs combined running distance | ✅ **ρ=−0.40, p=0.0007** — the study's only Bonferroni-surviving result (~−0.6 km/°C); survives altitude-confound checks (stronger after *excluding* Mexico City/Guadalajara); low-speed sprinting (Zone 4) unaffected |
-| ①④ Upsets / favorite calibration vs heat | ⚠️ Same-direction hints (hot ≥27°C upset 48% vs ~33%) but p≈0.2 — not significant under any definition |
-| ② Total goals vs temp | ❌ ρ=0.01 — nothing |
-| ⑤ Second-half "fatigue collapse" | ❌ Goal timing is *not* pushed later by heat; cool matches are more back-loaded |
-| ③ Kickoff daypart / humidity | ❌ No signal |
+| ★ Open-air: wet-bulb (2h window) vs combined distance | ✅ **ρ=−0.55, p<0.0001** — survives full-study Bonferroni; −0.78 km/°C |
+| ★ **Negative control**: indoor-AC venues (Dallas/Houston/Atlanta) | ✅ Effect **vanishes** (ρ=−0.17, p=0.57) — outdoor temp is meaningless indoors, exactly as causality requires; the v1 all-sample ρ=−0.40 was *diluted* by 14 climate-controlled matches |
+| Altitude / solar radiation / schedule confounds | ✅ All ruled out (effect *strengthens* excluding Mexico City+Guadalajara; radiation ns — it's heat, not sun; temp⊥tournament-day) |
+| Player-level (OCR, n=953, row-sum validated): sprint count / top speed | ✅ Sprint **count** −0.49 (p=0.002); top speed **flat** — heat cuts high-intensity *frequency*, not the single-effort ceiling |
+| Zone-4 sprint distance | ⚠️ **Errata**: v1 claimed "unaffected" — a parsing bug (the regex captured the label's "20–**25** km/h" as the away value). Corrected: also declines (apparent-temp p=0.036) |
+| Mechanism: passes / completed line breaks in open-air heat | ⚠️ Both **rise** (p=0.036/0.024) with xG flat — teams substitute passing for running |
+| Heat × strength (94 team-obs) | ⚠️ Favorites out-run underdogs by +1.4 km in cool matches; the edge **reverses** in humid heat (interaction p=0.08) — the study's best bridge toward the upset layer, not yet significant |
+| Upsets / goals / 2nd-half collapse / daypart / humidity / fouls / substitution timing | ❌ All null (upsets p≈0.2; goals ρ=0.01; goal timing *not* pushed later by heat) |
 
-Both teams slow down together — the game decelerates symmetrically, so strength
-ordering and goal structure barely move. **Weather is therefore *not* used in the
-official predictions.** The dashboard's 天气研究 tab shows the findings, per-match
-kickoff weather (measured for completed, forecast for upcoming), and a clearly-labeled
-*experimental* favorite-probability adjustment (angle-④ calibration slope, positive-part
-James-Stein shrunk to −0.71pp/°C, capped ±3pp) that auto-zeroes if the signal dies as
-the sample grows. Reproduce with scripts `01`–`08` in `research/weather_effect/scripts/`.
+Both teams slow down together and both switch styles together — so strength ordering
+and goal structure barely move. **Weather is therefore *not* used in the official
+predictions.** The dashboard's 天气研究 tab shows the findings, per-match kickoff
+weather (measured for completed, forecast for upcoming), and a clearly-labeled
+*experimental* favorite-probability adjustment (positive-part James-Stein shrunk to
+−0.71pp/°C, capped ±3pp) that auto-zeroes if the signal dies as the sample grows.
+Reproduce with scripts `01`–`10` in `research/weather_effect/scripts/` (`11`–`12`:
+player OCR + heat×strength, optional).
+
+### Prediction-optimization audit (honest no-ops)
+
+Every candidate lever was tested behind the project's walk-forward gates; none shipped:
+market blending (LOO-optimal AI weight = **0** on the 17 dual-quoted matches — PM Brier
+0.350 vs AI 0.497; blending would abandon the experiment), rest-day Elo bump (improves
+2018+2022 knockouts, worsens 2014 → `beats_all=False`, `scripts/run_rest_backtest.py`),
+strength-dependent recalibration (live calibration curve is non-monotone noise), weather
+(above), form momentum and scoreline shape (Phases 2/4). The one mechanism that
+demonstrably works — daily (T, δ) recalibration on realized results — runs
+automatically at 06:00 UTC.
 
 ---
 
@@ -279,11 +306,13 @@ worldcup-oracle/
 ├── visualization/             # Chart generators + dashboard.py (data.json builder)
 ├── web/                       # Next.js dashboard (worldcup-oracle.pages.dev, static export)
 ├── research/
-│   └── weather_effect/        # Weather × results study (REPORT.md + 8 scripts + figs)
-│       ├── REPORT.md          # Full write-up: 6 angles, robustness, honest limits
-│       ├── scripts/           # 01 weather join → … → 07 altitude control → 08 web export
-│       ├── out/               # matches_weather*.csv, stats*.json, fifa_physical.csv
-│       └── figs/              # 7 publication figures (also served on the dashboard)
+│   └── weather_effect/        # Weather × results study, v1+v2 (REPORT.md + 12 scripts)
+│       ├── REPORT.md          # Full write-up: 6 angles + deep-dive ch.5, errata, limits
+│       ├── scripts/           # 01 weather join … 07 altitude · 08 web export
+│       │                      # 09 deep dataset · 10 venue/wet-bulb analysis
+│       │                      # 11 player OCR (isolated venv) · 12 heat×strength
+│       ├── out/               # matches_weather*/deep.csv, player_physical.csv, stats*.json
+│       └── figs/              # 11 publication figures (also served on the dashboard)
 ├── pipeline/
 │   ├── daily_run.py           # Phase A: pre-tournament pipeline
 │   └── matchday_run.py        # Phase B: during-tournament (conditioned re-sim + weather refresh)
