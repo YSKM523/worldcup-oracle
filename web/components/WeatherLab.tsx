@@ -31,7 +31,9 @@ function Verdict({ ok, children }: { ok: boolean | null; children: React.ReactNo
 }
 
 const FIGS: [string, string][] = [
-  ["fig6_physical.png", "★ 双方合计跑动/低速冲刺 vs 开球气温（71 场小组赛，FIFA 官方数据）"],
+  ["fig8_env_stratified.png", "★ v2 环境分层：露天场效应显著 (ρ=−0.45)，空调馆阴性对照消失 (p=0.57)"],
+  ["fig6_physical.png", "双方合计跑动/低速冲刺 vs 开球气温（71 场小组赛，FIFA 官方数据）"],
+  ["fig10_tempo.png", "v2 机制：露天热场传球↑、line breaks↑——「以传代跑」"],
   ["fig7_altitude_control.png", "海拔混杂复核：按海拔着色 + 城市固定效应残差"],
   ["fig2_upset_by_temp.png", "爆冷率按温度分桶（95% Wilson CI）——不显著"],
   ["fig1_goals_vs_temp.png", "总进球 vs 气温——零相关"],
@@ -63,7 +65,7 @@ export function WeatherLabView({ wx }: { wx: WeatherData }) {
           sub="16→33°C 约少跑 10 km；扣比赛节奏后仍显著" />
         <Stat label="低速冲刺 (Zone 4) vs 气温" tone="zinc"
           value={`ρ=${s.sprint_vs_temp.rho}`}
-          sub={`p=${s.sprint_vs_temp.p}——耐力掉、高速输出保住`} />
+          sub={`p=${s.sprint_vs_temp.p}·体感口径 p=0.036——冲刺也随热降(降幅小于总跑动)`} />
         <Stat label="酷热场 (≥27°C) 爆冷率" tone="amber"
           value={`${Math.round((s.upset_buckets["hot(>=27)"]?.upset_rate ?? 0) * 100)}%`}
           sub={`vs 其余约 33%，但 p=${s.upset_partial.p}——不显著`} />
@@ -79,9 +81,13 @@ export function WeatherLabView({ wx }: { wx: WeatherData }) {
       {/* 六角度判词 */}
       <ul className="space-y-1.5 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4">
         <Verdict ok={true}>
-          <b>体能层（角度⑥）</b>：体感温度 ↑ → 合计跑动显著 ↓（ρ={s.dist_vs_apparent.rho}, p={s.dist_vs_apparent.p}）；
-          海拔混杂已复核——控海拔偏相关 r={s.altitude_partial.r}（p={s.altitude_partial.p}），
-          剔除墨西哥城/瓜达拉哈拉后反而更强（r={s.altitude_excl_high.r}）
+          <b>体能层（角度⑥+深挖 v2）</b>：体感温度 ↑ → 合计跑动显著 ↓（ρ={s.dist_vs_apparent.rho}, p={s.dist_vs_apparent.p}）；
+          露天场更强（ρ=−0.45），湿球温度 2h 窗口达 ρ=−0.55（p&lt;0.0001）；
+          <b>空调馆阴性对照通过</b>（达拉斯/休斯顿/亚特兰大室内场效应消失，p=0.57）；海拔混杂已复核
+        </Verdict>
+        <Verdict ok={true}>
+          <b>打法响应（v2 新发现）</b>：露天热场传球更多（ρ=+0.31, p=0.036）、line breaks 更多（p=0.024）而 xG 不变
+          ——高温下球队<b>以传代跑</b>，比赛质量没掉、实现方式变了
         </Verdict>
         <Verdict ok={null}>
           <b>爆冷（角度①④）</b>：酷热场爆冷偏多、favorite 略被高估，但扣实力后

@@ -1,0 +1,134 @@
+{
+  "n": 81,
+  "primary_hypothesis": "H1: 露天场 apparent_c(开球) vs dist_total 负相关; 空调馆为阴性对照",
+  "physical_n_by_env": {
+    "open": 47,
+    "indoor_ac": 14,
+    "roof_canopy": 10
+  },
+  "H1_primary_open_apparent_vs_dist": {
+    "rho": -0.448,
+    "p": 0.0017,
+    "n": 47
+  },
+  "H1_negctrl_indoorac_apparent_vs_dist": {
+    "rho": -0.167,
+    "p": 0.5696,
+    "n": 14
+  },
+  "H1_canopy_apparent_vs_dist": {
+    "rho": -0.535,
+    "p": 0.1152,
+    "n": 10
+  },
+  "H1_all_apparent_vs_dist": {
+    "rho": -0.396,
+    "p": 0.0006,
+    "n": 71
+  },
+  "H1_open_wetbulb_ko": {
+    "rho": -0.542,
+    "p": 0.0001,
+    "n": 47
+  },
+  "H1_open_wetbulb_2h": {
+    "rho": -0.551,
+    "p": 0.0,
+    "n": 47
+  },
+  "H1_open_radiation": {
+    "rho": -0.194,
+    "p": 0.1913,
+    "n": 47
+  },
+  "H1_open_slope_km_per_degC": -0.784,
+  "H1_open_multivariate": {
+    "n": 31,
+    "r2": 0.381,
+    "beta_apparent_c": -0.504,
+    "beta_altitude_m": -0.337,
+    "beta_matchday_mean": 0.277,
+    "beta_rest_days_min": 0.52
+  },
+  "H1_interaction_slope_open_extra_km_per_degC": -0.263,
+  "H2_first_sub_vs_apparent_open": {
+    "rho": 0.062,
+    "p": 0.6619,
+    "n": 52
+  },
+  "H2_subs_by60_vs_apparent_open": {
+    "rho": -0.195,
+    "p": 0.1601,
+    "n": 52
+  },
+  "H2_first_sub_vs_apparent_all": {
+    "rho": 0.031,
+    "p": 0.7835,
+    "n": 81
+  },
+  "H3_delays_vs_wetbulb_open": {
+    "rho": -0.334,
+    "p": 0.015,
+    "n": 52
+  },
+  "H3_delays_by_wetbulb": {
+    "wetbulb>=24": {
+      "n": 18,
+      "mean_delays": 7.33
+    },
+    "wetbulb<24": {
+      "n": 63,
+      "mean_delays": 8.97
+    }
+  },
+  "H4_passes_vs_apparent_open": {
+    "rho": 0.31,
+    "p": 0.0362,
+    "n": 47
+  },
+  "H4_pressures_vs_apparent_open": {
+    "rho": 0.154,
+    "p": 0.2972,
+    "n": 47
+  },
+  "H4_linebreaks_vs_apparent_open": {
+    "rho": 0.331,
+    "p": 0.0237,
+    "n": 47
+  },
+  "H4_zone4_vs_apparent_open": {
+    "rho": -0.337,
+    "p": 0.0192,
+    "n": 47
+  },
+  "H5_fouls_vs_apparent_all": {
+    "rho": -0.11,
+    "p": 0.3235,
+    "n": 81
+  },
+  "H5_cards_vs_apparent_all": {
+    "rho": -0.067,
+    "p": 0.5598,
+    "n": 81
+  },
+  "H7_xg_vs_apparent_open": {
+    "rho": 0.155,
+    "p": 0.2971,
+    "n": 47
+  },
+  "H7_xg_vs_apparent_all": {
+    "rho": 0.071,
+    "p": 0.5575,
+    "n": 71
+  },
+  "diag_apparent_vs_tournamentday": {
+    "rho": 0.081,
+    "p": 0.4733,
+    "n": 81
+  },
+  "diag_apparent_vs_matchday": {
+    "rho": 0.089,
+    "p": 0.4266,
+    "n": 81
+  }
+}

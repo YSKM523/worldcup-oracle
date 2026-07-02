@@ -29,7 +29,8 @@ hrefs = sorted(set(re.findall(r'href="(/media/native/tournaments/fifa-world-cup/
 print(f"发现 {len(hrefs)} 份 PMSR PDF")
 
 DIST = re.compile(r"([\d.]+)\s*km\s*Total Distance Covered\s*([\d.]+)\s*km")
-ZONE4 = re.compile(r"([\d.]+)\s*km\s*Zone 4[^\n]*?([\d.]+)\s*km")
+# 注意: 标签自带 "20-25 km/h", 必须锚过 km/h 再取客队值, 否则会把 25 当成客队距离
+ZONE4 = re.compile(r"([\d.]+)\s*km\s*Zone 4.*?km/h\s*([\d.]+)\s*km")
 FNPAIR = re.compile(r"M\d+[ _-]+([A-Z]{3})[ _-]+[Vv][ _-]+([A-Z]{3})")  # 分隔符 V/v 皆可
 # FIFA 三字码 -> 本项目 df 队名(48 队)
 CODE2NAME = {
