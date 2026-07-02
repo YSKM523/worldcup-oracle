@@ -1,0 +1,47 @@
+{
+  "A_n_team_obs_open": 94,
+  "A_interaction_km_per_degC_extra_for_fav": -0.3188,
+  "A_interaction_perm_p": 0.0816,
+  "A_bucket_mean_dist": {
+    "hot0_fav0": {
+      "mean": 111.63,
+      "n": 39
+    },
+    "hot0_fav1": {
+      "mean": 113.02,
+      "n": 39
+    },
+    "hot1_fav0": {
+      "mean": 110.16,
+      "n": 8
+    },
+    "hot1_fav1": {
+      "mean": 109.64,
+      "n": 8
+    }
+  },
+  "B_n_player_rows": 75,
+  "B_n_team_pages": 5,
+  "B_n_full_teams": 4,
+  "B_open_n": 3,
+  "B_open_zone5_true_sprint_m_vs_wetbulb": {
+    "rho": NaN,
+    "p": NaN,
+    "n": 3
+  },
+  "B_open_sprint_count_vs_wetbulb": {
+    "rho": NaN,
+    "p": NaN,
+    "n": 3
+  },
+  "B_open_top_speed_max_vs_wetbulb": {
+    "rho": NaN,
+    "p": NaN,
+    "n": 3
+  },
+  "B_open_top_speed_mean_vs_wetbulb": {
+    "rho": NaN,
+    "p": NaN,
+    "n": 3
+  }
+}
