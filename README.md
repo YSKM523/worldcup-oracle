@@ -6,7 +6,7 @@
 
 An AI system that predicts every aspect of the 2026 FIFA World Cup using **time series foundation models** (Chronos-2, TimesFM 2.5, FlowState), then compares predictions against **Polymarket odds** ($1.9B volume) to find mispriced markets.
 
-**🔴 Live dashboard: [worldcup-oracle.pages.dev](https://worldcup-oracle.pages.dev)** — per-match win/draw/loss + scoreline predictions for all 104 matches, live group tables, champion odds vs the market, and the AI's running track record. Rebuilt daily by the in-tournament pipeline; in-play scores stream client-side from ESPN.
+**🔴 Live dashboard: [worldcup-oracle.pages.dev](https://worldcup-oracle.pages.dev)** — per-match win/draw/loss + scoreline predictions for all 104 matches, live group tables, champion odds vs the market, the AI's running track record, and a **weather-research tab** (see below). Rebuilt daily by the in-tournament pipeline; in-play scores stream client-side from ESPN, and in-window Polymarket odds stream **tick-by-tick over the CLOB WebSocket** (order-book midpoints, ~68 msg/s on matchdays, 2s-throttled).
 
 **Tournament:** June 11 - July 19, 2026 | **48 teams, 104 matches**
 
@@ -123,6 +123,35 @@ Before trusting the model, we backtested on the 2014, 2018, and 2022 World Cups 
 
 ---
 
+## Weather Study: Does American Heat Move Results?
+
+A six-angle observational study (`research/weather_effect/`, full write-up in
+[REPORT.md](research/weather_effect/REPORT.md)) tested whether kickoff temperature,
+humidity, and daypart relate to match outcomes across the first 79 completed matches,
+joining Open-Meteo hourly weather, ESPN per-goal timing, and FIFA's official
+post-match running data (71 group-stage PMSR reports parsed).
+
+**Headline: heat taxes the players' bodies, but the tax is absorbed before it reaches
+the scoreboard.**
+
+| Angle | Verdict |
+|:---|:---|
+| ⑥ Physical: apparent temp vs combined running distance | ✅ **ρ=−0.40, p=0.0007** — the study's only Bonferroni-surviving result (~−0.6 km/°C); survives altitude-confound checks (stronger after *excluding* Mexico City/Guadalajara); low-speed sprinting (Zone 4) unaffected |
+| ①④ Upsets / favorite calibration vs heat | ⚠️ Same-direction hints (hot ≥27°C upset 48% vs ~33%) but p≈0.2 — not significant under any definition |
+| ② Total goals vs temp | ❌ ρ=0.01 — nothing |
+| ⑤ Second-half "fatigue collapse" | ❌ Goal timing is *not* pushed later by heat; cool matches are more back-loaded |
+| ③ Kickoff daypart / humidity | ❌ No signal |
+
+Both teams slow down together — the game decelerates symmetrically, so strength
+ordering and goal structure barely move. **Weather is therefore *not* used in the
+official predictions.** The dashboard's 天气研究 tab shows the findings, per-match
+kickoff weather (measured for completed, forecast for upcoming), and a clearly-labeled
+*experimental* favorite-probability adjustment (angle-④ calibration slope, positive-part
+James-Stein shrunk to −0.71pp/°C, capped ±3pp) that auto-zeroes if the signal dies as
+the sample grows. Reproduce with scripts `01`–`08` in `research/weather_effect/scripts/`.
+
+---
+
 ## Methodology
 
 ### Architecture
@@ -161,7 +190,10 @@ Historical Matches (49K+ since 1990)
 ### Data Sources
 
 1. **Historical matches**: [martj42/international_results](https://github.com/martj42/international_results) — 49,287 matches since 1872, current through March 2026
-2. **Polymarket**: [Gamma API](https://gamma-api.polymarket.com) — real-time odds from $525M+ prediction market
+2. **Polymarket**: [Gamma API](https://gamma-api.polymarket.com) (markets/metadata, 5-min CDN) + **CLOB WebSocket** (`ws-subscriptions-clob.polymarket.com` — tick-level best bid/ask for in-window matches, rendered as order-book midpoints; public, no key)
+3. **Live results**: ESPN public scoreboard/summary APIs (full-time scores + per-goal timing)
+4. **Weather** (research + dashboard): [Open-Meteo](https://open-meteo.com) archive & forecast APIs — hourly temperature/humidity/apparent temp at each stadium's coordinates, plus the elevation API for altitude controls
+5. **Physical performance** (research): FIFA Training Centre official post-match reports (PMSR PDFs) — team-level running & sprint distance, parsed per match
 
 ### Models (reused from fin-forecast-arena)
 
@@ -206,6 +238,7 @@ Daily at 06:00 UTC (`pipeline/matchday_run.py`):
 - **Model refresh**: TSFM strength forecasts re-run weekly (Mondays); between refreshes each model's Elo is shifted by realized Elo movement: `live = forecast + (actual_now − actual_at_forecast)`
 - **Scoring**: every fixture gets a pre-match probability **and most-likely scoreline** (stored once, never revised); finished matches are Brier-scored, and a running **AI vs Polymarket scoreboard** resolves champion-market probabilities as teams get eliminated for real
 - **Dashboard**: `visualization/dashboard.py` packages everything (per-match ensemble predictions, Poisson scoreline distributions, live group standings, champion edges, track record) into `web/public/data.json`, consumed by a Next.js dashboard (`web/`, static export). The daily run only swaps `data.json` into the prebuilt `web/out` and redeploys to Cloudflare Pages — no rebuild needed; rebuild with `cd web && npm run build` after UI changes
+- **Weather refresh**: before deploy, a best-effort step re-runs the weather research data build (`01` → `02` → `08`) to regenerate `web/public/weather.json` — measured kickoff weather for completed matches, Open-Meteo forecasts for upcoming ones (≤16-day window), updated study stats, and the re-fitted experimental adjustment slope. Failures never block the official pipeline
 - Phase A continues to archive daily odds snapshots but hands predictions/edges over to Phase B for the duration.
 
 ### Match-level predictions
@@ -245,9 +278,15 @@ worldcup-oracle/
 │   └── metrics.py             # Brier score, log loss, calibration
 ├── visualization/             # Chart generators + dashboard.py (data.json builder)
 ├── web/                       # Next.js dashboard (worldcup-oracle.pages.dev, static export)
+├── research/
+│   └── weather_effect/        # Weather × results study (REPORT.md + 8 scripts + figs)
+│       ├── REPORT.md          # Full write-up: 6 angles, robustness, honest limits
+│       ├── scripts/           # 01 weather join → … → 07 altitude control → 08 web export
+│       ├── out/               # matches_weather*.csv, stats*.json, fifa_physical.csv
+│       └── figs/              # 7 publication figures (also served on the dashboard)
 ├── pipeline/
 │   ├── daily_run.py           # Phase A: pre-tournament pipeline
-│   └── matchday_run.py        # Phase B: during-tournament (conditioned re-sim)
+│   └── matchday_run.py        # Phase B: during-tournament (conditioned re-sim + weather refresh)
 ├── tests/                     # 76 tests, all passing
 ├── requirements.txt           # Python dependencies
 └── results/
@@ -285,7 +324,9 @@ This project is licensed under the [MIT License](LICENSE).
 
 - Match data: [martj42/international_results](https://github.com/martj42/international_results)
 - Models: [Amazon Chronos-2](https://github.com/amazon-science/chronos-forecasting), [Google TimesFM](https://github.com/google-research/timesfm), [IBM Granite FlowState](https://huggingface.co/ibm-granite/granite-timeseries-flowstate-r1)
-- Market data: [Polymarket Gamma API](https://gamma-api.polymarket.com)
+- Market data: [Polymarket Gamma API](https://gamma-api.polymarket.com) + CLOB WebSocket
+- Weather data: [Open-Meteo](https://open-meteo.com) (archive, forecast & elevation APIs)
+- Physical performance data: [FIFA Training Centre](https://www.fifatrainingcentre.com) post-match summary reports
 
 ---
 
