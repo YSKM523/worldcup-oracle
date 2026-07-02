@@ -284,10 +284,16 @@ export interface PolyMatchOdds {
   home: number;
   draw: number;
   away: number;
+  /** "ws" = CLOB WebSocket 逐笔中间价; "gamma" = 5 分钟 CDN 轮询last价 */
+  src?: "ws" | "gamma";
+  /** epoch ms of the last update for this match */
+  ts?: number;
 }
 export interface PolyLive {
   champion: Record<string, number>; // team → raw Yes price
   matches: Record<string, PolyMatchOdds>; // kickoff epoch (s) → W/D/L prices
   championFresh: boolean;
   updatedAt: number | null; // epoch ms of last successful poll
+  /** CLOB WebSocket 当前是否在线（实时推送生效中） */
+  wsConnected: boolean;
 }

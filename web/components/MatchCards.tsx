@@ -201,17 +201,33 @@ function ResultLine({ m }: { m: Match }) {
   );
 }
 
-/** Polymarket per-match decimal odds (W/D/L). Live when fresh, else snapshot. */
+/** Polymarket per-match decimal odds (W/D/L). WS mid-price when streaming, else gamma/snapshot. */
 function MarketOdds({ m, poly }: { m: Match; poly: PolyLive }) {
   const live = poly.matches[kickoffEpoch(m.kickoff_utc)];
   const snap = m.market;
   const prices = live ?? (snap ? { home: snap.home, draw: snap.draw, away: snap.away } : null);
   if (!prices) return null;
+  const isWs = live?.src === "ws" && live.ts != null && Date.now() - live.ts < 120e3;
   return (
     <div className="mt-2 flex items-center gap-x-4 gap-y-1 text-[11px] text-zinc-500">
-      <span className="inline-flex items-center gap-1 text-zinc-600">
-        {live && <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />}
-        Polymarket 赔率
+      <span
+        className="inline-flex items-center gap-1 text-zinc-600"
+        title={
+          isWs
+            ? "CLOB WebSocket 逐笔推送 · 订单簿中间价"
+            : live
+              ? "Gamma API 5 分钟快照 · 最新成交价"
+              : "每日构建时的快照价"
+        }
+      >
+        {live && (
+          <span
+            className={`inline-block h-1.5 w-1.5 rounded-full ${
+              isWs ? "live-dot bg-emerald-400" : "bg-zinc-600"
+            }`}
+          />
+        )}
+        Polymarket {isWs ? <b className="font-semibold text-emerald-400">实时</b> : "赔率"}
       </span>
       <span className="tabular-nums">
         主 <b className="text-zinc-300">{oddsFmt(prices.home)}</b>
