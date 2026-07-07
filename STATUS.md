@@ -5,9 +5,11 @@
 > 部署：`python visualization/dashboard.py`（内部 `wrangler pages deploy`）
 > 自动化 cron：每日 08:00 UTC `pipeline/daily_run.py`（Phase A）；赛日 06:00 UTC `pipeline/matchday_run.py`（6/11–30、7/1–20）
 
-_最后更新：2026-07-06_
+_最后更新：2026-07-07_
 
 ## 当前状态
+- **2026-07-07 git 清理 + 提交**：本轮所有源码已落两个 commit（`7be3d5e` git 卫生：脱管 `results/{edges,predictions,simulations,evaluations,calibration}` 中间产物 + gitignore `collector/ticks.db`(1.8G)/WAL/log/`.design-sync/`；`15dbff7` feat：mission-control 看板 + 场内模型 + 实时盘口/统计 + `collector.py`）。工作树现干净。**未 push、未新部署**（线上已是最新）。以下历史条目里的"未 commit"均已作废。
+- ⚠️ `results/{edges,predictions,simulations,evaluations,calibration}` 与 `collector/ticks.db` 现已脱离版本控制（可重算/太大），文件仍在工作树；`results/plots/*.png`(发布图) 与 `web/public/{data,weather}.json`+`research/*.png`(部署运行输入) 仍追踪。
 - **2026-07-06 前端大改版（未 commit / 未部署）：移动优先窄栏 tab 站 → 单屏「控制室」看板（Mission Control）**。为 27/32 寸大屏设计，**一屏铺满不滚动**（实测 2560×1440 / 3840×2160 / 1920×1080 / 1440×900 均 0px 滚动溢出）；手机 <1280px 自动降级成可滚动单列堆叠。视觉=数据终端风（等宽 tabular 数字、发丝网格边框、角落 registration marks、01/02/03 分区索引、单一实时脉冲=WS 绿点+走时 UTC 时钟；**纯色无渐变**）。
   - 三栏布局：左 `01 AI PERFORMANCE`（KPI+近期战绩格+校准）· 中 `02 MATCHDAY` 焦点 hero 卡（概率条/比分候选/xG/模型分歧/盘口+edge/H2H/AI 短评）+ NEXT UP 后续淘汰赛 · 右 `03 CHAMPION RACE`（AI绿 vs 市场琥珀双条+edge 旗标）。深度内容（完整战绩/小组积分/天气研究/夺冠全表/单场详情）收进 **overlay drawer**（Esc/背景关，复用既有 Views/MatchCards/WeatherLab，故主屏永不滚动）。
   - 新增 `web/components/Dashboard.tsx`；改写 `web/app/page.tsx`（只留数据 hook + `<Dashboard>`）、`web/app/globals.css`（终端设计系统 tokens）、`web/app/layout.tsx`（去掉 zinc bg）。旧 `Views.tsx`/`MatchCards.tsx`/`MatchDetail.tsx` 保留（drawer 复用）。`npm run build` ✅ + Playwright 无头多分辨率实测 ✅（0 console error）。
