@@ -202,9 +202,11 @@ function TopBar({ data, poly }: { data: Data; poly: PolyLive }) {
 function PerformancePanel({
   data,
   onOpen,
+  className,
 }: {
   data: Data;
   onOpen: () => void;
+  className?: string;
 }) {
   const p = data.performance;
   const me = data.meta.match_edge;
@@ -235,6 +237,7 @@ function PerformancePanel({
     <Panel
       idx="01"
       title="AI PERFORMANCE"
+      className={className}
       aside={<span className="lbl lbl-faint">{p.n_scored} SCORED</span>}
     >
       <div className="flex h-full flex-col gap-3 p-3">
@@ -793,11 +796,13 @@ function MatchdayPanel({
   live,
   poly,
   onOpenMatch,
+  className,
 }: {
   data: Data;
   live: LiveMap;
   poly: PolyLive;
   onOpenMatch: (m: Match) => void;
+  className?: string;
 }) {
   // Center shows ONLY unfinished fixtures (upcoming or in-play). Completed
   // matches are hidden entirely — no FT cards here. We deliberately ignore
@@ -828,6 +833,7 @@ function MatchdayPanel({
     <Panel
       idx="02"
       title="MATCHDAY 焦点赛程"
+      className={className}
       aside={
         focusDay ? (
           <span className="mono text-[11px]" style={{ color: "var(--mkt)" }}>
@@ -935,10 +941,12 @@ function ChampionPanel({
   data,
   poly,
   onOpen,
+  className,
 }: {
   data: Data;
   poly: PolyLive;
   onOpen: () => void;
+  className?: string;
 }) {
   const rows = data.champions.filter((c) => c.ai > 0.0005 || c.market > 0.0005);
   const liveRaw = poly.championFresh ? poly.champion : null;
@@ -953,6 +961,7 @@ function ChampionPanel({
     <Panel
       idx="03"
       title="CHAMPION RACE 夺冠概率"
+      className={className}
       aside={
         <>
           <span className="flex items-center gap-1">
@@ -1266,18 +1275,36 @@ export function Dashboard({
   if (!data) return <BootLoader error={error} />;
 
   return (
-    <div className="flex min-h-dvh flex-col gap-2 p-2 xl:grid xl:h-dvh xl:grid-rows-[auto_minmax(0,1fr)_auto] xl:gap-2 xl:overflow-hidden">
+    <div className="dash-root flex min-h-dvh flex-col gap-2 p-2 lg:grid lg:h-dvh lg:grid-rows-[auto_minmax(0,1fr)_auto] lg:gap-2 lg:overflow-hidden">
       <TopBar data={data} poly={poly} />
 
-      <div className="grid min-h-0 grid-cols-1 gap-2 xl:grid-cols-[minmax(300px,20%)_minmax(0,1fr)_minmax(340px,27%)]">
-        <PerformancePanel data={data} onOpen={() => setDrawer({ kind: "record" })} />
+      {/*
+        Responsive tiers:
+          • phone  (<768px): single column, natural scroll — MATCHDAY first.
+          • tablet (768–1023px): two columns — MATCHDAY spans the top row,
+            PERFORMANCE + CHAMPION share the row beneath it.
+          • desktop (≥1024px): the three-column fill-screen mission-control grid.
+        order-* handles the mobile/tablet reflow; lg:* restores DOM order.
+      */}
+      <div className="grid min-h-0 grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-[minmax(240px,21%)_minmax(0,1fr)_minmax(310px,26%)]">
+        <PerformancePanel
+          data={data}
+          onOpen={() => setDrawer({ kind: "record" })}
+          className="order-2 lg:order-none"
+        />
         <MatchdayPanel
           data={data}
           live={live}
           poly={poly}
           onOpenMatch={(m) => setDrawer({ kind: "match", m })}
+          className="order-1 md:col-span-2 lg:order-none lg:col-span-1"
         />
-        <ChampionPanel data={data} poly={poly} onOpen={() => setDrawer({ kind: "champions" })} />
+        <ChampionPanel
+          data={data}
+          poly={poly}
+          onOpen={() => setDrawer({ kind: "champions" })}
+          className="order-3 lg:order-none"
+        />
       </div>
 
       <Ticker data={data} onNav={(v) => setDrawer({ kind: v })} />

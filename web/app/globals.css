@@ -117,11 +117,20 @@ body {
   min-height: 0;
   overflow: visible;
 }
-@media (min-width: 1280px) {
+/* Panels get their own inner scroll once the dashboard locks to a single
+   fill-screen grid. That lock now starts at lg (1024px), so inner-scroll must
+   start there too — otherwise 1024–1279px viewports clip panel overflow. */
+@media (min-width: 1024px) {
   .panel-body {
     overflow-y: auto;
   }
 }
+
+/* At ≥1024px the dashboard locks to a single fill-screen grid: TopBar/Ticker
+   are fixed rows, the middle row is bounded (minmax(0,1fr)), and each panel-body
+   scrolls its own overflow. This holds even on short landscape laptops
+   (e.g. 1366×768) — columns scroll internally, so nothing is clipped and the
+   page itself never scrolls. Tall desktops simply need no inner scroll. */
 
 /* ── Bars ───────────────────────────────────────────────────── */
 .bar-track {
