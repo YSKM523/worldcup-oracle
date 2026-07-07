@@ -214,6 +214,23 @@ function PerformancePanel({
   const brier = p.mean_brier != null ? p.mean_brier.toFixed(3).replace(/^0/, "") : "—";
   const brierBar = p.mean_brier != null ? Math.min(1, p.mean_brier / 0.667) : 0;
 
+  // per-stage winner hit-rate, computed from the real scored ledger
+  const STAGE_ORDER = ["group", "r32", "r16", "qf", "sf", "third", "final"];
+  const stageAcc = (() => {
+    const acc: Record<string, { hit: number; n: number }> = {};
+    for (const d of p.details) {
+      const s = (acc[d.stage] ??= { hit: 0, n: 0 });
+      s.n += 1;
+      if (d.winner_hit) s.hit += 1;
+    }
+    return STAGE_ORDER.filter((s) => acc[s]?.n).map((s) => ({
+      stage: s,
+      hit: acc[s].hit,
+      n: acc[s].n,
+      rate: acc[s].hit / acc[s].n,
+    }));
+  })();
+
   return (
     <Panel
       idx="01"
@@ -289,6 +306,35 @@ function PerformancePanel({
           )}
         </div>
 
+        {/* per-stage hit-rate — real ledger, fills the column with signal */}
+        {stageAcc.length > 1 && (
+          <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-3">
+            <div className="lbl mb-2">分阶段判对率 BY STAGE</div>
+            <div className="space-y-1.5">
+              {stageAcc.map((s) => (
+                <div key={s.stage} className="flex items-center gap-2">
+                  <span className="lbl lbl-faint w-16 shrink-0">{STAGE_ZH[s.stage] ?? s.stage}</span>
+                  <div className="bar-track flex-1" style={{ height: 5 }}>
+                    <div
+                      className="bar-fill"
+                      style={{ width: `${s.rate * 100}%`, background: "var(--up)" }}
+                    />
+                  </div>
+                  <span
+                    className="mono w-16 shrink-0 text-right text-[11px]"
+                    style={{ color: "var(--ink-dim)" }}
+                  >
+                    {(s.rate * 100).toFixed(0)}%{" "}
+                    <span style={{ color: "var(--ink-faint)" }}>
+                      {s.hit}/{s.n}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* recent verdicts strip */}
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="mb-2 flex items-center justify-between">
@@ -298,7 +344,7 @@ function PerformancePanel({
             </button>
           </div>
           <div className="flex flex-wrap gap-1">
-            {p.details.slice(0, 24).map((d, i) => (
+            {p.details.slice(0, 48).map((d, i) => (
               <span
                 key={i}
                 title={`${zh(d.home)} ${d.score} ${zh(d.away)} · ${STAGE_ZH[d.stage] ?? d.stage} · ${d.winner_hit ? "判对" : "判错"}`}
@@ -332,8 +378,25 @@ function PerformancePanel({
           )}
         </div>
 
+        {/* model ensemble roster — the models behind every call */}
+        <div
+          className="mono flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--line)] pt-2.5 text-[10px]"
+          style={{ color: "var(--ink-faint)" }}
+        >
+          <span className="lbl lbl-faint">ENSEMBLE</span>
+          {data.meta.models.map((mdl) => (
+            <span
+              key={mdl}
+              className="rounded-[3px] border border-[var(--line)] px-1.5 py-0.5"
+              style={{ color: "var(--ink-dim)" }}
+            >
+              {mdl}
+            </span>
+          ))}
+        </div>
+
         {cal && (Math.abs(cal.T - 1) > 0.02 || Math.abs(cal.delta) > 0.02) && (
-          <div className="mono border-t border-[var(--line)] pt-2.5 text-[10px]" style={{ color: "var(--ink-faint)" }}>
+          <div className="mono border-t-0 pt-1 text-[10px]" style={{ color: "var(--ink-faint)" }}>
             CALIB · T={cal.T.toFixed(2)}
             {cal.delta > 0 ? ` · DRAW+${cal.delta.toFixed(2)}` : ""} · n={cal.n_wc}
           </div>
@@ -622,17 +685,64 @@ function TodayCard({
           })()}
         </div>
       )}
-      {finished && m.locked && (
-        <div className="mono mt-2.5 text-[11px]" style={{ color: "var(--ink-dim)" }}>
-          赛前预测{" "}
-          {ko
-            ? `${zh(m.locked.p_home >= m.locked.p_away ? m.home : m.away)} 晋级`
-            : `${["主胜", "平", "客胜"][[m.locked.p_home, m.locked.p_draw, m.locked.p_away].indexOf(Math.max(m.locked.p_home, m.locked.p_draw, m.locked.p_away))]}`}
-          {m.locked.brier != null && (
-            <span style={{ color: "var(--ink-faint)" }}>　Brier {m.locked.brier.toFixed(3)}</span>
-          )}
-        </div>
-      )}
+      {finished && m.locked && (() => {
+        const lk = m.locked;
+        const hs = m.home_score ?? lv?.home_score;
+        const as = m.away_score ?? lv?.away_score;
+        const probs = [lk.p_home, lk.p_draw, lk.p_away];
+        const aiIdx = probs.indexOf(Math.max(...probs));
+        const aiLbl = ["主胜", "平局", "客胜"][aiIdx];
+        // decided in regulation → unambiguous verdict; equal score (pens) → don't force a call
+        const decided = hs != null && as != null && hs !== as;
+        const hit = decided ? aiIdx === (hs! > as! ? 0 : 2) : null;
+        return (
+          <div className="mt-3 space-y-2.5 border-t border-[var(--line)] pt-3">
+            <div className="space-y-1.5">
+              <ProbBar
+                segs={[
+                  { w: lk.p_home, color: "var(--up)" },
+                  { w: lk.p_draw, color: "var(--neutral)" },
+                  { w: lk.p_away, color: "var(--down)" },
+                ]}
+              />
+              <div
+                className="mono flex justify-between text-[10px]"
+                style={{ color: "var(--ink-faint)" }}
+              >
+                <span>赛前 主 {pct(lk.p_home)}</span>
+                <span>平 {pct(lk.p_draw)}</span>
+                <span>{pct(lk.p_away)} 客</span>
+              </div>
+            </div>
+            <div
+              className="mono flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]"
+              style={{ color: "var(--ink-dim)" }}
+            >
+              <span>
+                AI 预测 <b style={{ color: "var(--ink)" }}>{aiLbl}</b>
+                {lk.pred_score && (
+                  <span style={{ color: "var(--ink-faint)" }}> · 比分 {lk.pred_score}</span>
+                )}
+              </span>
+              {hit != null && (
+                <span
+                  className="rounded-[3px] px-1.5 py-0.5 text-[10px] font-bold"
+                  style={{
+                    color: hit ? "var(--up)" : "var(--down)",
+                    background: hit ? "var(--up-soft)" : "var(--down-soft)",
+                  }}
+                >
+                  {hit ? "判对" : "判错"}
+                </span>
+              )}
+              {!decided && <span className="lbl lbl-faint">点球决胜</span>}
+              {lk.brier != null && (
+                <span style={{ color: "var(--ink-faint)" }}>Brier {lk.brier.toFixed(3)}</span>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </button>
   );
 }
@@ -689,27 +799,39 @@ function MatchdayPanel({
   poly: PolyLive;
   onOpenMatch: (m: Match) => void;
 }) {
-  const md = data.meta.matchday;
-  const focus = data.matches.filter(
-    (m) => !m.tbd && md && venueDayKey(m.kickoff_utc) === md
-  );
-  const upcoming = data.matches
-    .filter(
-      (m) =>
-        !m.completed &&
-        !m.tbd &&
-        (!md || venueDayKey(m.kickoff_utc) > md)
-    )
+  // Center shows ONLY unfinished fixtures (upcoming or in-play). Completed
+  // matches are hidden entirely — no FT cards here. We deliberately ignore
+  // data.meta.matchday (it lags on the last *played* day, e.g. it stays on 07-06
+  // after those games finish); the focus day is derived from the earliest match
+  // that hasn't finished, so the panel rolls forward on its own once a day's
+  // games are all played. The earliest unfinished day fills the focus cards;
+  // anything later drops to NEXT UP.
+  // "Finished" must consider BOTH the static pipeline flag (m.completed, which
+  // lags) AND the live ESPN feed (live[id].completed) — a match can be FT on the
+  // wire while data.json still says false. Filter on the live-aware status so a
+  // just-finished game disappears from the focus immediately.
+  const isFinished = (m: Match) => m.completed || live[m.espn_id]?.completed;
+  const notFinished = data.matches
+    .filter((m) => !m.tbd && !isFinished(m))
     .sort((a, b) => a.kickoff_utc.localeCompare(b.kickoff_utc));
+  const focusDay = notFinished.length
+    ? venueDayKey(notFinished[0].kickoff_utc)
+    : null;
+  const focusCards = notFinished.filter(
+    (m) => venueDayKey(m.kickoff_utc) === focusDay
+  );
+  const nextUp = notFinished.filter(
+    (m) => venueDayKey(m.kickoff_utc) !== focusDay
+  );
 
   return (
     <Panel
       idx="02"
       title="MATCHDAY 焦点赛程"
       aside={
-        md ? (
+        focusDay ? (
           <span className="mono text-[11px]" style={{ color: "var(--mkt)" }}>
-            {dayLabel(md)}
+            {dayLabel(focusDay)}
           </span>
         ) : (
           <span className="lbl lbl-faint">赛事收官</span>
@@ -718,23 +840,23 @@ function MatchdayPanel({
     >
       <div className="flex h-full flex-col">
         <div className="flex min-h-0 flex-1 flex-col justify-evenly gap-3 overflow-y-auto p-3">
-          {focus.length ? (
-            focus.map((m) => (
+          {focusCards.length ? (
+            focusCards.map((m) => (
               <TodayCard key={m.espn_id} m={m} live={live} poly={poly} onOpen={onOpenMatch} />
             ))
           ) : (
             <div className="mono py-6 text-center text-[12px]" style={{ color: "var(--ink-faint)" }}>
-              本期无新焦点场 — 见后续赛程
+              赛事收官 — 感谢关注
             </div>
           )}
         </div>
-        {upcoming.length > 0 && (
+        {nextUp.length > 0 && (
           <div className="flex-none border-t border-[var(--line)]">
             <div className="flex items-center justify-between px-3 py-2">
-              <span className="lbl">NEXT UP 后续淘汰赛</span>
-              <span className="lbl lbl-faint">{upcoming.length} 场</span>
+              <span className="lbl">NEXT UP 后续赛程</span>
+              <span className="lbl lbl-faint">{nextUp.length} 场</span>
             </div>
-            {upcoming.slice(0, 6).map((m) => (
+            {nextUp.slice(0, 6).map((m) => (
               <NextUpRow key={m.espn_id} m={m} onOpen={onOpenMatch} />
             ))}
           </div>
@@ -822,6 +944,11 @@ function ChampionPanel({
   const liveRaw = poly.championFresh ? poly.champion : null;
   const liveSum = liveRaw ? Object.values(liveRaw).reduce((a, b) => a + b, 0) : 0;
   const maxP = Math.max(rows[0]?.ai ?? 0.01, rows[0]?.market ?? 0.01);
+  // biggest AI-vs-market divergences — fills the tail as the field narrows
+  const edgeLeaders = rows
+    .filter((c) => c.edge && Math.abs(c.edge.edge_pct) >= 1)
+    .sort((a, b) => Math.abs(b.edge!.edge_pct) - Math.abs(a.edge!.edge_pct))
+    .slice(0, 3);
   return (
     <Panel
       idx="03"
@@ -846,8 +973,8 @@ function ChampionPanel({
       }
     >
       <div className="flex h-full flex-col">
-        <div className="min-h-0 flex-1">
-          {rows.slice(0, 16).map((c, i) => (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {rows.slice(0, 20).map((c, i) => (
             <ChampionRow
               key={c.team}
               c={c}
@@ -858,9 +985,30 @@ function ChampionPanel({
             />
           ))}
         </div>
+        {edgeLeaders.length > 0 && (
+          <div className="flex-none border-t border-[var(--line)] bg-[var(--panel-2)] p-3">
+            <div className="lbl mb-2">最大分歧 AI vs 市场</div>
+            <div className="space-y-2">
+              {edgeLeaders.map((c) => (
+                <div key={c.team} className="flex items-center gap-2">
+                  <Flag name={c.team} className="h-3.5 w-5 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate text-[12px]">{zh(c.team)}</span>
+                  <span className="mono shrink-0 text-[10px]" style={{ color: "var(--ink-faint)" }}>
+                    AI {pct(c.ai, 1)} · 市 {pct(c.market, 1)}
+                  </span>
+                  <EdgeFlag
+                    dir={c.edge!.direction}
+                    strong={c.edge!.strength === "STRONG EDGE"}
+                    txt={`${c.edge!.edge_pct > 0 ? "+" : ""}${c.edge!.edge_pct.toFixed(1)}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <button
           onClick={onOpen}
-          className="lbl border-t border-[var(--line)] py-2.5 text-center transition-colors hover:text-[var(--ink)]"
+          className="lbl flex-none border-t border-[var(--line)] py-2.5 text-center transition-colors hover:text-[var(--ink)]"
         >
           全部 {rows.length} 队 · 分阶段概率 →
         </button>
