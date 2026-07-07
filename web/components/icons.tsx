@@ -60,21 +60,29 @@ export function StarIcon({ className = "h-3 w-3" }: IconProps) {
   );
 }
 
-/** Minimal football mark for the wordmark / favicon. */
+/** World Cup trophy mark for the wordmark / favicon. */
 export function LogoMark({ className = "h-5 w-5" }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
-      <circle cx="12" cy="12" r="9.25" stroke="currentColor" strokeWidth="1.5" />
+      {/* handles */}
       <path
-        d="M12 7.4l3.4 2.5-1.3 4h-4.2l-1.3-4z"
-        fill="currentColor"
-      />
-      <path
-        d="M12 7.4V3.5M15.4 9.9l3.4-1.2M14.1 13.9l2.3 3.1M9.9 13.9l-2.3 3.1M8.6 9.9L5.2 8.7"
+        d="M7 5.2H4.3c0 3 1.3 4.3 3.1 4.5M17 5.2h2.7c0 3-1.3 4.3-3.1 4.5"
         stroke="currentColor"
         strokeWidth="1.3"
         strokeLinecap="round"
       />
+      {/* cup bowl */}
+      <path d="M6.4 3.6h11.2v4.1a5.6 5.6 0 0 1-11.2 0z" fill="currentColor" />
+      {/* globe seam carved out of the cup */}
+      <path
+        d="M9 5.4c2 1.3 4 1.3 6 0"
+        stroke="#08090b"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+      />
+      {/* stem + base */}
+      <path d="M12 13v3.3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      <path d="M9 16.6h6l1 3.4H8z" fill="currentColor" />
     </svg>
   );
 }

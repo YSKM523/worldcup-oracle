@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { CheckIcon, Flag, StarIcon, XIcon } from "@/components/icons";
+import { MatchDetail } from "@/components/MatchDetail";
 import type { FormEntry, LiveMap, Match, MatchWeather, Meta, PolyLive, WeatherData } from "@/lib/types";
 import {
   KO_STAGES,
@@ -201,14 +203,17 @@ function ResultLine({ m }: { m: Match }) {
   );
 }
 
-/** Polymarket per-match decimal odds (W/D/L). WS mid-price when streaming, else gamma/snapshot. */
-function MarketOdds({ m, poly }: { m: Match; poly: PolyLive }) {
+/** Polymarket per-match decimal odds (W/D/L). WS mid-price when streaming, else gamma/snapshot.
+ *  `hideBook` suppresses the inline 盘口 toggle (used when the book has its own pane). */
+function MarketOdds({ m, poly, hideBook }: { m: Match; poly: PolyLive; hideBook?: boolean }) {
+  const [showBook, setShowBook] = useState(false);
   const live = poly.matches[kickoffEpoch(m.kickoff_utc)];
   const snap = m.market;
   const prices = live ?? (snap ? { home: snap.home, draw: snap.draw, away: snap.away } : null);
   if (!prices) return null;
   const isWs = live?.src === "ws" && live.ts != null && Date.now() - live.ts < 120e3;
   return (
+    <>
     <div className="mt-2 flex items-center gap-x-4 gap-y-1 text-[11px] text-zinc-500">
       <span
         className="inline-flex items-center gap-1 text-zinc-600"
@@ -256,7 +261,23 @@ function MarketOdds({ m, poly }: { m: Match; poly: PolyLive }) {
           </span>
         );
       })()}
+      {!hideBook && snap?.slug && (
+        <button
+          onClick={() => setShowBook((v) => !v)}
+          className={`ml-auto shrink-0 rounded-md border px-1.5 py-px font-medium transition-colors ${
+            showBook
+              ? "border-zinc-600 bg-zinc-800 text-zinc-200"
+              : "border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300"
+          }`}
+        >
+          盘口 {showBook ? "▴" : "▾"}
+        </button>
+      )}
     </div>
+    {!hideBook && showBook && snap?.slug && (
+      <MatchDetail slug={snap.slug} kickoffUtc={m.kickoff_utc} home={m.home} away={m.away} />
+    )}
+    </>
   );
 }
 
@@ -387,12 +408,14 @@ export function FocusCard({
   live,
   poly,
   weather,
+  hideBook,
 }: {
   m: Match;
   meta: Meta;
   live: LiveMap;
   poly: PolyLive;
   weather?: WeatherData | null;
+  hideBook?: boolean;
 }) {
   const p = m.pred;
   const d = m.detail;
@@ -469,7 +492,7 @@ export function FocusCard({
           </div>
 
           <ModelRow m={m} meta={meta} />
-          <MarketOdds m={m} poly={poly} />
+          <MarketOdds m={m} poly={poly} hideBook={hideBook} />
           <WeatherLabLine m={m} w={wx} />
         </div>
       ) : null}

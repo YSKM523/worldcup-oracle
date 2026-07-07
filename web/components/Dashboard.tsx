@@ -1,0 +1,1175 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { CheckIcon, Flag, LogoMark, StarIcon, XIcon } from "@/components/icons";
+import { FocusCard } from "@/components/MatchCards";
+import { LiveStats } from "@/components/LiveStats";
+import { MatchDetail } from "@/components/MatchDetail";
+import { ChampionsView, GroupsView, RecordView } from "@/components/Views";
+import { WeatherLabView } from "@/components/WeatherLab";
+import type {
+  Champion,
+  Data,
+  LiveMap,
+  Match,
+  Meta,
+  PolyLive,
+  WeatherData,
+} from "@/lib/types";
+import {
+  KO_STAGES,
+  STAGE_ZH,
+  fmtTime,
+  kickoffEpoch,
+  liveEdge,
+  oddsFmt,
+  pct,
+  venueDayKey,
+  zh,
+} from "@/lib/wc";
+
+/* ── tiny utilities ─────────────────────────────────────────── */
+
+const engCode = (name: string) => name.toUpperCase();
+
+/** Ticking clock for the header live readout. */
+function useClock() {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
+const utcClock = (d: Date | null) =>
+  d
+    ? `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}:${String(d.getUTCSeconds()).padStart(2, "0")}`
+    : "--:--:--";
+
+const syncStamp = (iso: string) => {
+  const d = new Date(iso);
+  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+};
+
+const dayLabel = (key: string) => {
+  const [y, mo, da] = key.split("-").map(Number);
+  const wd = "日一二三四五六"[new Date(y, mo - 1, da).getDay()];
+  return `${String(mo).padStart(2, "0")}-${String(da).padStart(2, "0")} · 周${wd}`;
+};
+
+/* ── shared bits ────────────────────────────────────────────── */
+
+function Panel({
+  idx,
+  title,
+  aside,
+  children,
+  className = "",
+}: {
+  idx: string;
+  title: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`panel reveal ${className}`}>
+      <div className="panel-head">
+        <span className="lbl lbl-faint">{idx}</span>
+        <span className="lbl" style={{ color: "var(--ink)" }}>
+          {title}
+        </span>
+        <div className="ml-auto flex items-center gap-3">{aside}</div>
+      </div>
+      <div className="panel-body">{children}</div>
+    </section>
+  );
+}
+
+const Div = () => <span className="h-3 w-px bg-[var(--line-strong)]" />;
+
+function EdgeFlag({
+  dir,
+  strong,
+  txt,
+}: {
+  dir: "BUY" | "SELL";
+  strong?: boolean;
+  txt: string;
+}) {
+  const buy = dir === "BUY";
+  return (
+    <span
+      className="mono inline-flex shrink-0 items-center gap-0.5 rounded-[3px] border px-1 text-[10px] font-bold leading-[14px]"
+      style={{
+        color: buy ? "var(--up)" : "var(--down)",
+        borderColor: buy ? "rgba(52,211,153,.32)" : "rgba(251,113,133,.32)",
+        background: buy ? "var(--up-soft)" : "var(--down-soft)",
+      }}
+    >
+      {strong && <StarIcon className="h-2.5 w-2.5" />}
+      {txt}
+    </span>
+  );
+}
+
+/* ═══════════════════════ TOP BAR ═══════════════════════════ */
+
+function TopBar({ data, poly }: { data: Data; poly: PolyLive }) {
+  const now = useClock();
+  const m = data.meta;
+  const prog = m.n_matches ? m.n_completed / m.n_matches : 0;
+  const ws = poly.wsConnected;
+  return (
+    <header className="panel reveal flex-none">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-3.5 py-2.5">
+        <div className="flex items-center gap-2.5">
+          <span style={{ color: "var(--up)" }}>
+            <LogoMark className="h-5 w-5" />
+          </span>
+          <div className="leading-none">
+            <div
+              className="text-[15px] font-bold tracking-[0.16em]"
+              style={{ fontFamily: "var(--mono)" }}
+            >
+              WORLDCUP<span style={{ color: "var(--up)" }}>·</span>ORACLE
+            </div>
+            <div className="lbl mt-1" style={{ fontSize: 10 }}>
+              FIFA 2026 // AI × POLYMARKET
+            </div>
+          </div>
+        </div>
+
+        <div className="hidden items-center gap-2.5 md:flex">
+          <span className="lbl lbl-faint">SIM</span>
+          <span className="mono text-[12px] font-semibold">
+            {m.n_completed}
+            <span style={{ color: "var(--ink-faint)" }}>/{m.n_matches}</span>
+          </span>
+          <div className="h-1 w-16 rounded-sm bg-[rgba(255,255,255,.08)]">
+            <div
+              className="h-full rounded-sm"
+              style={{ width: `${prog * 100}%`, background: "var(--up)" }}
+            />
+          </div>
+        </div>
+
+        <div className="ml-auto flex items-center gap-x-4 gap-y-1">
+          <span className="hidden items-center gap-2 lg:flex">
+            <span className="lbl lbl-faint">MODELS</span>
+            <span className="mono text-[12px]">{m.models.length}</span>
+            <Div />
+            <span className="lbl lbl-faint">MC</span>
+            <span className="mono text-[12px]">50K</span>
+          </span>
+          {m.volume ? (
+            <>
+              <Div />
+              <span className="hidden items-center gap-2 sm:flex">
+                <span className="lbl lbl-faint">MKT</span>
+                <span className="mono text-[12px] font-semibold" style={{ color: "var(--mkt)" }}>
+                  ${(m.volume / 1e9).toFixed(2)}B
+                </span>
+              </span>
+            </>
+          ) : null}
+          <Div />
+          <span className="flex items-center gap-2">
+            <span className="lbl lbl-faint">SYNC</span>
+            <span className="mono text-[12px]">{syncStamp(m.generated_at)}</span>
+          </span>
+          <Div />
+          <span className="flex items-center gap-2">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${ws ? "live-dot" : ""}`}
+              style={{ background: ws ? "var(--up)" : "var(--ink-ghost)" }}
+            />
+            <span className="mono text-[12px] tabular-nums" style={{ minWidth: 66 }}>
+              {utcClock(now)}
+              <span style={{ color: "var(--ink-faint)" }}>Z</span>
+            </span>
+          </span>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/* ═══════════════════ PERFORMANCE (left) ════════════════════ */
+
+function PerformancePanel({
+  data,
+  onOpen,
+}: {
+  data: Data;
+  onOpen: () => void;
+}) {
+  const p = data.performance;
+  const me = data.meta.match_edge;
+  const cal = data.meta.calibration;
+
+  const winPct = p.winner_hit_rate != null ? `${(p.winner_hit_rate * 100).toFixed(0)}%` : "—";
+  const brier = p.mean_brier != null ? p.mean_brier.toFixed(3).replace(/^0/, "") : "—";
+  const brierBar = p.mean_brier != null ? Math.min(1, p.mean_brier / 0.667) : 0;
+
+  return (
+    <Panel
+      idx="01"
+      title="AI PERFORMANCE"
+      aside={<span className="lbl lbl-faint">{p.n_scored} SCORED</span>}
+    >
+      <div className="flex h-full flex-col gap-3 p-3">
+        {/* hero KPI: winner hit-rate */}
+        <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-3">
+          <div className="flex items-end justify-between">
+            <span
+              className="mono text-4xl font-bold leading-none"
+              style={{ color: "var(--up)" }}
+            >
+              {winPct}
+            </span>
+            <span className="lbl mb-1 text-right leading-[1.3]">
+              胜平负
+              <br />
+              判对率
+            </span>
+          </div>
+          <div className="mt-2 lbl lbl-faint">WINNER HIT · {p.details.length} MATCHES</div>
+        </div>
+
+        {/* brier vs coin-flip baseline */}
+        <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-3">
+          <div className="flex items-baseline justify-between">
+            <span className="lbl">平均 BRIER</span>
+            <span className="mono text-[15px] font-semibold">{brier}</span>
+          </div>
+          <div className="bar-track mt-2">
+            <div
+              className="bar-fill"
+              style={{ width: `${brierBar * 100}%`, background: "var(--up)" }}
+            />
+          </div>
+          <div className="mt-1.5 lbl lbl-faint">瞎猜基线 .667 — 越低越准</div>
+        </div>
+
+        {/* AI vs market head-to-head */}
+        <div className="grid grid-cols-2 gap-2">
+          {p.scoreboard && (
+            <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-2.5">
+              <div className="lbl">冠军盘 BRIER</div>
+              <div
+                className="mono mt-1.5 text-[13px] font-bold"
+                style={{ color: p.scoreboard.leader === "AI" ? "var(--up)" : "var(--mkt)" }}
+              >
+                {p.scoreboard.leader === "AI" ? "AI ▸ 领先" : "市场 ▸ 领先"}
+              </div>
+              <div className="mono mt-1 text-[11px]" style={{ color: "var(--ink-dim)" }}>
+                {p.scoreboard.ai_brier} · {p.scoreboard.pm_brier}
+              </div>
+            </div>
+          )}
+          {me && me.n_scored > 0 && (
+            <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-2.5">
+              <div className="lbl">单场盘 BRIER</div>
+              <div
+                className="mono mt-1.5 text-[13px] font-bold"
+                style={{
+                  color:
+                    (me.ai_brier ?? 1) < (me.pm_brier ?? 1) ? "var(--up)" : "var(--mkt)",
+                }}
+              >
+                {(me.ai_brier ?? 1) < (me.pm_brier ?? 1) ? "AI ▸ 领先" : "市场 ▸ 领先"}
+              </div>
+              <div className="mono mt-1 text-[11px]" style={{ color: "var(--ink-dim)" }}>
+                {me.ai_brier} · {me.pm_brier}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* recent verdicts strip */}
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="lbl">RECENT VERDICTS 近期战绩</span>
+            <button onClick={onOpen} className="lbl transition-colors hover:text-[var(--ink)]">
+              全部 →
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {p.details.slice(0, 24).map((d, i) => (
+              <span
+                key={i}
+                title={`${zh(d.home)} ${d.score} ${zh(d.away)} · ${STAGE_ZH[d.stage] ?? d.stage} · ${d.winner_hit ? "判对" : "判错"}`}
+                className="flex h-5 w-5 items-center justify-center rounded-[3px]"
+                style={{
+                  background: d.winner_hit ? "var(--up-soft)" : "var(--down-soft)",
+                  color: d.winner_hit ? "var(--up)" : "var(--down)",
+                }}
+              >
+                {d.winner_hit ? (
+                  <CheckIcon className="h-3 w-3" />
+                ) : (
+                  <XIcon className="h-3 w-3" />
+                )}
+              </span>
+            ))}
+          </div>
+          {p.n_score_preds > 0 && (
+            <div className="mono mt-auto pt-3 text-[11px]" style={{ color: "var(--ink-dim)" }}>
+              精确比分命中{" "}
+              <b style={{ color: "var(--ink)" }}>
+                {p.score_hits}/{p.n_score_preds}
+              </b>
+              {me?.edge_hit_rate != null && (
+                <>
+                  {"　"}盘口 edge 命中{" "}
+                  <b style={{ color: "var(--ink)" }}>{(me.edge_hit_rate * 100).toFixed(0)}%</b>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {cal && (Math.abs(cal.T - 1) > 0.02 || Math.abs(cal.delta) > 0.02) && (
+          <div className="mono border-t border-[var(--line)] pt-2.5 text-[10px]" style={{ color: "var(--ink-faint)" }}>
+            CALIB · T={cal.T.toFixed(2)}
+            {cal.delta > 0 ? ` · DRAW+${cal.delta.toFixed(2)}` : ""} · n={cal.n_wc}
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+/* ═══════════════════ MATCHDAY (center) ═════════════════════ */
+
+function TeamLine({
+  name,
+  right = false,
+  dim = false,
+}: {
+  name: string;
+  right?: boolean;
+  dim?: boolean;
+}) {
+  return (
+    <div
+      className={`flex min-w-0 flex-1 items-center gap-2.5 ${right ? "flex-row-reverse text-right" : ""} ${dim ? "opacity-45" : ""}`}
+    >
+      <Flag name={name} className="h-6 w-8 shrink-0" />
+      <div className="min-w-0">
+        <div className="truncate text-[15px] font-bold leading-tight">{zh(name)}</div>
+        <div className="lbl lbl-faint mt-0.5 truncate" style={{ fontSize: 10 }}>
+          {engCode(name)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProbBar({
+  segs,
+  tall,
+}: {
+  segs: { w: number; color: string }[];
+  tall?: boolean;
+}) {
+  return (
+    <div className={`flex ${tall ? "h-2.5" : "h-1.5"} overflow-hidden rounded-sm`}>
+      {segs.map((s, i) => (
+        <div key={i} style={{ width: `${s.w * 100}%`, background: s.color }} />
+      ))}
+    </div>
+  );
+}
+
+function MatchOddsRow({ m, poly }: { m: Match; poly: PolyLive }) {
+  const live = poly.matches[kickoffEpoch(m.kickoff_utc)];
+  const snap = m.market;
+  const prices = live ?? (snap ? { home: snap.home, draw: snap.draw, away: snap.away } : null);
+  if (!prices) return null;
+  const isWs = live?.src === "ws" && live.ts != null && Date.now() - live.ts < 120e3;
+  const top =
+    m.edge && m.edge.length
+      ? [...m.edge].sort((a, b) => Math.abs(b.edge_pct) - Math.abs(a.edge_pct))[0]
+      : null;
+  return (
+    <div className="mono flex items-center gap-x-3 text-[11px]" style={{ color: "var(--ink-dim)" }}>
+      <span className="flex items-center gap-1">
+        {live && (
+          <span
+            className={`inline-block h-1 w-1 rounded-full ${isWs ? "live-dot" : ""}`}
+            style={{ background: isWs ? "var(--up)" : "var(--ink-faint)" }}
+          />
+        )}
+        <span className="lbl lbl-faint" style={{ color: isWs ? "var(--up)" : undefined }}>
+          {isWs ? "PM·LIVE" : "PM"}
+        </span>
+      </span>
+      <span>
+        主 <b style={{ color: "var(--ink)" }}>{oddsFmt(prices.home)}</b>
+      </span>
+      <span>
+        平 <b style={{ color: "var(--ink)" }}>{oddsFmt(prices.draw)}</b>
+      </span>
+      <span>
+        客 <b style={{ color: "var(--ink)" }}>{oddsFmt(prices.away)}</b>
+      </span>
+      {top && (
+        <EdgeFlag
+          dir={top.direction}
+          strong={top.strength === "STRONG EDGE"}
+          txt={`${top.direction === "BUY" ? "低估" : "高估"}${top.side === "home" ? "主" : top.side === "draw" ? "平" : "客"} ${top.edge_pct > 0 ? "+" : ""}${top.edge_pct.toFixed(1)}`}
+        />
+      )}
+    </div>
+  );
+}
+
+function TodayCard({
+  m,
+  live,
+  poly,
+  onOpen,
+}: {
+  m: Match;
+  live: LiveMap;
+  poly: PolyLive;
+  onOpen: (m: Match) => void;
+}) {
+  const p = m.pred;
+  const lv = live[m.espn_id];
+  const ko = KO_STAGES.has(m.stage);
+  const venue = [m.city].filter(Boolean).join("");
+  const stageLbl =
+    m.stage === "group" && m.group ? `${m.group}组` : STAGE_ZH[m.stage] ?? m.stage;
+
+  const finished = m.completed || lv?.completed;
+  const inPlay = lv?.state === "in";
+  const loser =
+    m.completed && m.winner ? (m.winner === m.home ? "away" : "home") : null;
+
+  const mid = inPlay ? (
+    <div className="text-center">
+      <div className="mono text-2xl font-bold leading-none">
+        {lv.home_score}<span style={{ color: "var(--ink-faint)" }}>-</span>{lv.away_score}
+      </div>
+      <div
+        className="mono mt-1 flex items-center justify-center gap-1 text-[11px] font-medium"
+        style={{ color: "var(--down)" }}
+      >
+        <span className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--down)" }} />
+        {lv.clock || "LIVE"}
+      </div>
+    </div>
+  ) : finished ? (
+    <div className="text-center">
+      <div className="mono text-2xl font-bold leading-none">
+        {m.home_score ?? lv?.home_score}
+        <span style={{ color: "var(--ink-faint)" }}>-</span>
+        {m.away_score ?? lv?.away_score}
+      </div>
+      <div className="lbl lbl-faint mt-1">完场 FT</div>
+    </div>
+  ) : (
+    <div className="text-center">
+      <div className="mono text-[15px] font-semibold" style={{ color: "var(--ink-dim)" }}>
+        {fmtTime(m.kickoff_utc)}
+      </div>
+      {p && (
+        <div className="lbl lbl-faint mt-1">预测 {p.scoreline.most_likely}</div>
+      )}
+    </div>
+  );
+
+  return (
+    <button
+      onClick={() => onOpen(m)}
+      className="block w-full rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-3 text-left transition-colors hover:border-[var(--line-strong)]"
+    >
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="mono inline-flex items-center rounded-[3px] bg-[rgba(255,255,255,.05)] px-1.5 py-0.5 text-[10px] font-semibold tracking-wide">
+          {stageLbl}
+        </span>
+        <span className="lbl lbl-faint truncate">{venue}</span>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <TeamLine name={m.home} dim={loser === "home"} />
+        <div className="shrink-0 px-1">{mid}</div>
+        <TeamLine name={m.away} right dim={loser === "away"} />
+      </div>
+
+      {!finished && p && (
+        <div className="mt-3.5 space-y-3">
+          {ko ? (
+            <div className="space-y-1.5">
+              <ProbBar
+                tall
+                segs={[
+                  { w: p.p_adv_home ?? 0, color: "var(--up)" },
+                  { w: p.p_adv_away ?? 0, color: "var(--down)" },
+                ]}
+              />
+              <div className="mono flex justify-between text-[11px]">
+                <span style={{ color: "var(--up)" }}>晋级 {pct(p.p_adv_home ?? 0)}</span>
+                <span style={{ color: "var(--ink-faint)" }}>
+                  90′ {pct(p.p_home)}/{pct(p.p_draw)}/{pct(p.p_away)}
+                </span>
+                <span style={{ color: "var(--down)" }}>{pct(p.p_adv_away ?? 0)} 晋级</span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <ProbBar
+                tall
+                segs={[
+                  { w: p.p_home, color: "var(--up)" },
+                  { w: p.p_draw, color: "var(--neutral)" },
+                  { w: p.p_away, color: "var(--down)" },
+                ]}
+              />
+              <div className="mono flex justify-between text-[11px]">
+                <span style={{ color: "var(--up)" }}>主胜 {pct(p.p_home)}</span>
+                <span style={{ color: "var(--ink-dim)" }}>平 {pct(p.p_draw)}</span>
+                <span style={{ color: "var(--down)" }}>{pct(p.p_away)} 客胜</span>
+              </div>
+            </div>
+          )}
+
+          {/* predicted scorelines */}
+          <div>
+            <div className="lbl lbl-faint mb-1.5">SCORELINE 预测比分</div>
+            <div className="flex flex-wrap gap-1.5">
+              {p.scoreline.top_scores.slice(0, 6).map((s) => {
+                const top = s.score === p.scoreline.most_likely;
+                return (
+                  <span
+                    key={s.score}
+                    className="mono rounded-[3px] border px-2 py-1 text-[13px] font-semibold"
+                    style={{
+                      color: top ? "var(--mkt)" : "var(--ink)",
+                      borderColor: top ? "rgba(216,161,58,.4)" : "var(--line)",
+                      background: top ? "var(--mkt-soft)" : "var(--panel)",
+                    }}
+                  >
+                    {s.score}
+                    <span className="ml-1 text-[10px]" style={{ color: "var(--ink-faint)" }}>
+                      {pct(s.p, 1)}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* expected-goals / market microstructure */}
+          <div className="mono flex flex-wrap gap-x-5 gap-y-1 text-[11px]" style={{ color: "var(--ink-dim)" }}>
+            <span>
+              xG <b style={{ color: "var(--ink)" }}>{p.scoreline.xg_home}-{p.scoreline.xg_away}</b>
+            </span>
+            <span>
+              大2.5 <b style={{ color: "var(--ink)" }}>{pct(p.scoreline.p_over25)}</b>
+            </span>
+            <span>
+              双方进球 <b style={{ color: "var(--ink)" }}>{pct(p.scoreline.p_btts)}</b>
+            </span>
+            <span>
+              模型 <b style={{ color: "var(--ink)" }}>
+                {p.per_model
+                  .map((pm) => pct(ko ? (pm.p_adv_home ?? 0) : pm.p_home))
+                  .join("/")}
+              </b>
+            </span>
+            {p.elo_home ? (
+              <span>
+                Elo <b style={{ color: "var(--ink)" }}>{p.elo_home}·{p.elo_away}</b>
+              </span>
+            ) : null}
+          </div>
+
+          <MatchOddsRow m={m} poly={poly} />
+
+          {(() => {
+            const d = m.detail;
+            if (!d) return null;
+            const h2h = d.h2h;
+            const h2hLine = h2h?.n
+              ? `交锋 ${h2h.n} 次 · ${zh(m.home).slice(0, 4)} ${h2h.w}胜${h2h.d}平${h2h.l}负`
+              : "无近代交手";
+            const stakes =
+              m.stage === "group"
+                ? `出线 ${zh(m.home).slice(0, 4)} ${pct(d.advance_home)} · ${zh(m.away).slice(0, 4)} ${pct(d.advance_away)}`
+                : `夺冠 ${zh(m.home).slice(0, 4)} ${pct(d.champion_home, 1)} · ${zh(m.away).slice(0, 4)} ${pct(d.champion_away, 1)}`;
+            return (
+              <div className="space-y-2 border-t border-[var(--line)] pt-2.5">
+                <div className="mono flex flex-wrap gap-x-4 text-[11px]" style={{ color: "var(--ink-faint)" }}>
+                  <span>{h2hLine}</span>
+                  <span>{stakes}</span>
+                </div>
+                {d.analysis && (
+                  <p
+                    className="line-clamp-2 border-l-2 pl-2.5 text-[12px] leading-5"
+                    style={{ borderColor: "var(--up)", color: "var(--ink-dim)" }}
+                  >
+                    {d.analysis}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+      {finished && m.locked && (
+        <div className="mono mt-2.5 text-[11px]" style={{ color: "var(--ink-dim)" }}>
+          赛前预测{" "}
+          {ko
+            ? `${zh(m.locked.p_home >= m.locked.p_away ? m.home : m.away)} 晋级`
+            : `${["主胜", "平", "客胜"][[m.locked.p_home, m.locked.p_draw, m.locked.p_away].indexOf(Math.max(m.locked.p_home, m.locked.p_draw, m.locked.p_away))]}`}
+          {m.locked.brier != null && (
+            <span style={{ color: "var(--ink-faint)" }}>　Brier {m.locked.brier.toFixed(3)}</span>
+          )}
+        </div>
+      )}
+    </button>
+  );
+}
+
+function NextUpRow({
+  m,
+  onOpen,
+}: {
+  m: Match;
+  onOpen: (m: Match) => void;
+}) {
+  const p = m.pred;
+  const ph = p?.p_adv_home ?? p?.p_home ?? 0.5;
+  const pa = p?.p_adv_away ?? p?.p_away ?? 0.5;
+  const favHome = ph >= pa;
+  const stageLbl = STAGE_ZH[m.stage] ?? m.stage;
+  const dk = venueDayKey(m.kickoff_utc);
+  return (
+    <button
+      onClick={() => onOpen(m)}
+      className="flex w-full items-center gap-3 border-t border-[var(--line)] px-3 py-2 text-left transition-colors hover:bg-[var(--panel-2)]"
+    >
+      <span className="mono w-12 shrink-0 text-[10px]" style={{ color: "var(--ink-faint)" }}>
+        {dk.slice(5)}
+      </span>
+      <span className="lbl lbl-faint w-12 shrink-0">{stageLbl}</span>
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        <Flag name={m.home} className="h-3.5 w-5 shrink-0" />
+        <span className={`truncate text-[13px] ${favHome ? "font-semibold" : ""}`}>{zh(m.home)}</span>
+        <span className="lbl lbl-faint">vs</span>
+        <Flag name={m.away} className="h-3.5 w-5 shrink-0" />
+        <span className={`truncate text-[13px] ${!favHome ? "font-semibold" : ""}`}>{zh(m.away)}</span>
+      </span>
+      {p && (
+        <span className="mono shrink-0 text-[11px]" style={{ color: "var(--ink-dim)" }}>
+          晋级{" "}
+          <b style={{ color: favHome ? "var(--up)" : "var(--down)" }}>
+            {zh(favHome ? m.home : m.away).slice(0, 4)} {pct(Math.max(ph, pa))}
+          </b>
+        </span>
+      )}
+    </button>
+  );
+}
+
+function MatchdayPanel({
+  data,
+  live,
+  poly,
+  onOpenMatch,
+}: {
+  data: Data;
+  live: LiveMap;
+  poly: PolyLive;
+  onOpenMatch: (m: Match) => void;
+}) {
+  const md = data.meta.matchday;
+  const focus = data.matches.filter(
+    (m) => !m.tbd && md && venueDayKey(m.kickoff_utc) === md
+  );
+  const upcoming = data.matches
+    .filter(
+      (m) =>
+        !m.completed &&
+        !m.tbd &&
+        (!md || venueDayKey(m.kickoff_utc) > md)
+    )
+    .sort((a, b) => a.kickoff_utc.localeCompare(b.kickoff_utc));
+
+  return (
+    <Panel
+      idx="02"
+      title="MATCHDAY 焦点赛程"
+      aside={
+        md ? (
+          <span className="mono text-[11px]" style={{ color: "var(--mkt)" }}>
+            {dayLabel(md)}
+          </span>
+        ) : (
+          <span className="lbl lbl-faint">赛事收官</span>
+        )
+      }
+    >
+      <div className="flex h-full flex-col">
+        <div className="flex min-h-0 flex-1 flex-col justify-evenly gap-3 overflow-y-auto p-3">
+          {focus.length ? (
+            focus.map((m) => (
+              <TodayCard key={m.espn_id} m={m} live={live} poly={poly} onOpen={onOpenMatch} />
+            ))
+          ) : (
+            <div className="mono py-6 text-center text-[12px]" style={{ color: "var(--ink-faint)" }}>
+              本期无新焦点场 — 见后续赛程
+            </div>
+          )}
+        </div>
+        {upcoming.length > 0 && (
+          <div className="flex-none border-t border-[var(--line)]">
+            <div className="flex items-center justify-between px-3 py-2">
+              <span className="lbl">NEXT UP 后续淘汰赛</span>
+              <span className="lbl lbl-faint">{upcoming.length} 场</span>
+            </div>
+            {upcoming.slice(0, 6).map((m) => (
+              <NextUpRow key={m.espn_id} m={m} onOpen={onOpenMatch} />
+            ))}
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+/* ═══════════════════ CHAMPIONS (right) ═════════════════════ */
+
+function ChampionRow({
+  c,
+  rank,
+  maxP,
+  liveRaw,
+  liveSum,
+}: {
+  c: Champion;
+  rank: number;
+  maxP: number;
+  liveRaw: Record<string, number> | null;
+  liveSum: number;
+}) {
+  const rawPrice = liveRaw?.[c.team] ?? c.market_raw;
+  const marketProb = liveRaw && liveSum > 0 ? rawPrice / liveSum : c.market;
+  const e = liveRaw ? liveEdge(c.ai, marketProb, c.edge?.models_agree ?? 0) : c.edge;
+  return (
+    <div className="flex items-center gap-2.5 border-t border-[var(--line)] px-3 py-2">
+      <span className="mono w-4 shrink-0 text-[11px]" style={{ color: "var(--ink-faint)" }}>
+        {rank}
+      </span>
+      <Flag name={c.team} className="h-3.5 w-5 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-[13px] font-semibold">{zh(c.team)}</span>
+          {e && (
+            <EdgeFlag
+              dir={e.direction}
+              strong={e.strength === "STRONG EDGE"}
+              txt={`${e.edge_pct > 0 ? "+" : ""}${e.edge_pct.toFixed(1)}`}
+            />
+          )}
+        </div>
+        <div className="mt-1 space-y-0.5">
+          <div className="bar-track" style={{ height: 4 }}>
+            <div
+              className="bar-fill"
+              style={{ width: `${Math.min(100, (c.ai / maxP) * 100)}%`, background: "var(--up)" }}
+            />
+          </div>
+          <div className="bar-track" style={{ height: 4 }}>
+            <div
+              className="bar-fill"
+              style={{
+                width: `${Math.min(100, (marketProb / maxP) * 100)}%`,
+                background: "var(--mkt)",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="shrink-0 text-right leading-tight">
+        <div className="mono text-[13px] font-bold" style={{ color: "var(--up)" }}>
+          {pct(c.ai, 1)}
+        </div>
+        <div className="mono text-[10px]" style={{ color: "var(--ink-faint)" }}>
+          {oddsFmt(rawPrice)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChampionPanel({
+  data,
+  poly,
+  onOpen,
+}: {
+  data: Data;
+  poly: PolyLive;
+  onOpen: () => void;
+}) {
+  const rows = data.champions.filter((c) => c.ai > 0.0005 || c.market > 0.0005);
+  const liveRaw = poly.championFresh ? poly.champion : null;
+  const liveSum = liveRaw ? Object.values(liveRaw).reduce((a, b) => a + b, 0) : 0;
+  const maxP = Math.max(rows[0]?.ai ?? 0.01, rows[0]?.market ?? 0.01);
+  return (
+    <Panel
+      idx="03"
+      title="CHAMPION RACE 夺冠概率"
+      aside={
+        <>
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-[2px]" style={{ background: "var(--up)" }} />
+            <span className="lbl lbl-faint">AI</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-[2px]" style={{ background: "var(--mkt)" }} />
+            <span className="lbl lbl-faint">MKT</span>
+          </span>
+          {poly.championFresh && (
+            <span className="flex items-center gap-1">
+              <span className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--up)" }} />
+              <span className="lbl" style={{ color: "var(--up)" }}>LIVE</span>
+            </span>
+          )}
+        </>
+      }
+    >
+      <div className="flex h-full flex-col">
+        <div className="min-h-0 flex-1">
+          {rows.slice(0, 16).map((c, i) => (
+            <ChampionRow
+              key={c.team}
+              c={c}
+              rank={i + 1}
+              maxP={maxP}
+              liveRaw={liveRaw}
+              liveSum={liveSum}
+            />
+          ))}
+        </div>
+        <button
+          onClick={onOpen}
+          className="lbl border-t border-[var(--line)] py-2.5 text-center transition-colors hover:text-[var(--ink)]"
+        >
+          全部 {rows.length} 队 · 分阶段概率 →
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+/* ═══════════════════ TICKER (footer) ═══════════════════════ */
+
+function Ticker({
+  data,
+  onNav,
+}: {
+  data: Data;
+  onNav: (v: "groups" | "record" | "weather") => void;
+}) {
+  return (
+    <footer className="panel reveal flex-none">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3.5 py-2">
+        <span className="mono hidden text-[10px] lg:inline" style={{ color: "var(--ink-faint)" }}>
+          PIPELINE: {data.meta.models.join(" · ")} → Elo → Bradley-Terry(Davidson) → 50K Monte-Carlo
+        </span>
+        <span className="lbl lbl-faint hidden md:inline">仅供研究娱乐 · 非投注建议</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          {(
+            [
+              ["groups", "小组积分"],
+              ["record", "完整战绩"],
+              ["weather", "天气研究"],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => onNav(k)}
+              className="lbl rounded-[3px] border border-[var(--line)] px-2 py-1 transition-colors hover:border-[var(--line-strong)] hover:text-[var(--ink)]"
+            >
+              {label}
+            </button>
+          ))}
+          <a
+            href="https://github.com/YSKM523/worldcup-oracle"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="lbl rounded-[3px] border border-[var(--line)] px-2 py-1 transition-colors hover:border-[var(--line-strong)] hover:text-[var(--ink)]"
+          >
+            GITHUB ↗
+          </a>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/* ═══════════════════ DRAWER (overlay) ══════════════════════ */
+
+function Drawer({
+  title,
+  onClose,
+  children,
+  wide,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  wide?: boolean;
+}) {
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", h);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", h);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/60 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6"
+      onClick={onClose}
+    >
+      <div
+        className="panel reveal flex max-h-full w-full flex-col"
+        style={{ maxWidth: wide ? 1000 : 720 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="panel-head">
+          <span className="lbl lbl-faint">▚</span>
+          <span className="lbl" style={{ color: "var(--ink)" }}>{title}</span>
+          <button
+            onClick={onClose}
+            className="ml-auto flex h-6 w-6 items-center justify-center rounded-[3px] border border-[var(--line)] transition-colors hover:border-[var(--line-strong)]"
+            aria-label="关闭"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div className="drawer-scroll overflow-y-auto p-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════ MATCH MODAL (two-pane, large) ═════════ */
+
+function MatchModal({
+  m,
+  meta,
+  live,
+  poly,
+  weather,
+  onClose,
+}: {
+  m: Match;
+  meta: Meta;
+  live: LiveMap;
+  poly: PolyLive;
+  weather: WeatherData | null;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", h);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", h);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  const slug = m.market?.slug;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/72 p-2 backdrop-blur-sm sm:items-center sm:p-6"
+      onClick={onClose}
+    >
+      <div
+        className="panel reveal flex w-full max-w-[1440px] flex-col"
+        style={{ height: "min(90vh, 100%)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="panel-head">
+          <span className="lbl lbl-faint">▚</span>
+          <span className="lbl" style={{ color: "var(--ink)" }}>
+            MATCH DETAIL · {zh(m.home)} vs {zh(m.away)}
+          </span>
+          <span className="lbl lbl-faint ml-2 hidden sm:inline">
+            {(m.stage === "group" && m.group ? `${m.group}组` : STAGE_ZH[m.stage] ?? m.stage)}
+            {m.city ? ` · ${m.city}` : ""}
+          </span>
+          <button
+            onClick={onClose}
+            className="ml-auto flex h-6 w-6 items-center justify-center rounded-[3px] border border-[var(--line)] transition-colors hover:border-[var(--line-strong)]"
+            aria-label="关闭"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(258px,300px)_minmax(0,1fr)_minmax(400px,460px)] lg:overflow-hidden">
+          {/* LEFT — live match stats */}
+          <div className="drawer-scroll min-h-0 border-b border-[var(--line)] p-4 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+            <LiveStats
+              espnId={m.espn_id}
+              home={m.home}
+              away={m.away}
+              live={m.completed || live[m.espn_id]?.state === "in" || !!live[m.espn_id]?.completed}
+            />
+          </div>
+          {/* CENTER — prediction detail */}
+          <div className="drawer-scroll flex min-h-0 flex-col border-b border-[var(--line)] p-4 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+            <div className="lg:my-auto">
+              <FocusCard m={m} meta={meta} live={live} poly={poly} weather={weather} hideBook />
+            </div>
+          </div>
+          {/* RIGHT — live order book */}
+          <div className="drawer-scroll flex min-h-0 flex-col p-4 lg:overflow-y-auto">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="lbl lbl-faint">05</span>
+              <span className="lbl" style={{ color: "var(--ink)" }}>
+                LIVE 盘口 · ORDER BOOK
+              </span>
+            </div>
+            {slug ? (
+              <MatchDetail slug={slug} kickoffUtc={m.kickoff_utc} home={m.home} away={m.away} pred={m.pred} liveEntry={live[m.espn_id]} />
+            ) : (
+              <div
+                className="mono flex flex-1 items-center justify-center py-10 text-center text-[12px]"
+                style={{ color: "var(--ink-faint)" }}
+              >
+                该场暂无 Polymarket 盘口
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════ BOOT LOADER ═══════════════════════════ */
+
+function BootLoader({ error }: { error?: boolean }) {
+  const lines = [
+    "ORACLE // FIFA 2026 WORLD CUP",
+    "▸ fetching data.json",
+    "▸ connecting Polymarket CLOB WS",
+    "▸ hydrating 50K Monte-Carlo snapshot",
+  ];
+  return (
+    <div className="flex h-dvh flex-col items-center justify-center">
+      <div className="mono text-[13px] leading-7" style={{ color: "var(--ink-dim)" }}>
+        {error ? (
+          <div style={{ color: "var(--down)" }}>× 数据加载失败 — 请刷新重试</div>
+        ) : (
+          <>
+            {lines.map((l, i) => (
+              <div key={i} style={{ color: i === 0 ? "var(--up)" : undefined }}>
+                {l}
+              </div>
+            ))}
+            <div className="cursor mt-1" style={{ color: "var(--ink-faint)" }}>
+              booting
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════ ROOT DASHBOARD ════════════════════════ */
+
+type DrawerState =
+  | { kind: "match"; m: Match }
+  | { kind: "groups" | "record" | "weather" | "champions" }
+  | null;
+
+export function Dashboard({
+  data,
+  live,
+  poly,
+  weather,
+  error,
+}: {
+  data: Data | null;
+  live: LiveMap;
+  poly: PolyLive;
+  weather: WeatherData | null;
+  error?: boolean;
+}) {
+  const [drawer, setDrawer] = useState<DrawerState>(null);
+
+  if (!data) return <BootLoader error={error} />;
+
+  return (
+    <div className="flex min-h-dvh flex-col gap-2 p-2 xl:grid xl:h-dvh xl:grid-rows-[auto_minmax(0,1fr)_auto] xl:gap-2 xl:overflow-hidden">
+      <TopBar data={data} poly={poly} />
+
+      <div className="grid min-h-0 grid-cols-1 gap-2 xl:grid-cols-[minmax(300px,20%)_minmax(0,1fr)_minmax(340px,27%)]">
+        <PerformancePanel data={data} onOpen={() => setDrawer({ kind: "record" })} />
+        <MatchdayPanel
+          data={data}
+          live={live}
+          poly={poly}
+          onOpenMatch={(m) => setDrawer({ kind: "match", m })}
+        />
+        <ChampionPanel data={data} poly={poly} onOpen={() => setDrawer({ kind: "champions" })} />
+      </div>
+
+      <Ticker data={data} onNav={(v) => setDrawer({ kind: v })} />
+
+      {drawer?.kind === "match" && (
+        <MatchModal
+          m={drawer.m}
+          meta={data.meta}
+          live={live}
+          poly={poly}
+          weather={weather}
+          onClose={() => setDrawer(null)}
+        />
+      )}
+      {drawer?.kind === "record" && (
+        <Drawer title="AI PERFORMANCE · 完整战绩" wide onClose={() => setDrawer(null)}>
+          <RecordView data={data} />
+        </Drawer>
+      )}
+      {drawer?.kind === "champions" && (
+        <Drawer title="CHAMPION RACE · 全部球队" wide onClose={() => setDrawer(null)}>
+          <ChampionsView data={data} poly={poly} />
+        </Drawer>
+      )}
+      {drawer?.kind === "groups" && (
+        <Drawer title="GROUP STANDINGS · 小组积分" wide onClose={() => setDrawer(null)}>
+          <GroupsView data={data} />
+        </Drawer>
+      )}
+      {drawer?.kind === "weather" && (
+        <Drawer title="WEATHER LAB · 天气研究" wide onClose={() => setDrawer(null)}>
+          {weather ? (
+            <WeatherLabView wx={weather} />
+          ) : (
+            <div className="mono py-10 text-center text-[12px]" style={{ color: "var(--ink-faint)" }}>
+              天气研究数据加载中…
+            </div>
+          )}
+        </Drawer>
+      )}
+    </div>
+  );
+}
