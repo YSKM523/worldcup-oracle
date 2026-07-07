@@ -33,3 +33,20 @@ web/.ds-tw-input.css
 
 # weather research — isolated OCR venv (numpy 2.x, see research/weather_effect/scripts/11)
 research/weather_effect/.ocr-venv/
+
+# collector — 1.8G+ live tick DB, WAL/SHM, runtime log (venv/__pycache__ caught above)
+collector/ticks.db
+collector/ticks.db-wal
+collector/ticks.db-shm
+collector/*.log
+
+# pipeline intermediate outputs — re-computable each cron run, frontend never reads these
+# (data.json / weather.json / research figs stay tracked — they ARE deploy inputs)
+results/edges/
+results/predictions/
+results/simulations/
+results/evaluations/
+results/calibration/
+
+# design-sync — local design tooling machine state (docs + cache + previews)
+.design-sync/
