@@ -26,6 +26,7 @@ export function LiveStats({
   away,
   live,
   compact = false,
+  variant = "card",
 }: {
   espnId: string;
   home: string;
@@ -33,19 +34,25 @@ export function LiveStats({
   /** true when the schedule/live feed marks this match as in-play or done. */
   live: boolean;
   compact?: boolean;
+  variant?: "card" | "console";
 }) {
   const stats = useMatchStats(espnId, true);
   const started = !!stats && stats.state !== "pre";
   const state = started ? "started" : live ? "loading" : "pre";
 
   const inPlay = stats?.state === "in";
+  const consoleMode = variant === "console";
+  const surfaceClass = consoleMode
+    ? "border-0 bg-transparent p-0 rounded-none"
+    : `border border-zinc-800/80 bg-zinc-950/60 ${compact ? "rounded-[3px] p-2" : "rounded-xl p-3"}`;
 
   if (compact && !started) {
     return (
       <div
         data-live-stats-mode={compact ? "compact" : "default"}
         data-live-stats-state={state}
-        className={`border border-zinc-800/80 bg-zinc-950/60 ${compact ? "rounded-[3px] p-2" : "rounded-xl p-3"}`}
+        data-console-surface={consoleMode ? "stats" : undefined}
+        className={surfaceClass}
       >
         <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1">
           <span className="lbl lbl-faint">04</span>
@@ -63,9 +70,10 @@ export function LiveStats({
     <div
       data-live-stats-mode={compact ? "compact" : "default"}
       data-live-stats-state={state}
-      className={`border border-zinc-800/80 bg-zinc-950/60 ${compact ? "rounded-[3px] p-2" : "rounded-xl p-3"}`}
+      data-console-surface={consoleMode ? "stats" : undefined}
+      className={surfaceClass}
     >
-      <div className="mb-2.5 flex items-center gap-2">
+      <div className={`${consoleMode ? "mb-3 min-h-8 border-b border-[var(--line)] pb-2" : "mb-2.5"} flex items-center gap-2`}>
         <span className="lbl lbl-faint">04</span>
         <span className="lbl" style={{ color: "var(--ink)" }}>
           LIVE STATS · 实时数据

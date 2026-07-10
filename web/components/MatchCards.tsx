@@ -409,6 +409,7 @@ export function FocusCard({
   poly,
   weather,
   hideBook,
+  variant = "card",
 }: {
   m: Match;
   meta: Meta;
@@ -416,6 +417,7 @@ export function FocusCard({
   poly: PolyLive;
   weather?: WeatherData | null;
   hideBook?: boolean;
+  variant?: "card" | "console";
 }) {
   const p = m.pred;
   const d = m.detail;
@@ -435,10 +437,21 @@ export function FocusCard({
       ? `出线概率：${zh(m.home)} ${pct(d.advance_home)} · ${zh(m.away)} ${pct(d.advance_away)}`
       : `夺冠概率：${zh(m.home)} ${pct(d.champion_home, 1)} · ${zh(m.away)} ${pct(d.champion_away, 1)}`
     : "";
+  const consoleMode = variant === "console";
 
   return (
-    <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
+    <div
+      data-console-surface={consoleMode ? "prediction" : undefined}
+      className={consoleMode ? "rounded-none border-0 bg-transparent p-0" : "rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5"}
+    >
+      {consoleMode && (
+        <div className="mb-3 flex min-h-8 items-center gap-2 border-b border-[var(--line)] pb-2">
+          <span className="lbl lbl-faint">05</span>
+          <span className="lbl text-[var(--ink)]">MATCH FORECAST · 模型预测</span>
+          <span className="lbl lbl-faint ml-auto">AI · ELO · MARKET</span>
+        </div>
+      )}
+      <div className={`${consoleMode ? "mb-3" : "mb-4"} flex items-center justify-between gap-2`}>
         <StageBadge m={m} />
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-[11px] text-zinc-500">{venue}</span>
