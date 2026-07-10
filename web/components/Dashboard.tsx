@@ -241,37 +241,37 @@ function PerformancePanel({
       aside={<span className="lbl lbl-faint">{p.n_scored} SCORED</span>}
     >
       <div className="flex h-full flex-col gap-3 p-3">
-        {/* hero KPI: winner hit-rate */}
-        <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-3">
-          <div className="flex items-end justify-between">
-            <span
-              className="mono text-4xl font-bold leading-none"
-              style={{ color: "var(--up)" }}
-            >
-              {winPct}
-            </span>
-            <span className="lbl mb-1 text-right leading-[1.3]">
-              胜平负
-              <br />
-              判对率
-            </span>
+        {/* compact primary metrics — one analytical group, not nested cards */}
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(104px,.72fr)] border-b border-[var(--line)] pb-3">
+          <div className="pr-3">
+            <div className="flex items-end justify-between gap-2">
+              <span
+                className="mono text-3xl font-bold leading-none"
+                style={{ color: "var(--up)" }}
+              >
+                {winPct}
+              </span>
+              <span className="lbl text-right leading-[1.25]">
+                胜平负
+                <br />
+                判对率
+              </span>
+            </div>
+            <div className="lbl lbl-faint mt-2">WINNER HIT · {p.details.length} MATCHES</div>
           </div>
-          <div className="mt-2 lbl lbl-faint">WINNER HIT · {p.details.length} MATCHES</div>
-        </div>
-
-        {/* brier vs coin-flip baseline */}
-        <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-3">
-          <div className="flex items-baseline justify-between">
-            <span className="lbl">平均 BRIER</span>
-            <span className="mono text-[15px] font-semibold">{brier}</span>
+          <div className="border-l border-[var(--line)] pl-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="lbl">BRIER</span>
+              <span className="mono text-[15px] font-semibold">{brier}</span>
+            </div>
+            <div className="bar-track mt-2">
+              <div
+                className="bar-fill"
+                style={{ width: `${brierBar * 100}%`, background: "var(--up)" }}
+              />
+            </div>
+            <div className="lbl lbl-faint mt-2">基线 .667</div>
           </div>
-          <div className="bar-track mt-2">
-            <div
-              className="bar-fill"
-              style={{ width: `${brierBar * 100}%`, background: "var(--up)" }}
-            />
-          </div>
-          <div className="mt-1.5 lbl lbl-faint">瞎猜基线 .667 — 越低越准</div>
         </div>
 
         {/* AI vs market head-to-head */}
@@ -311,7 +311,7 @@ function PerformancePanel({
 
         {/* per-stage hit-rate — real ledger, fills the column with signal */}
         {stageAcc.length > 1 && (
-          <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-3">
+          <div className="border-t border-[var(--line)] pt-3">
             <div className="lbl mb-2">分阶段判对率 BY STAGE</div>
             <div className="space-y-1.5">
               {stageAcc.map((s) => (
@@ -339,7 +339,7 @@ function PerformancePanel({
         )}
 
         {/* recent verdicts strip */}
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex flex-col">
           <div className="mb-2 flex items-center justify-between">
             <span className="lbl">RECENT VERDICTS 近期战绩</span>
             <button onClick={onOpen} className="lbl transition-colors hover:text-[var(--ink)]">
@@ -366,7 +366,7 @@ function PerformancePanel({
             ))}
           </div>
           {p.n_score_preds > 0 && (
-            <div className="mono mt-auto pt-3 text-[11px]" style={{ color: "var(--ink-dim)" }}>
+            <div className="mono mt-3 text-[11px]" style={{ color: "var(--ink-dim)" }}>
               精确比分命中{" "}
               <b style={{ color: "var(--ink)" }}>
                 {p.score_hits}/{p.n_score_preds}
