@@ -1180,31 +1180,31 @@ function MatchModal({
       onClick={onClose}
     >
       <div
-        className="panel reveal flex w-full max-w-[1440px] flex-col"
-        style={{ height: "min(90vh, 100%)" }}
+        className="panel reveal flex max-h-[calc(100dvh-16px)] w-full max-w-[1440px] flex-col xl:max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="panel-head">
           <span className="lbl lbl-faint">▚</span>
-          <span className="lbl" style={{ color: "var(--ink)" }}>
-            MATCH DETAIL · {zh(m.home)} vs {zh(m.away)}
-          </span>
+          <span className="lbl text-[var(--ink)]">MATCH DETAIL · {zh(m.home)} vs {zh(m.away)}</span>
           <span className="lbl lbl-faint ml-2 hidden sm:inline">
             {(m.stage === "group" && m.group ? `${m.group}组` : STAGE_ZH[m.stage] ?? m.stage)}
             {m.city ? ` · ${m.city}` : ""}
           </span>
           <button
             onClick={onClose}
-            className="ml-auto flex h-6 w-6 items-center justify-center rounded-[3px] border border-[var(--line)] transition-colors hover:border-[var(--line-strong)]"
+            className="ml-auto flex h-6 w-6 items-center justify-center rounded-[3px] border border-[var(--line)]"
             aria-label="关闭"
           >
             <XIcon className="h-3.5 w-3.5" />
           </button>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(258px,300px)_minmax(0,1fr)_minmax(400px,460px)] lg:overflow-hidden">
-          {/* LEFT — live match stats */}
-          <div className="drawer-scroll min-h-0 border-b border-[var(--line)] p-4 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+        <div
+          data-match-modal-grid
+          className="grid min-h-0 max-h-[calc(100dvh-54px)] grid-cols-1 grid-rows-[max-content_max-content] overflow-y-auto xl:max-h-[calc(90vh-37px)] xl:grid-cols-[minmax(0,3fr)_minmax(420px,2fr)] xl:grid-rows-none xl:overflow-hidden"
+        >
+          <section className="drawer-scroll min-h-0 space-y-3 border-b border-[var(--line)] p-3 xl:overflow-y-auto xl:border-b-0 xl:border-r">
+            <FocusCard m={m} meta={meta} live={live} poly={poly} weather={weather} hideBook />
             <LiveStats
               espnId={m.espn_id}
               home={m.home}
@@ -1212,20 +1212,11 @@ function MatchModal({
               live={m.completed || live[m.espn_id]?.state === "in" || !!live[m.espn_id]?.completed}
               compact
             />
-          </div>
-          {/* CENTER — prediction detail */}
-          <div className="drawer-scroll flex min-h-0 flex-col border-b border-[var(--line)] p-4 lg:overflow-y-auto lg:border-b-0 lg:border-r">
-            <div className="lg:my-auto">
-              <FocusCard m={m} meta={meta} live={live} poly={poly} weather={weather} hideBook />
-            </div>
-          </div>
-          {/* RIGHT — live order book */}
-          <div className="drawer-scroll flex min-h-0 flex-col p-4 lg:overflow-y-auto">
-            <div className="mb-1 flex items-center gap-2">
+          </section>
+          <section className="drawer-scroll min-h-0 p-3 xl:overflow-y-auto">
+            <div className="mb-2 flex items-center gap-2">
               <span className="lbl lbl-faint">05</span>
-              <span className="lbl" style={{ color: "var(--ink)" }}>
-                LIVE 盘口 · ORDER BOOK
-              </span>
+              <span className="lbl text-[var(--ink)]">LIVE 盘口 · ORDER BOOK</span>
             </div>
             {slug ? (
               <MatchDetail
@@ -1238,14 +1229,11 @@ function MatchModal({
                 variant="console"
               />
             ) : (
-              <div
-                className="mono flex flex-1 items-center justify-center py-10 text-center text-[12px]"
-                style={{ color: "var(--ink-faint)" }}
-              >
+              <div className="mono flex min-h-40 items-center justify-center text-center text-[12px] text-[var(--ink-faint)]">
                 该场暂无 Polymarket 盘口
               </div>
             )}
-          </div>
+          </section>
         </div>
       </div>
     </div>
