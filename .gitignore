@@ -50,3 +50,5 @@ results/calibration/
 
 # design-sync — local design tooling machine state (docs + cache + previews)
 .design-sync/
+collector/keepers_backup.sql
+results/logs/.watchdog_state.json
