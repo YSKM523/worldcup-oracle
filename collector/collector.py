@@ -10,12 +10,12 @@ Polymarket slug (from web/public/data.json, refreshed by the daily
 pipeline), it connects during the window [kickoff−45m, kickoff+3.5h]
 (covers ET + penalties) and records:
 
-  raw_events   — every WS message verbatim (book / price_change / last_trade_price)
   mids         — 1 Hz best-bid/ask/mid per outcome (easy charting & replay)
   trades       — normalized Yes-口径 time & sales (No side: p→1−p, side flipped)
   history_px   — /prices-history backfill from kickoff−1h (covers late starts)
 
-Optional: NTFY_TOPIC env → push on mid spikes (≥4pp within 12s).
+Optional: NTFY_TOPIC env → push on mid spikes (≥5pp AND ≥0.45 logit within 12s;
+≥12pp pushes instantly, smaller moves wait 5s for confirmation).
 
 Protocol notes (mirrors web/lib/useMatchMarket.ts, field-verified 2026-07-06):
   - subscribe: {"assets_ids": [...yes+no tokens...], "type": "market"}
@@ -38,6 +38,9 @@ from pathlib import Path
 
 import aiohttp
 
+import kalshi
+import spike
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 DATA_JSON = ROOT / "web" / "public" / "data.json"
@@ -55,9 +58,6 @@ MID_SAMPLE_S = 1.0
 WS_PING_S = 10
 RECONNECT_S = 5
 
-SPIKE_WINDOW_S = 12
-SPIKE_PP = 0.04
-SPIKE_COOLDOWN_S = 60
 NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "").strip()
 
 OUTCOMES = ("home", "draw", "away")
@@ -100,14 +100,14 @@ def db_init() -> sqlite3.Connection:
         CREATE TABLE IF NOT EXISTS matches(
           slug TEXT PRIMARY KEY, espn_id TEXT, home TEXT, away TEXT,
           kickoff_utc TEXT, stage TEXT);
-        CREATE TABLE IF NOT EXISTS raw_events(
-          id INTEGER PRIMARY KEY, ts_ms INTEGER, slug TEXT,
-          event_type TEXT, payload TEXT);
-        CREATE INDEX IF NOT EXISTS ix_raw ON raw_events(slug, ts_ms);
         CREATE TABLE IF NOT EXISTS mids(
           ts_s INTEGER, slug TEXT, outcome TEXT,
           best_bid REAL, best_ask REAL, mid REAL);
         CREATE INDEX IF NOT EXISTS ix_mids ON mids(slug, outcome, ts_s);
+        CREATE TABLE IF NOT EXISTS kalshi_mids(
+          ts_s INTEGER, slug TEXT, outcome TEXT,
+          best_bid REAL, best_ask REAL, mid REAL);
+        CREATE INDEX IF NOT EXISTS ix_kalshi_mids ON kalshi_mids(slug, outcome, ts_s);
         CREATE TABLE IF NOT EXISTS trades(
           key TEXT PRIMARY KEY, ts_s INTEGER, slug TEXT, outcome TEXT,
           side TEXT, price REAL, size REAL);
@@ -126,33 +126,36 @@ class Writer:
 
     def __init__(self, con: sqlite3.Connection):
         self.con = con
-        self.raw: list[tuple] = []
+        # raw_events archive intentionally dropped: it stored every WS message
+        # verbatim (~750B × ~2M rows ≈ 1.8GB per match) as pure debug data with
+        # no downstream consumer. mids/trades are derived live from the same
+        # messages, so nothing analytical is lost.
         self.mids: list[tuple] = []
+        self.kalshi: list[tuple] = []
         self.trades: list[tuple] = []
 
     def flush(self) -> None:
-        if not (self.raw or self.mids or self.trades):
+        if not (self.mids or self.kalshi or self.trades):
             return
         try:
-            if self.raw:
-                self.con.executemany(
-                    "INSERT INTO raw_events(ts_ms,slug,event_type,payload) VALUES(?,?,?,?)",
-                    self.raw,
-                )
             if self.mids:
                 self.con.executemany("INSERT INTO mids VALUES(?,?,?,?,?,?)", self.mids)
+            if self.kalshi:
+                self.con.executemany(
+                    "INSERT INTO kalshi_mids VALUES(?,?,?,?,?,?)", self.kalshi
+                )
             if self.trades:
                 self.con.executemany(
                     "INSERT OR IGNORE INTO trades VALUES(?,?,?,?,?,?,?)", self.trades
                 )
             self.con.commit()
-            self.raw.clear()
             self.mids.clear()
+            self.kalshi.clear()
             self.trades.clear()
         except Exception:  # noqa: BLE001 — a bad batch must not kill capture
             log.exception("db flush failed; dropping batch")
-            self.raw.clear()
             self.mids.clear()
+            self.kalshi.clear()
             self.trades.clear()
 
 
@@ -219,12 +222,16 @@ async def ntfy(sess: aiohttp.ClientSession, title: str, body: str) -> None:
 
 
 async def espn_live(sess: aiohttp.ClientSession, espn_id: str) -> dict | None:
-    """Best-effort live score + clock for push context. Never raises."""
+    """Best-effort live score + clock for push context. Never raises.
+
+    Timeout is deliberately tight: this sits in front of the push, so a slow
+    ESPN must not delay the alert. No score → push without one.
+    """
     if not espn_id:
         return None
     try:
         async with sess.get(
-            ESPN_SUMMARY + espn_id, timeout=aiohttp.ClientTimeout(total=6)
+            ESPN_SUMMARY + espn_id, timeout=aiohttp.ClientTimeout(total=1.5)
         ) as r:
             d = await r.json()
         comp = (d.get("header", {}).get("competitions") or [{}])[0]
@@ -291,12 +298,14 @@ async def capture_match(m: dict, w: Writer, sess: aiohttp.ClientSession, until: 
     ladders: dict[str, dict[str, dict[float, float]]] = {}  # yes_token → {bids:{p:s}, asks:{p:s}}
     mid_trail: dict[str, list[tuple[float, float]]] = {oc: [] for oc in OUTCOMES}
     last_push = 0.0  # 事件级冷却：一次进球三条线齐跳，只推一条聚合消息
+    pending: dict | None = None  # 待确认的中等跳变：{"ts", "ds"}
+    kalshi_last: dict = {}
     n_msgs = 0
 
     oc_name = {"home": zh(m["home"]), "draw": "平局", "away": zh(m["away"])}
     zh_label = f"{zh(m['home'])} vs {zh(m['away'])}"
 
-    async def push_spike(deltas: dict[str, tuple[float, float]]) -> None:
+    async def push_spike(deltas: dict[str, tuple[float, float]], detect_ts: int) -> None:
         """deltas: outcome → (delta, current_mid)。取 ESPN 比分/时钟拼上下文后推送。"""
         lv = await espn_live(sess, m["espn_id"])
         # 主角 = 跳幅最大的结果；涨=利好该方向（疑似其进球/对方红牌）
@@ -321,6 +330,21 @@ async def capture_match(m: dict, w: Writer, sess: aiohttp.ClientSession, until: 
                 lines.append(f"{oc_name[oc]} {d*100:+.1f}pp → {mid*100:.1f}%")
         if clock or score:
             lines.append(f"实时：{score or '?'}{'，' + clock if clock else ''}（ESPN）")
+        if (
+            kalshi_last.get("ts") is not None
+            and abs(detect_ts - kalshi_last["ts"]) <= kalshi.FRESH_S
+        ):
+            parts = []
+            if "home" in kalshi_last:
+                parts.append(f"{zh(m['home'])} {kalshi_last['home']*100:.0f}%")
+            if "draw" in kalshi_last:
+                parts.append(f"平局 {kalshi_last['draw']*100:.0f}%")
+            if "away" in kalshi_last:
+                parts.append(f"{zh(m['away'])} {kalshi_last['away']*100:.0f}%")
+            if parts:
+                lines.append("Kalshi：" + " · ".join(parts))
+        # 检测时刻。收到推送时和手机时间对一下，就能量出 ntfy 端到端投递延迟。
+        lines.append(datetime.fromtimestamp(detect_ts, timezone.utc).strftime("检测 %H:%M:%SZ"))
         await ntfy(sess, title, "\n".join(lines))
 
     def handle(msg: dict) -> None:
@@ -329,7 +353,7 @@ async def capture_match(m: dict, w: Writer, sess: aiohttp.ClientSession, until: 
         if not et:
             return
         n_msgs += 1
-        w.raw.append((int(time.time() * 1000), slug, et, json.dumps(msg, separators=(",", ":"))))
+        # (raw_events archive removed — see Writer; mids/trades derived below)
         if et == "book":
             aid = msg.get("asset_id", "")
             info = token_info.get(aid)
@@ -368,12 +392,22 @@ async def capture_match(m: dict, w: Writer, sess: aiohttp.ClientSession, until: 
             key = f"{msg.get('transaction_hash','ws')}-{aid}-{msg.get('price')}-{msg.get('size')}"
             w.trades.append((key, ts, slug, oc, side, price, float(msg.get("size") or 0)))
 
+    def fire(ds: dict[str, tuple[float, float]], cur: dict[str, float], detect_ts: int, tier: str) -> None:
+        deltas = {oc: (cur[oc] - ref, cur[oc]) for oc, (_, ref) in ds.items() if oc in cur}
+        log.info(
+            "[%s] SPIKE(%s) %s",
+            slug,
+            tier,
+            " ".join(f"{oc}{d*100:+.1f}pp" for oc, (d, _) in deltas.items()),
+        )
+        asyncio.ensure_future(push_spike(deltas, detect_ts))
+
     async def sampler() -> None:
-        nonlocal last_push
+        nonlocal last_push, pending
         while True:
             ts = int(time.time())
-            deltas: dict[str, tuple[float, float]] = {}  # oc → (Δ12s, mid)
-            spiked = False
+            cur: dict[str, float] = {}
+            ds: dict[str, tuple[float, float]] = {}  # oc → (Δ12s, ref_mid)
             for oc in OUTCOMES:
                 lad = ladders.get(yes_of[oc])
                 if not lad or not (lad["bids"] or lad["asks"]):
@@ -382,27 +416,81 @@ async def capture_match(m: dict, w: Writer, sess: aiohttp.ClientSession, until: 
                 ba = min(lad["asks"]) if lad["asks"] else None
                 mid = (bb + ba) / 2 if bb is not None and ba is not None else (bb or ba)
                 w.mids.append((ts, slug, oc, bb, ba, mid))
-                if mid is not None:
-                    trail = mid_trail[oc]
-                    trail.append((ts, mid))
-                    while trail and ts - trail[0][0] > 60:
-                        trail.pop(0)
-                    ref = next((x for x in trail if ts - x[0] >= SPIKE_WINDOW_S), None)
-                    if ref:
-                        delta = mid - ref[1]
-                        deltas[oc] = (delta, mid)
-                        if abs(delta) >= SPIKE_PP:
-                            spiked = True
-            if spiked and ts - last_push > SPIKE_COOLDOWN_S:
-                last_push = ts
-                log.info(
-                    "[%s] SPIKE %s",
-                    slug,
-                    " ".join(f"{oc}{d*100:+.1f}pp" for oc, (d, _) in deltas.items()),
-                )
-                asyncio.ensure_future(push_spike(dict(deltas)))
+                if mid is None:
+                    continue
+                cur[oc] = mid
+                trail = mid_trail[oc]
+                trail.append((ts, mid))
+                while trail and ts - trail[0][0] > spike.TRAIL_S:
+                    trail.pop(0)
+                ref = spike.pick_ref(trail, ts)
+                if ref:
+                    ds[oc] = (mid - ref[1], ref[1])
+
+            # 到期的待确认候选：站住了才推，回撤的直接丢弃
+            if pending and ts - pending["ts"] >= spike.CONFIRM_S:
+                if spike.confirmed(pending["ds"], cur):
+                    last_push = ts
+                    fire(pending["ds"], cur, pending["ts"], "confirmed")
+                else:
+                    log.info("[%s] spike reverted, dropped", slug)
+                pending = None
+
+            hits = spike.spiked(ds, cur)
+            if hits and ts - last_push > spike.COOLDOWN_S:
+                if spike.is_fast(hits):
+                    # 进球级：立即推，绝不为确认多等 5 秒
+                    pending = None
+                    last_push = ts
+                    fire(ds, cur, ts, "instant")
+                elif pending is None:
+                    pending = {"ts": ts, "ds": dict(ds)}
             w.flush()
             await asyncio.sleep(MID_SAMPLE_S)
+
+    async def kalshi_poller() -> None:
+        legs = None
+        for attempt in range(kalshi.RESOLVE_ATTEMPTS):
+            try:
+                legs = await kalshi.resolve(sess, m["home"], m["away"])
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001 — Kalshi 缺席不能打断 Polymarket 主链路
+                legs = None
+            if legs:
+                break
+            if attempt + 1 < kalshi.RESOLVE_ATTEMPTS:
+                await asyncio.sleep(kalshi.RESOLVE_RETRY_S)
+        if not legs:
+            log.info("[%s] Kalshi resolution failed — giving up", slug)
+            return
+
+        failures = 0
+        while True:
+            try:
+                quotes = await kalshi.poll_once(sess, legs)
+                ts = int(time.time())
+                snapshot = {"ts": ts}
+                for oc, (bid, ask, mid) in quotes.items():
+                    w.kalshi.append((ts, slug, oc, bid, ask, mid))
+                    if mid is not None:
+                        snapshot[oc] = mid
+                kalshi_last.clear()
+                kalshi_last.update(snapshot)
+                failures = 0
+                await asyncio.sleep(kalshi.POLL_S)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 — 独立降级，不影响 CLOB 采集
+                failures += 1
+                if failures == 1 or failures % 60 == 0:
+                    log.warning(
+                        "[%s] Kalshi poll error (%d consecutive): %s",
+                        slug,
+                        failures,
+                        exc,
+                    )
+                await asyncio.sleep(5)
 
     async def pinger(ws: aiohttp.ClientWebSocketResponse) -> None:
         while not ws.closed:
@@ -412,6 +500,7 @@ async def capture_match(m: dict, w: Writer, sess: aiohttp.ClientSession, until: 
     log.info("[%s] capture start (%s), window until %s",
              slug, label, datetime.fromtimestamp(until, tz=timezone.utc).strftime("%H:%MZ"))
     samp = asyncio.ensure_future(sampler())
+    kal = asyncio.ensure_future(kalshi_poller())
     try:
         while time.time() < until:
             try:
@@ -438,6 +527,7 @@ async def capture_match(m: dict, w: Writer, sess: aiohttp.ClientSession, until: 
                 await asyncio.sleep(RECONNECT_S)
     finally:
         samp.cancel()
+        kal.cancel()
         w.flush()
         log.info("[%s] capture end — %d msgs", slug, n_msgs)
 
