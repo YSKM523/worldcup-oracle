@@ -1,0 +1,1805 @@
+{
+  "generated_at": "2026-07-10T03:42:11.783886+00:00",
+  "scope": {
+    "completed_matches": 96,
+    "complete_three_source_matches": 94,
+    "stages_present": [
+      "group",
+      "r16",
+      "r32"
+    ],
+    "outcome_definition": "Kalshi settled regulation-time result",
+    "t_lock_definition": "06:10 UTC on kickoff day, or previous day when kickoff is before 06:10 UTC",
+    "t_ko_definition": "kickoff minus 5 minutes"
+  },
+  "coverage": {
+    "precedence": [
+      "缺 Kalshi",
+      "缺 PM",
+      "缺 AI locked",
+      "价格时刻无数据"
+    ],
+    "counts": {
+      "完整三源": 94,
+      "缺 Kalshi": 0,
+      "缺 PM": 0,
+      "缺 AI locked": 2,
+      "价格时刻无数据": 0
+    },
+    "ledger": [
+      {
+        "match_key": "2026-06-11T19:00:00+00:00|Mexico|South Africa",
+        "kickoff_utc": "2026-06-11T19:00:00+00:00",
+        "home": "Mexico",
+        "away": "South Africa",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN11MEXRSA",
+        "pm_event_slug": "fifwc-mex-rsa-2026-06-11",
+        "pm_event_end_date": "2026-06-11T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-12T02:00:00+00:00|South Korea|Czech Republic",
+        "kickoff_utc": "2026-06-12T02:00:00+00:00",
+        "home": "South Korea",
+        "away": "Czech Republic",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN11KORCZE",
+        "pm_event_slug": "fifwc-kr-cze-2026-06-11",
+        "pm_event_end_date": "2026-06-12T02:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-12T19:00:00+00:00|Canada|Bosnia and Herzegovina",
+        "kickoff_utc": "2026-06-12T19:00:00+00:00",
+        "home": "Canada",
+        "away": "Bosnia and Herzegovina",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN12CANBIH",
+        "pm_event_slug": "fifwc-can-bih-2026-06-12",
+        "pm_event_end_date": "2026-06-12T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-13T01:00:00+00:00|United States|Paraguay",
+        "kickoff_utc": "2026-06-13T01:00:00+00:00",
+        "home": "United States",
+        "away": "Paraguay",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN12USAPAR",
+        "pm_event_slug": "fifwc-usa-par-2026-06-12",
+        "pm_event_end_date": "2026-06-13T01:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-13T19:00:00+00:00|Qatar|Switzerland",
+        "kickoff_utc": "2026-06-13T19:00:00+00:00",
+        "home": "Qatar",
+        "away": "Switzerland",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN13QATSUI",
+        "pm_event_slug": "fifwc-qat-che-2026-06-13",
+        "pm_event_end_date": "2026-06-13T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-13T22:00:00+00:00|Brazil|Morocco",
+        "kickoff_utc": "2026-06-13T22:00:00+00:00",
+        "home": "Brazil",
+        "away": "Morocco",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN13BRAMAR",
+        "pm_event_slug": "fifwc-bra-mar-2026-06-13",
+        "pm_event_end_date": "2026-06-13T22:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-14T01:00:00+00:00|Haiti|Scotland",
+        "kickoff_utc": "2026-06-14T01:00:00+00:00",
+        "home": "Haiti",
+        "away": "Scotland",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN13HTISCO",
+        "pm_event_slug": "fifwc-hai-sco-2026-06-13",
+        "pm_event_end_date": "2026-06-14T01:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-14T04:00:00+00:00|Australia|Turkey",
+        "kickoff_utc": "2026-06-14T04:00:00+00:00",
+        "home": "Australia",
+        "away": "Turkey",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN14AUSTUR",
+        "pm_event_slug": "fifwc-aus-tur-2026-06-14",
+        "pm_event_end_date": "2026-06-14T04:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-14T17:00:00+00:00|Germany|Curaçao",
+        "kickoff_utc": "2026-06-14T17:00:00+00:00",
+        "home": "Germany",
+        "away": "Curaçao",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN14GERCUW",
+        "pm_event_slug": "fifwc-ger-kor-2026-06-14",
+        "pm_event_end_date": "2026-06-14T17:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-14T20:00:00+00:00|Netherlands|Japan",
+        "kickoff_utc": "2026-06-14T20:00:00+00:00",
+        "home": "Netherlands",
+        "away": "Japan",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN14NEDJPN",
+        "pm_event_slug": "fifwc-nld-jpn-2026-06-14",
+        "pm_event_end_date": "2026-06-14T20:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-14T23:00:00+00:00|Ivory Coast|Ecuador",
+        "kickoff_utc": "2026-06-14T23:00:00+00:00",
+        "home": "Ivory Coast",
+        "away": "Ecuador",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN14CIVECU",
+        "pm_event_slug": "fifwc-civ-ecu-2026-06-14",
+        "pm_event_end_date": "2026-06-14T23:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-15T02:00:00+00:00|Sweden|Tunisia",
+        "kickoff_utc": "2026-06-15T02:00:00+00:00",
+        "home": "Sweden",
+        "away": "Tunisia",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN14SWETUN",
+        "pm_event_slug": "fifwc-swe-tun-2026-06-14",
+        "pm_event_end_date": "2026-06-15T02:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-15T16:00:00+00:00|Spain|Cape Verde",
+        "kickoff_utc": "2026-06-15T16:00:00+00:00",
+        "home": "Spain",
+        "away": "Cape Verde",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN15ESPCPV",
+        "pm_event_slug": "fifwc-esp-cvi-2026-06-15",
+        "pm_event_end_date": "2026-06-15T16:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-15T19:00:00+00:00|Belgium|Egypt",
+        "kickoff_utc": "2026-06-15T19:00:00+00:00",
+        "home": "Belgium",
+        "away": "Egypt",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN15BELEGY",
+        "pm_event_slug": "fifwc-bel-egy-2026-06-15",
+        "pm_event_end_date": "2026-06-15T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-15T22:00:00+00:00|Saudi Arabia|Uruguay",
+        "kickoff_utc": "2026-06-15T22:00:00+00:00",
+        "home": "Saudi Arabia",
+        "away": "Uruguay",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN15KSAURU",
+        "pm_event_slug": "fifwc-ksa-ury-2026-06-15",
+        "pm_event_end_date": "2026-06-15T22:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-16T01:00:00+00:00|Iran|New Zealand",
+        "kickoff_utc": "2026-06-16T01:00:00+00:00",
+        "home": "Iran",
+        "away": "New Zealand",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN15IRINZL",
+        "pm_event_slug": "fifwc-irn-nzl-2026-06-15",
+        "pm_event_end_date": "2026-06-16T01:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-16T19:00:00+00:00|France|Senegal",
+        "kickoff_utc": "2026-06-16T19:00:00+00:00",
+        "home": "France",
+        "away": "Senegal",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN16FRASEN",
+        "pm_event_slug": "fifwc-fra-sen-2026-06-16",
+        "pm_event_end_date": "2026-06-16T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-16T22:00:00+00:00|Iraq|Norway",
+        "kickoff_utc": "2026-06-16T22:00:00+00:00",
+        "home": "Iraq",
+        "away": "Norway",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN16IRQNOR",
+        "pm_event_slug": "fifwc-irq-nor-2026-06-16",
+        "pm_event_end_date": "2026-06-16T22:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-17T01:00:00+00:00|Argentina|Algeria",
+        "kickoff_utc": "2026-06-17T01:00:00+00:00",
+        "home": "Argentina",
+        "away": "Algeria",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN16ARGDZA",
+        "pm_event_slug": "fifwc-arg-alg-2026-06-16",
+        "pm_event_end_date": "2026-06-17T01:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-17T04:00:00+00:00|Austria|Jordan",
+        "kickoff_utc": "2026-06-17T04:00:00+00:00",
+        "home": "Austria",
+        "away": "Jordan",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN17AUTJOR",
+        "pm_event_slug": "fifwc-aut-jor-2026-06-17",
+        "pm_event_end_date": "2026-06-17T04:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-17T17:00:00+00:00|Portugal|DR Congo",
+        "kickoff_utc": "2026-06-17T17:00:00+00:00",
+        "home": "Portugal",
+        "away": "DR Congo",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN17PORCOD",
+        "pm_event_slug": "fifwc-prt-cdr-2026-06-17",
+        "pm_event_end_date": "2026-06-17T17:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-17T20:00:00+00:00|England|Croatia",
+        "kickoff_utc": "2026-06-17T20:00:00+00:00",
+        "home": "England",
+        "away": "Croatia",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN17ENGCRO",
+        "pm_event_slug": "fifwc-eng-hrv-2026-06-17",
+        "pm_event_end_date": "2026-06-17T20:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-17T23:00:00+00:00|Ghana|Panama",
+        "kickoff_utc": "2026-06-17T23:00:00+00:00",
+        "home": "Ghana",
+        "away": "Panama",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN17GHAPAN",
+        "pm_event_slug": "fifwc-gha-pan-2026-06-17",
+        "pm_event_end_date": "2026-06-17T23:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-18T02:00:00+00:00|Uzbekistan|Colombia",
+        "kickoff_utc": "2026-06-18T02:00:00+00:00",
+        "home": "Uzbekistan",
+        "away": "Colombia",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN17UZBCOL",
+        "pm_event_slug": "fifwc-uzb-col-2026-06-17",
+        "pm_event_end_date": "2026-06-18T02:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-18T16:00:00+00:00|Czech Republic|South Africa",
+        "kickoff_utc": "2026-06-18T16:00:00+00:00",
+        "home": "Czech Republic",
+        "away": "South Africa",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN18CZERSA",
+        "pm_event_slug": "fifwc-cze-rsa-2026-06-18",
+        "pm_event_end_date": "2026-06-18T16:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-18T19:00:00+00:00|Switzerland|Bosnia and Herzegovina",
+        "kickoff_utc": "2026-06-18T19:00:00+00:00",
+        "home": "Switzerland",
+        "away": "Bosnia and Herzegovina",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN18SUIBIH",
+        "pm_event_slug": "fifwc-che-bih-2026-06-18",
+        "pm_event_end_date": "2026-06-18T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-18T22:00:00+00:00|Canada|Qatar",
+        "kickoff_utc": "2026-06-18T22:00:00+00:00",
+        "home": "Canada",
+        "away": "Qatar",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN18CANQAT",
+        "pm_event_slug": "fifwc-can-qat-2026-06-18",
+        "pm_event_end_date": "2026-06-18T22:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-19T01:00:00+00:00|Mexico|South Korea",
+        "kickoff_utc": "2026-06-19T01:00:00+00:00",
+        "home": "Mexico",
+        "away": "South Korea",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN18MEXKOR",
+        "pm_event_slug": "fifwc-mex-kr-2026-06-18",
+        "pm_event_end_date": "2026-06-19T01:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-19T19:00:00+00:00|United States|Australia",
+        "kickoff_utc": "2026-06-19T19:00:00+00:00",
+        "home": "United States",
+        "away": "Australia",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN19USAAUS",
+        "pm_event_slug": "fifwc-usa-aus-2026-06-19",
+        "pm_event_end_date": "2026-06-19T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-19T22:00:00+00:00|Scotland|Morocco",
+        "kickoff_utc": "2026-06-19T22:00:00+00:00",
+        "home": "Scotland",
+        "away": "Morocco",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN19SCOMAR",
+        "pm_event_slug": "fifwc-sco-mar-2026-06-19",
+        "pm_event_end_date": "2026-06-19T22:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-20T00:30:00+00:00|Brazil|Haiti",
+        "kickoff_utc": "2026-06-20T00:30:00+00:00",
+        "home": "Brazil",
+        "away": "Haiti",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN19BRAHTI",
+        "pm_event_slug": "fifwc-bra-hai-2026-06-19",
+        "pm_event_end_date": "2026-06-20T00:30:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-20T03:00:00+00:00|Turkey|Paraguay",
+        "kickoff_utc": "2026-06-20T03:00:00+00:00",
+        "home": "Turkey",
+        "away": "Paraguay",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN19TURPAR",
+        "pm_event_slug": "fifwc-tur-par-2026-06-19",
+        "pm_event_end_date": "2026-06-20T03:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-20T17:00:00+00:00|Netherlands|Sweden",
+        "kickoff_utc": "2026-06-20T17:00:00+00:00",
+        "home": "Netherlands",
+        "away": "Sweden",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN20NEDSWE",
+        "pm_event_slug": "fifwc-nld-swe-2026-06-20",
+        "pm_event_end_date": "2026-06-20T17:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-20T20:00:00+00:00|Germany|Ivory Coast",
+        "kickoff_utc": "2026-06-20T20:00:00+00:00",
+        "home": "Germany",
+        "away": "Ivory Coast",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN20GERCIV",
+        "pm_event_slug": "fifwc-ger-civ-2026-06-20",
+        "pm_event_end_date": "2026-06-20T20:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-21T00:00:00+00:00|Ecuador|Curaçao",
+        "kickoff_utc": "2026-06-21T00:00:00+00:00",
+        "home": "Ecuador",
+        "away": "Curaçao",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN20ECUCUW",
+        "pm_event_slug": "fifwc-ecu-kor-2026-06-20",
+        "pm_event_end_date": "2026-06-21T00:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-21T04:00:00+00:00|Tunisia|Japan",
+        "kickoff_utc": "2026-06-21T04:00:00+00:00",
+        "home": "Tunisia",
+        "away": "Japan",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN21TUNJPN",
+        "pm_event_slug": "fifwc-tun-jpn-2026-06-21",
+        "pm_event_end_date": "2026-06-21T04:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-21T16:00:00+00:00|Spain|Saudi Arabia",
+        "kickoff_utc": "2026-06-21T16:00:00+00:00",
+        "home": "Spain",
+        "away": "Saudi Arabia",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN21ESPKSA",
+        "pm_event_slug": "fifwc-esp-ksa-2026-06-21",
+        "pm_event_end_date": "2026-06-21T16:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-21T19:00:00+00:00|Belgium|Iran",
+        "kickoff_utc": "2026-06-21T19:00:00+00:00",
+        "home": "Belgium",
+        "away": "Iran",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN21BELIRI",
+        "pm_event_slug": "fifwc-bel-irn-2026-06-21",
+        "pm_event_end_date": "2026-06-21T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-21T22:00:00+00:00|Uruguay|Cape Verde",
+        "kickoff_utc": "2026-06-21T22:00:00+00:00",
+        "home": "Uruguay",
+        "away": "Cape Verde",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN21URUCPV",
+        "pm_event_slug": "fifwc-ury-cvi-2026-06-21",
+        "pm_event_end_date": "2026-06-21T22:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-22T01:00:00+00:00|New Zealand|Egypt",
+        "kickoff_utc": "2026-06-22T01:00:00+00:00",
+        "home": "New Zealand",
+        "away": "Egypt",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN21NZLEGY",
+        "pm_event_slug": "fifwc-nzl-egy-2026-06-21",
+        "pm_event_end_date": "2026-06-22T01:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-22T17:00:00+00:00|Argentina|Austria",
+        "kickoff_utc": "2026-06-22T17:00:00+00:00",
+        "home": "Argentina",
+        "away": "Austria",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN22ARGAUT",
+        "pm_event_slug": "fifwc-arg-aut-2026-06-22",
+        "pm_event_end_date": "2026-06-22T17:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-22T21:00:00+00:00|France|Iraq",
+        "kickoff_utc": "2026-06-22T21:00:00+00:00",
+        "home": "France",
+        "away": "Iraq",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN22FRAIRQ",
+        "pm_event_slug": "fifwc-fra-irq-2026-06-22",
+        "pm_event_end_date": "2026-06-22T21:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-23T00:00:00+00:00|Norway|Senegal",
+        "kickoff_utc": "2026-06-23T00:00:00+00:00",
+        "home": "Norway",
+        "away": "Senegal",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN22NORSEN",
+        "pm_event_slug": "fifwc-nor-sen-2026-06-22",
+        "pm_event_end_date": "2026-06-23T00:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-23T03:00:00+00:00|Jordan|Algeria",
+        "kickoff_utc": "2026-06-23T03:00:00+00:00",
+        "home": "Jordan",
+        "away": "Algeria",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN22JORDZA",
+        "pm_event_slug": "fifwc-jor-alg-2026-06-22",
+        "pm_event_end_date": "2026-06-23T03:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-23T17:00:00+00:00|Portugal|Uzbekistan",
+        "kickoff_utc": "2026-06-23T17:00:00+00:00",
+        "home": "Portugal",
+        "away": "Uzbekistan",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN23PORUZB",
+        "pm_event_slug": "fifwc-prt-uzb-2026-06-23",
+        "pm_event_end_date": "2026-06-23T17:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-23T20:00:00+00:00|England|Ghana",
+        "kickoff_utc": "2026-06-23T20:00:00+00:00",
+        "home": "England",
+        "away": "Ghana",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN23ENGGHA",
+        "pm_event_slug": "fifwc-eng-gha-2026-06-23",
+        "pm_event_end_date": "2026-06-23T20:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-23T23:00:00+00:00|Panama|Croatia",
+        "kickoff_utc": "2026-06-23T23:00:00+00:00",
+        "home": "Panama",
+        "away": "Croatia",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN23PANCRO",
+        "pm_event_slug": "fifwc-pan-hrv-2026-06-23",
+        "pm_event_end_date": "2026-06-23T23:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-24T02:00:00+00:00|Colombia|DR Congo",
+        "kickoff_utc": "2026-06-24T02:00:00+00:00",
+        "home": "Colombia",
+        "away": "DR Congo",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN23COLCOD",
+        "pm_event_slug": "fifwc-col-cdr-2026-06-23",
+        "pm_event_end_date": "2026-06-24T02:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-24T19:00:00+00:00|Bosnia and Herzegovina|Qatar",
+        "kickoff_utc": "2026-06-24T19:00:00+00:00",
+        "home": "Bosnia and Herzegovina",
+        "away": "Qatar",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN24BIHQAT",
+        "pm_event_slug": "fifwc-bih-qat-2026-06-24",
+        "pm_event_end_date": "2026-06-24T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-24T19:00:00+00:00|Switzerland|Canada",
+        "kickoff_utc": "2026-06-24T19:00:00+00:00",
+        "home": "Switzerland",
+        "away": "Canada",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN24SUICAN",
+        "pm_event_slug": "fifwc-che-can-2026-06-24",
+        "pm_event_end_date": "2026-06-24T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-24T22:00:00+00:00|Morocco|Haiti",
+        "kickoff_utc": "2026-06-24T22:00:00+00:00",
+        "home": "Morocco",
+        "away": "Haiti",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN24MARHTI",
+        "pm_event_slug": "fifwc-mar-hai-2026-06-24",
+        "pm_event_end_date": "2026-06-24T22:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-24T22:00:00+00:00|Scotland|Brazil",
+        "kickoff_utc": "2026-06-24T22:00:00+00:00",
+        "home": "Scotland",
+        "away": "Brazil",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN24SCOBRA",
+        "pm_event_slug": "fifwc-sco-bra-2026-06-24",
+        "pm_event_end_date": "2026-06-24T22:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-25T01:00:00+00:00|Czech Republic|Mexico",
+        "kickoff_utc": "2026-06-25T01:00:00+00:00",
+        "home": "Czech Republic",
+        "away": "Mexico",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN24CZEMEX",
+        "pm_event_slug": "fifwc-cze-mex-2026-06-24",
+        "pm_event_end_date": "2026-06-25T01:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-25T01:00:00+00:00|South Africa|South Korea",
+        "kickoff_utc": "2026-06-25T01:00:00+00:00",
+        "home": "South Africa",
+        "away": "South Korea",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN24RSAKOR",
+        "pm_event_slug": "fifwc-rsa-kr-2026-06-24",
+        "pm_event_end_date": "2026-06-25T01:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-25T20:00:00+00:00|Curaçao|Ivory Coast",
+        "kickoff_utc": "2026-06-25T20:00:00+00:00",
+        "home": "Curaçao",
+        "away": "Ivory Coast",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN25CUWCIV",
+        "pm_event_slug": "fifwc-kor-civ-2026-06-25",
+        "pm_event_end_date": "2026-06-25T20:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-25T20:00:00+00:00|Ecuador|Germany",
+        "kickoff_utc": "2026-06-25T20:00:00+00:00",
+        "home": "Ecuador",
+        "away": "Germany",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN25ECUGER",
+        "pm_event_slug": "fifwc-ecu-ger-2026-06-25",
+        "pm_event_end_date": "2026-06-25T20:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-25T23:00:00+00:00|Japan|Sweden",
+        "kickoff_utc": "2026-06-25T23:00:00+00:00",
+        "home": "Japan",
+        "away": "Sweden",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN25JPNSWE",
+        "pm_event_slug": "fifwc-jpn-swe-2026-06-25",
+        "pm_event_end_date": "2026-06-25T23:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-25T23:00:00+00:00|Tunisia|Netherlands",
+        "kickoff_utc": "2026-06-25T23:00:00+00:00",
+        "home": "Tunisia",
+        "away": "Netherlands",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN25TUNNED",
+        "pm_event_slug": "fifwc-tun-nld-2026-06-25",
+        "pm_event_end_date": "2026-06-25T23:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-26T02:00:00+00:00|Paraguay|Australia",
+        "kickoff_utc": "2026-06-26T02:00:00+00:00",
+        "home": "Paraguay",
+        "away": "Australia",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN25PARAUS",
+        "pm_event_slug": "fifwc-par-aus-2026-06-25",
+        "pm_event_end_date": "2026-06-26T02:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-26T02:00:00+00:00|Turkey|United States",
+        "kickoff_utc": "2026-06-26T02:00:00+00:00",
+        "home": "Turkey",
+        "away": "United States",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN25TURUSA",
+        "pm_event_slug": "fifwc-tur-usa-2026-06-25",
+        "pm_event_end_date": "2026-06-26T02:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-26T19:00:00+00:00|Norway|France",
+        "kickoff_utc": "2026-06-26T19:00:00+00:00",
+        "home": "Norway",
+        "away": "France",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN26NORFRA",
+        "pm_event_slug": "fifwc-nor-fra-2026-06-26",
+        "pm_event_end_date": "2026-06-26T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-26T19:00:00+00:00|Senegal|Iraq",
+        "kickoff_utc": "2026-06-26T19:00:00+00:00",
+        "home": "Senegal",
+        "away": "Iraq",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN26SENIRQ",
+        "pm_event_slug": "fifwc-sen-irq-2026-06-26",
+        "pm_event_end_date": "2026-06-26T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-27T00:00:00+00:00|Cape Verde|Saudi Arabia",
+        "kickoff_utc": "2026-06-27T00:00:00+00:00",
+        "home": "Cape Verde",
+        "away": "Saudi Arabia",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN26CPVKSA",
+        "pm_event_slug": "fifwc-cvi-ksa-2026-06-26",
+        "pm_event_end_date": "2026-06-27T00:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-27T00:00:00+00:00|Uruguay|Spain",
+        "kickoff_utc": "2026-06-27T00:00:00+00:00",
+        "home": "Uruguay",
+        "away": "Spain",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN26URUESP",
+        "pm_event_slug": "fifwc-ury-esp-2026-06-26",
+        "pm_event_end_date": "2026-06-27T00:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-27T03:00:00+00:00|Egypt|Iran",
+        "kickoff_utc": "2026-06-27T03:00:00+00:00",
+        "home": "Egypt",
+        "away": "Iran",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN26EGYIRI",
+        "pm_event_slug": "fifwc-egy-irn-2026-06-26",
+        "pm_event_end_date": "2026-06-27T03:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-27T03:00:00+00:00|New Zealand|Belgium",
+        "kickoff_utc": "2026-06-27T03:00:00+00:00",
+        "home": "New Zealand",
+        "away": "Belgium",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN26NZLBEL",
+        "pm_event_slug": "fifwc-nzl-bel-2026-06-26",
+        "pm_event_end_date": "2026-06-27T03:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-27T21:00:00+00:00|Croatia|Ghana",
+        "kickoff_utc": "2026-06-27T21:00:00+00:00",
+        "home": "Croatia",
+        "away": "Ghana",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN27CROGHA",
+        "pm_event_slug": "fifwc-hrv-gha-2026-06-27",
+        "pm_event_end_date": "2026-06-27T21:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-27T21:00:00+00:00|Panama|England",
+        "kickoff_utc": "2026-06-27T21:00:00+00:00",
+        "home": "Panama",
+        "away": "England",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN27PANENG",
+        "pm_event_slug": "fifwc-pan-eng-2026-06-27",
+        "pm_event_end_date": "2026-06-27T21:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-27T23:30:00+00:00|Colombia|Portugal",
+        "kickoff_utc": "2026-06-27T23:30:00+00:00",
+        "home": "Colombia",
+        "away": "Portugal",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN27COLPOR",
+        "pm_event_slug": "fifwc-col-prt-2026-06-27",
+        "pm_event_end_date": "2026-06-27T23:30:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-27T23:30:00+00:00|DR Congo|Uzbekistan",
+        "kickoff_utc": "2026-06-27T23:30:00+00:00",
+        "home": "DR Congo",
+        "away": "Uzbekistan",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN27CODUZB",
+        "pm_event_slug": "fifwc-cdr-uzb-2026-06-27",
+        "pm_event_end_date": "2026-06-27T23:30:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-28T02:00:00+00:00|Algeria|Austria",
+        "kickoff_utc": "2026-06-28T02:00:00+00:00",
+        "home": "Algeria",
+        "away": "Austria",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN27DZAAUT",
+        "pm_event_slug": "fifwc-alg-aut-2026-06-27",
+        "pm_event_end_date": "2026-06-28T02:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-28T02:00:00+00:00|Jordan|Argentina",
+        "kickoff_utc": "2026-06-28T02:00:00+00:00",
+        "home": "Jordan",
+        "away": "Argentina",
+        "stage": "group",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN27JORARG",
+        "pm_event_slug": "fifwc-jor-arg-2026-06-27",
+        "pm_event_end_date": "2026-06-28T02:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-28T19:00:00+00:00|South Africa|Canada",
+        "kickoff_utc": "2026-06-28T19:00:00+00:00",
+        "home": "South Africa",
+        "away": "Canada",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN28RSACAN",
+        "pm_event_slug": "fifwc-rsa-can-2026-06-28",
+        "pm_event_end_date": "2026-06-28T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-29T17:00:00+00:00|Brazil|Japan",
+        "kickoff_utc": "2026-06-29T17:00:00+00:00",
+        "home": "Brazil",
+        "away": "Japan",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN29BRAJPN",
+        "pm_event_slug": "fifwc-bra-jpn-2026-06-29",
+        "pm_event_end_date": "2026-06-29T17:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-29T20:30:00+00:00|Germany|Paraguay",
+        "kickoff_utc": "2026-06-29T20:30:00+00:00",
+        "home": "Germany",
+        "away": "Paraguay",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN29GERPAR",
+        "pm_event_slug": "fifwc-ger-par-2026-06-29",
+        "pm_event_end_date": "2026-06-29T20:30:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-30T01:00:00+00:00|Netherlands|Morocco",
+        "kickoff_utc": "2026-06-30T01:00:00+00:00",
+        "home": "Netherlands",
+        "away": "Morocco",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN29NEDMAR",
+        "pm_event_slug": "fifwc-nld-mar-2026-06-29",
+        "pm_event_end_date": "2026-06-30T01:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-30T17:00:00+00:00|Ivory Coast|Norway",
+        "kickoff_utc": "2026-06-30T17:00:00+00:00",
+        "home": "Ivory Coast",
+        "away": "Norway",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN30CIVNOR",
+        "pm_event_slug": "fifwc-civ-nor-2026-06-30",
+        "pm_event_end_date": "2026-06-30T17:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-06-30T21:00:00+00:00|France|Sweden",
+        "kickoff_utc": "2026-06-30T21:00:00+00:00",
+        "home": "France",
+        "away": "Sweden",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUN30FRASWE",
+        "pm_event_slug": "fifwc-fra-swe-2026-06-30",
+        "pm_event_end_date": "2026-06-30T21:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-01T02:00:00+00:00|Mexico|Ecuador",
+        "kickoff_utc": "2026-07-01T02:00:00+00:00",
+        "home": "Mexico",
+        "away": "Ecuador",
+        "stage": "r32",
+        "category": "缺 AI locked",
+        "diagnostic_reasons": [
+          "缺 AI locked"
+        ],
+        "kalshi_event_ticker": "KXWCGAME-26JUN30MEXECU",
+        "pm_event_slug": "fifwc-mex-ecu-2026-06-30",
+        "pm_event_end_date": "2026-07-01T01:00:00Z",
+        "pm_event_kickoff_offset_seconds": -3600
+      },
+      {
+        "match_key": "2026-07-01T16:00:00+00:00|England|DR Congo",
+        "kickoff_utc": "2026-07-01T16:00:00+00:00",
+        "home": "England",
+        "away": "DR Congo",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL01ENGCOD",
+        "pm_event_slug": "fifwc-eng-cdr-2026-07-01",
+        "pm_event_end_date": "2026-07-01T16:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-01T20:00:00+00:00|Belgium|Senegal",
+        "kickoff_utc": "2026-07-01T20:00:00+00:00",
+        "home": "Belgium",
+        "away": "Senegal",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL01BELSEN",
+        "pm_event_slug": "fifwc-bel-sen-2026-07-01",
+        "pm_event_end_date": "2026-07-01T20:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-02T00:00:00+00:00|United States|Bosnia and Herzegovina",
+        "kickoff_utc": "2026-07-02T00:00:00+00:00",
+        "home": "United States",
+        "away": "Bosnia and Herzegovina",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL01USABIH",
+        "pm_event_slug": "fifwc-usa-bih-2026-07-01",
+        "pm_event_end_date": "2026-07-02T00:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-02T19:00:00+00:00|Spain|Austria",
+        "kickoff_utc": "2026-07-02T19:00:00+00:00",
+        "home": "Spain",
+        "away": "Austria",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL02ESPAUT",
+        "pm_event_slug": "fifwc-esp-aut-2026-07-02",
+        "pm_event_end_date": "2026-07-02T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-02T23:00:00+00:00|Portugal|Croatia",
+        "kickoff_utc": "2026-07-02T23:00:00+00:00",
+        "home": "Portugal",
+        "away": "Croatia",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL02PORCRO",
+        "pm_event_slug": "fifwc-prt-hrv-2026-07-02",
+        "pm_event_end_date": "2026-07-02T23:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-03T03:00:00+00:00|Switzerland|Algeria",
+        "kickoff_utc": "2026-07-03T03:00:00+00:00",
+        "home": "Switzerland",
+        "away": "Algeria",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL02SUIDZA",
+        "pm_event_slug": "fifwc-che-alg-2026-07-02",
+        "pm_event_end_date": "2026-07-03T03:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-03T18:00:00+00:00|Australia|Egypt",
+        "kickoff_utc": "2026-07-03T18:00:00+00:00",
+        "home": "Australia",
+        "away": "Egypt",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL03AUSEGY",
+        "pm_event_slug": "fifwc-aus-egy-2026-07-03",
+        "pm_event_end_date": "2026-07-03T18:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-03T22:00:00+00:00|Argentina|Cape Verde",
+        "kickoff_utc": "2026-07-03T22:00:00+00:00",
+        "home": "Argentina",
+        "away": "Cape Verde",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL03ARGCPV",
+        "pm_event_slug": "fifwc-arg-cvi-2026-07-03",
+        "pm_event_end_date": "2026-07-03T22:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-04T01:30:00+00:00|Colombia|Ghana",
+        "kickoff_utc": "2026-07-04T01:30:00+00:00",
+        "home": "Colombia",
+        "away": "Ghana",
+        "stage": "r32",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL03COLGHA",
+        "pm_event_slug": "fifwc-col-gha-2026-07-03",
+        "pm_event_end_date": "2026-07-04T01:30:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-04T17:00:00+00:00|Canada|Morocco",
+        "kickoff_utc": "2026-07-04T17:00:00+00:00",
+        "home": "Canada",
+        "away": "Morocco",
+        "stage": "r16",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL04CANMAR",
+        "pm_event_slug": "fifwc-can-mar-2026-07-04",
+        "pm_event_end_date": "2026-07-04T17:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-04T21:00:00+00:00|Paraguay|France",
+        "kickoff_utc": "2026-07-04T21:00:00+00:00",
+        "home": "Paraguay",
+        "away": "France",
+        "stage": "r16",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL04PARFRA",
+        "pm_event_slug": "fifwc-par-fra-2026-07-04",
+        "pm_event_end_date": "2026-07-04T21:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-05T20:00:00+00:00|Brazil|Norway",
+        "kickoff_utc": "2026-07-05T20:00:00+00:00",
+        "home": "Brazil",
+        "away": "Norway",
+        "stage": "r16",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL05BRANOR",
+        "pm_event_slug": "fifwc-bra-nor-2026-07-05",
+        "pm_event_end_date": "2026-07-05T20:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-06T01:00:00+00:00|Mexico|England",
+        "kickoff_utc": "2026-07-06T01:00:00+00:00",
+        "home": "Mexico",
+        "away": "England",
+        "stage": "r16",
+        "category": "缺 AI locked",
+        "diagnostic_reasons": [
+          "缺 AI locked"
+        ],
+        "kalshi_event_ticker": "KXWCGAME-26JUL05MEXENG",
+        "pm_event_slug": "fifwc-mex-eng-2026-07-05",
+        "pm_event_end_date": "2026-07-06T00:00:00Z",
+        "pm_event_kickoff_offset_seconds": -3600
+      },
+      {
+        "match_key": "2026-07-06T19:00:00+00:00|Portugal|Spain",
+        "kickoff_utc": "2026-07-06T19:00:00+00:00",
+        "home": "Portugal",
+        "away": "Spain",
+        "stage": "r16",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL06PORESP",
+        "pm_event_slug": "fifwc-prt-esp-2026-07-06",
+        "pm_event_end_date": "2026-07-06T19:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-07T00:00:00+00:00|United States|Belgium",
+        "kickoff_utc": "2026-07-07T00:00:00+00:00",
+        "home": "United States",
+        "away": "Belgium",
+        "stage": "r16",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL06USABEL",
+        "pm_event_slug": "fifwc-usa-bel-2026-07-06",
+        "pm_event_end_date": "2026-07-07T00:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-07T16:00:00+00:00|Argentina|Egypt",
+        "kickoff_utc": "2026-07-07T16:00:00+00:00",
+        "home": "Argentina",
+        "away": "Egypt",
+        "stage": "r16",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL07ARGEGY",
+        "pm_event_slug": "fifwc-arg-egy-2026-07-07",
+        "pm_event_end_date": "2026-07-07T16:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      },
+      {
+        "match_key": "2026-07-07T20:00:00+00:00|Switzerland|Colombia",
+        "kickoff_utc": "2026-07-07T20:00:00+00:00",
+        "home": "Switzerland",
+        "away": "Colombia",
+        "stage": "r16",
+        "category": "完整三源",
+        "diagnostic_reasons": [],
+        "kalshi_event_ticker": "KXWCGAME-26JUL07SUICOL",
+        "pm_event_slug": "fifwc-che-col-2026-07-07",
+        "pm_event_end_date": "2026-07-07T20:00:00Z",
+        "pm_event_kickoff_offset_seconds": 0
+      }
+    ]
+  },
+  "metrics": {
+    "t_lock": {
+      "ai": {
+        "n": 94,
+        "brier": 0.555046703415162,
+        "log_loss": 2.9714595317432635
+      },
+      "polymarket": {
+        "n": 94,
+        "brier": 0.4829507715482013,
+        "log_loss": 0.821186282607349
+      },
+      "kalshi": {
+        "n": 94,
+        "brier": 0.4835110759658269,
+        "log_loss": 0.8230102537587595
+      }
+    },
+    "t_ko": {
+      "polymarket": {
+        "n": 94,
+        "brier": 0.48235182751260575,
+        "log_loss": 0.8194869097644126
+      },
+      "kalshi": {
+        "n": 94,
+        "brier": 0.4814306348065279,
+        "log_loss": 0.8200693736774244
+      }
+    }
+  },
+  "paired_comparisons": {
+    "pm_minus_kalshi_t_ko": {
+      "n": 94,
+      "mean_difference": 0.0009211927060777587,
+      "ci95": [
+        -0.0015713789970402093,
+        0.003260395176969608
+      ],
+      "bootstrap_repetitions": 1000,
+      "seed": 42
+    },
+    "ai_minus_pm_t_lock": {
+      "n": 94,
+      "mean_difference": 0.07209593186696081,
+      "ci95": [
+        0.02058677706721841,
+        0.12402817477571006
+      ],
+      "bootstrap_repetitions": 1000,
+      "seed": 42
+    },
+    "ai_minus_kalshi_t_lock": {
+      "n": 94,
+      "mean_difference": 0.07153562744933527,
+      "ci95": [
+        0.020582269500105606,
+        0.12389673441255553
+      ],
+      "bootstrap_repetitions": 1000,
+      "seed": 42
+    }
+  },
+  "group_only_sensitivity": {
+    "reason": "AI knockout locked probabilities have p_draw=0 and represent advancement rather than regulation-time three-way outcomes",
+    "metrics_t_lock": {
+      "ai": {
+        "n": 72,
+        "brier": 0.5477602433475727,
+        "log_loss": 0.918847172205719
+      },
+      "polymarket": {
+        "n": 72,
+        "brier": 0.4850108077819119,
+        "log_loss": 0.8227195942187169
+      },
+      "kalshi": {
+        "n": 72,
+        "brier": 0.48606954623483883,
+        "log_loss": 0.8254931829322076
+      }
+    },
+    "paired_comparisons": {
+      "ai_minus_pm_t_lock": {
+        "n": 72,
+        "mean_difference": 0.06274943556566082,
+        "ci95": [
+          0.016862910892306238,
+          0.10934114371801176
+        ],
+        "bootstrap_repetitions": 1000,
+        "seed": 42
+      },
+      "ai_minus_kalshi_t_lock": {
+        "n": 72,
+        "mean_difference": 0.06169069711273392,
+        "ci95": [
+          0.015446417261963141,
+          0.10854328048683859
+        ],
+        "bootstrap_repetitions": 1000,
+        "seed": 42
+      }
+    }
+  },
+  "calibration_t_lock": {
+    "ai": [
+      {
+        "bin": 0,
+        "lower": 0.0,
+        "upper": 0.1,
+        "n": 41,
+        "mean_predicted": 0.030583066924537987,
+        "observed_frequency": 0.14634146341463414
+      },
+      {
+        "bin": 1,
+        "lower": 0.1,
+        "upper": 0.2,
+        "n": 42,
+        "mean_predicted": 0.15428872664757776,
+        "observed_frequency": 0.19047619047619047
+      },
+      {
+        "bin": 2,
+        "lower": 0.2,
+        "upper": 0.3,
+        "n": 74,
+        "mean_predicted": 0.2536759923595572,
+        "observed_frequency": 0.21621621621621623
+      },
+      {
+        "bin": 3,
+        "lower": 0.3,
+        "upper": 0.4,
+        "n": 32,
+        "mean_predicted": 0.3416336908690869,
+        "observed_frequency": 0.21875
+      },
+      {
+        "bin": 4,
+        "lower": 0.4,
+        "upper": 0.5,
+        "n": 23,
+        "mean_predicted": 0.4426276300631024,
+        "observed_frequency": 0.391304347826087
+      },
+      {
+        "bin": 5,
+        "lower": 0.5,
+        "upper": 0.6,
+        "n": 25,
+        "mean_predicted": 0.5570580555279006,
+        "observed_frequency": 0.56
+      },
+      {
+        "bin": 6,
+        "lower": 0.6,
+        "upper": 0.7,
+        "n": 20,
+        "mean_predicted": 0.6358946134613461,
+        "observed_frequency": 0.75
+      },
+      {
+        "bin": 7,
+        "lower": 0.7,
+        "upper": 0.8,
+        "n": 15,
+        "mean_predicted": 0.7475380384832471,
+        "observed_frequency": 0.7333333333333333
+      },
+      {
+        "bin": 8,
+        "lower": 0.8,
+        "upper": 0.9,
+        "n": 9,
+        "mean_predicted": 0.8453240520392404,
+        "observed_frequency": 0.8888888888888888
+      },
+      {
+        "bin": 9,
+        "lower": 0.9,
+        "upper": 1.0,
+        "n": 1,
+        "mean_predicted": 0.9159,
+        "observed_frequency": 0.0
+      }
+    ],
+    "polymarket": [
+      {
+        "bin": 0,
+        "lower": 0.0,
+        "upper": 0.1,
+        "n": 34,
+        "mean_predicted": 0.0585286325002216,
+        "observed_frequency": 0.058823529411764705
+      },
+      {
+        "bin": 1,
+        "lower": 0.1,
+        "upper": 0.2,
+        "n": 64,
+        "mean_predicted": 0.15051255036010203,
+        "observed_frequency": 0.140625
+      },
+      {
+        "bin": 2,
+        "lower": 0.2,
+        "upper": 0.3,
+        "n": 78,
+        "mean_predicted": 0.2499463803722667,
+        "observed_frequency": 0.20512820512820512
+      },
+      {
+        "bin": 3,
+        "lower": 0.3,
+        "upper": 0.4,
+        "n": 17,
+        "mean_predicted": 0.3429284007962268,
+        "observed_frequency": 0.35294117647058826
+      },
+      {
+        "bin": 4,
+        "lower": 0.4,
+        "upper": 0.5,
+        "n": 16,
+        "mean_predicted": 0.4448298879862727,
+        "observed_frequency": 0.5625
+      },
+      {
+        "bin": 5,
+        "lower": 0.5,
+        "upper": 0.6,
+        "n": 21,
+        "mean_predicted": 0.5441749136859589,
+        "observed_frequency": 0.5714285714285714
+      },
+      {
+        "bin": 6,
+        "lower": 0.6,
+        "upper": 0.7,
+        "n": 22,
+        "mean_predicted": 0.6458769624677099,
+        "observed_frequency": 0.7727272727272727
+      },
+      {
+        "bin": 7,
+        "lower": 0.7,
+        "upper": 0.8,
+        "n": 12,
+        "mean_predicted": 0.7403417581519408,
+        "observed_frequency": 0.8333333333333334
+      },
+      {
+        "bin": 8,
+        "lower": 0.8,
+        "upper": 0.9,
+        "n": 15,
+        "mean_predicted": 0.8442823998974323,
+        "observed_frequency": 0.7333333333333333
+      },
+      {
+        "bin": 9,
+        "lower": 0.9,
+        "upper": 1.0,
+        "n": 3,
+        "mean_predicted": 0.9163470412044653,
+        "observed_frequency": 0.6666666666666666
+      }
+    ],
+    "kalshi": [
+      {
+        "bin": 0,
+        "lower": 0.0,
+        "upper": 0.1,
+        "n": 35,
+        "mean_predicted": 0.06278870905622042,
+        "observed_frequency": 0.05714285714285714
+      },
+      {
+        "bin": 1,
+        "lower": 0.1,
+        "upper": 0.2,
+        "n": 61,
+        "mean_predicted": 0.1495038459567456,
+        "observed_frequency": 0.13114754098360656
+      },
+      {
+        "bin": 2,
+        "lower": 0.2,
+        "upper": 0.3,
+        "n": 80,
+        "mean_predicted": 0.24718127248243876,
+        "observed_frequency": 0.2125
+      },
+      {
+        "bin": 3,
+        "lower": 0.3,
+        "upper": 0.4,
+        "n": 18,
+        "mean_predicted": 0.346864061685246,
+        "observed_frequency": 0.3333333333333333
+      },
+      {
+        "bin": 4,
+        "lower": 0.4,
+        "upper": 0.5,
+        "n": 15,
+        "mean_predicted": 0.4515642365107328,
+        "observed_frequency": 0.6
+      },
+      {
+        "bin": 5,
+        "lower": 0.5,
+        "upper": 0.6,
+        "n": 21,
+        "mean_predicted": 0.5442430345156998,
+        "observed_frequency": 0.5714285714285714
+      },
+      {
+        "bin": 6,
+        "lower": 0.6,
+        "upper": 0.7,
+        "n": 22,
+        "mean_predicted": 0.6462343824605468,
+        "observed_frequency": 0.7727272727272727
+      },
+      {
+        "bin": 7,
+        "lower": 0.7,
+        "upper": 0.8,
+        "n": 12,
+        "mean_predicted": 0.741660208171871,
+        "observed_frequency": 0.8333333333333334
+      },
+      {
+        "bin": 8,
+        "lower": 0.8,
+        "upper": 0.9,
+        "n": 16,
+        "mean_predicted": 0.8440102166347262,
+        "observed_frequency": 0.75
+      },
+      {
+        "bin": 9,
+        "lower": 0.9,
+        "upper": 1.0,
+        "n": 2,
+        "mean_predicted": 0.9203980099502489,
+        "observed_frequency": 0.5
+      }
+    ]
+  },
+  "by_stage": {
+    "group": {
+      "ai_t_lock": {
+        "n": 72,
+        "brier": 0.5477602433475727,
+        "log_loss": 0.918847172205719
+      },
+      "polymarket_t_lock": {
+        "n": 72,
+        "brier": 0.4850108077819119,
+        "log_loss": 0.8227195942187169
+      },
+      "kalshi_t_lock": {
+        "n": 72,
+        "brier": 0.48606954623483883,
+        "log_loss": 0.8254931829322076
+      },
+      "polymarket_t_ko": {
+        "n": 72,
+        "brier": 0.4826417574194654,
+        "log_loss": 0.8185949288315383
+      },
+      "kalshi_t_ko": {
+        "n": 72,
+        "brier": 0.48270991887408027,
+        "log_loss": 0.8211674226101002
+      }
+    },
+    "r32": {
+      "ai_t_lock": {
+        "n": 15,
+        "brier": 0.6377446213333334,
+        "log_loss": 11.729306568383647
+      },
+      "polymarket_t_lock": {
+        "n": 15,
+        "brier": 0.4812997845759413,
+        "log_loss": 0.8170696805459072
+      },
+      "kalshi_t_lock": {
+        "n": 15,
+        "brier": 0.48272294396145915,
+        "log_loss": 0.8200807852696202
+      },
+      "polymarket_t_ko": {
+        "n": 15,
+        "brier": 0.48869824954638225,
+        "log_loss": 0.8257340161129524
+      },
+      "kalshi_t_ko": {
+        "n": 15,
+        "brier": 0.4864204368789185,
+        "log_loss": 0.8226751159549232
+      }
+    },
+    "r16": {
+      "ai_t_lock": {
+        "n": 7,
+        "brier": 0.45278332571428576,
+        "log_loss": 5.3172287227571875
+      },
+      "polymarket_t_lock": {
+        "n": 7,
+        "brier": 0.46529965665630624,
+        "log_loss": 0.8142363675935138
+      },
+      "kalshi_t_lock": {
+        "n": 7,
+        "brier": 0.4588842360653488,
+        "log_loss": 0.8037489861657354
+      },
+      "polymarket_t_ko": {
+        "n": 7,
+        "brier": 0.4657702155410992,
+        "log_loss": 0.8152749143271081
+      },
+      "kalshi_t_ko": {
+        "n": 7,
+        "brier": 0.4575798513851533,
+        "log_loss": 0.8031914226324034
+      }
+    },
+    "qf": {
+      "ai_t_lock": {
+        "n": 0,
+        "brier": null,
+        "log_loss": null
+      },
+      "polymarket_t_lock": {
+        "n": 0,
+        "brier": null,
+        "log_loss": null
+      },
+      "kalshi_t_lock": {
+        "n": 0,
+        "brier": null,
+        "log_loss": null
+      },
+      "polymarket_t_ko": {
+        "n": 0,
+        "brier": null,
+        "log_loss": null
+      },
+      "kalshi_t_ko": {
+        "n": 0,
+        "brier": null,
+        "log_loss": null
+      }
+    }
+  },
+  "raw_probability_sums": {
+    "ai_t_lock": {
+      "n": 94,
+      "mean": 0.9999904255319149,
+      "median": 1.0,
+      "min": 0.9999,
+      "max": 1.0001
+    },
+    "polymarket_t_lock": {
+      "n": 94,
+      "mean": 1.0026409574468083,
+      "median": 1.005,
+      "min": 0.985,
+      "max": 1.0150000000000001
+    },
+    "polymarket_t_ko": {
+      "n": 94,
+      "mean": 1.0009867021276593,
+      "median": 1.005,
+      "min": 0.985,
+      "max": 1.0150000000000001
+    },
+    "kalshi_t_lock": {
+      "n": 94,
+      "mean": 1.0053191489361701,
+      "median": 1.005,
+      "min": 0.975,
+      "max": 1.0250000000000001
+    },
+    "kalshi_t_ko": {
+      "n": 94,
+      "mean": 1.0047872340425532,
+      "median": 1.005,
+      "min": 0.985,
+      "max": 1.0350000000000001
+    }
+  },
+  "group_score_discrepancies": {
+    "n_group_complete_cases": 72,
+    "count": 0,
+    "matches": []
+  },
+  "semantic_audit": {
+    "knockout_complete_cases": 22,
+    "knockout_ai_p_draw_zero": 22,
+    "knockout_regulation_draws_with_ai_zero": 6,
+    "log_loss_probability_floor": 1e-15,
+    "pm_event_enddate_offset_anomalies": [
+      {
+        "match_key": "2026-07-01T02:00:00+00:00|Mexico|Ecuador",
+        "offset_seconds": -3600
+      },
+      {
+        "match_key": "2026-07-06T01:00:00+00:00|Mexico|England",
+        "offset_seconds": -3600
+      }
+    ]
+  }
+}
