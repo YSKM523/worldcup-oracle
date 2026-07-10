@@ -3,6 +3,8 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { KalshiMarketState, KalshiQuoteResponse } from "./types";
 import { useKalshiMarket } from "./useKalshiMarket";
+import { MarketConsensusPanel } from "../components/MarketConsensusPanel";
+import type { MatchMarketState, OutcomeBook } from "./useMatchMarket";
 
 type Input = Parameters<typeof useKalshiMarket>[0];
 
@@ -119,10 +121,51 @@ describe("useKalshiMarket", () => {
     });
 
     expect(states.at(-1)).toMatchObject({
-      status: "error",
+      status: "live",
+      stale: false,
       failures: 1,
       outcomes: { home: { ticker: "A-HOME" } },
     });
+  });
+
+  it("keeps a transiently failing live quote in dual consensus until freshness expires", async () => {
+    const book = (mid: number): OutcomeBook => ({
+      bids: [], asks: [], bestBid: mid - 0.01, bestAsk: mid + 0.01, mid, bidUsd: 0, askUsd: 0,
+    });
+    const poly: MatchMarketState = {
+      status: "live", updatedAt: Date.now() + 60_000, wsUp: true,
+      books: { home: book(0.5), draw: book(0.3), away: book(0.2) },
+      trades: [], curves: {}, volume: 100, spike: null, liveTradeCount: 0,
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response(liveQuote("A")))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockImplementation(() => new Promise<Response>(() => undefined));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const ConsensusProbe = ({ input }: { input: Input }) => {
+      const kalshi = useKalshiMarket(input);
+      states.push(kalshi);
+      return createElement(MarketConsensusPanel, { home: input.home, away: input.away, polymarket: poly, kalshi });
+    };
+    await act(async () => {
+      renderer = create(createElement(ConsensusProbe, { input: INPUT_A }));
+    });
+    const consensusState = () => renderer!.root.find((node) => node.props["data-market-consensus-state"] != null).props["data-market-consensus-state"];
+    expect(consensusState()).toBe("dual");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+    expect(states.at(-1)).toMatchObject({ status: "live", stale: false, failures: 1, outcomes: { away: { ticker: "A-AWAY" } } });
+    expect(consensusState()).toBe("dual");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(14_002);
+    });
+    expect(states.at(-1)).toMatchObject({ status: "live", stale: true, failures: 1 });
+    expect(consensusState()).toBe("single");
+    expect(JSON.stringify(renderer!.toJSON())).toContain("KAL STALE");
   });
 
   it("aborts a pending request and clears every timer on cleanup", async () => {

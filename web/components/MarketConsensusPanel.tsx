@@ -45,11 +45,12 @@ function sideLabel(side: MarketSide, home: string, away: string) {
   return side === "home" ? zh(home) : side === "draw" ? "平局" : zh(away);
 }
 
-export function MarketConsensusPanel({ home, away, polymarket, kalshi }: {
+export function MarketConsensusPanel({ home, away, polymarket, kalshi, polymarketAvailable = true }: {
   home: string;
   away: string;
   polymarket: MatchMarketState;
   kalshi: KalshiMarketState;
+  polymarketAvailable?: boolean;
 }) {
   const poly = polymarketLine(polymarket);
   const kal = kalshiLine(kalshi);
@@ -137,7 +138,7 @@ export function MarketConsensusPanel({ home, away, polymarket, kalshi }: {
           </div>
         )}
       </section>
-      <div className="flex items-center gap-2 py-1" aria-label="Polymarket 微观结构分区"><span className="h-px flex-1 bg-zinc-800" /><span className="text-[9px] font-semibold tracking-[0.16em] text-zinc-600">POLY MICROSTRUCTURE</span><span className="h-px flex-1 bg-zinc-800" /></div>
+      <div className="flex items-center gap-2 py-1" aria-label="Polymarket 微观结构分区"><span className="h-px flex-1 bg-zinc-800" /><span className="text-[9px] font-semibold tracking-[0.16em] text-zinc-600">{polymarketAvailable ? "POLY MICROSTRUCTURE" : "该场暂无 Polymarket 微观结构"}</span><span className="h-px flex-1 bg-zinc-800" /></div>
     </>
   );
 }

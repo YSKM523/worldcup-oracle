@@ -327,7 +327,7 @@ export function MatchDetail({
   kalshi,
   variant = "card",
 }: {
-  slug: string;
+  slug: string | null;
   kickoffUtc: string;
   home: string;
   away: string;
@@ -387,10 +387,12 @@ export function MatchDetail({
       }
     >
       {consoleMode && kalshi && (
-        <MarketConsensusPanel home={home} away={away} polymarket={mm} kalshi={kalshi} />
+        <MarketConsensusPanel home={home} away={away} polymarket={mm} kalshi={kalshi} polymarketAvailable={slug != null} />
       )}
 
-      {mm.status === "error" ? (
+      {!slug ? (
+        <div className={errorClass}>该场暂无 Polymarket 微观结构</div>
+      ) : mm.status === "error" ? (
         <div className={errorClass}>该场 Polymarket 盘口数据不可用</div>
       ) : (
         <>

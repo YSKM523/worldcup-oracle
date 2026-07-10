@@ -64,7 +64,7 @@ export function useKalshiMarket(input: { home: string; away: string; kickoffUtc:
           identity,
           value: {
             ...previous.value,
-            status: "error",
+            status: previous.value.status === "live" ? "live" : "error",
             stale: Date.now() - previous.value.updatedAt > 15_000,
             failures,
             reason: error instanceof Error ? error.message : "request-failed",

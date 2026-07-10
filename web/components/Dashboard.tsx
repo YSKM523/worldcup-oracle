@@ -1175,7 +1175,12 @@ function MatchModal({
   }, [onClose]);
 
   const slug = m.market?.slug;
-  const kalshi = useKalshiMarket({ home: m.home, away: m.away, kickoffUtc: m.kickoff_utc, enabled: !!slug });
+  const kalshi = useKalshiMarket({
+    home: m.home,
+    away: m.away,
+    kickoffUtc: m.kickoff_utc,
+    enabled: m.home.trim().length > 0 && m.away.trim().length > 0,
+  });
   const liveEntry = live[m.espn_id];
   const isStarted = m.completed || liveEntry?.state === "in" || liveEntry?.state === "post" || !!liveEntry?.completed;
   const titleId = `match-dialog-title-${m.espn_id}`;
@@ -1223,22 +1228,16 @@ function MatchModal({
             )}
           </section>
           <section data-match-column="market" className="drawer-scroll order-3 min-h-0 p-3 xl:overflow-y-auto">
-            {slug ? (
-              <MatchDetail
-                slug={slug}
-                kickoffUtc={m.kickoff_utc}
-                home={m.home}
-                away={m.away}
-                pred={m.pred}
-                liveEntry={live[m.espn_id]}
-                kalshi={kalshi}
-                variant="console"
-              />
-            ) : (
-              <div className="mono flex min-h-40 items-center justify-center text-center text-[12px] text-[var(--ink-faint)]">
-                该场暂无 Polymarket 盘口
-              </div>
-            )}
+            <MatchDetail
+              slug={slug ?? null}
+              kickoffUtc={m.kickoff_utc}
+              home={m.home}
+              away={m.away}
+              pred={m.pred}
+              liveEntry={live[m.espn_id]}
+              kalshi={kalshi}
+              variant="console"
+            />
           </section>
         </div>
       </div>
