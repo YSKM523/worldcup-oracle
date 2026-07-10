@@ -5,6 +5,7 @@ import { CheckIcon, Flag, LogoMark, StarIcon, XIcon } from "@/components/icons";
 import { FocusCard } from "@/components/MatchCards";
 import { LiveStats } from "@/components/LiveStats";
 import { MatchDetail } from "@/components/MatchDetail";
+import { KnockoutMap } from "@/components/KnockoutMap";
 import { ChampionsView, GroupsView, RecordView } from "@/components/Views";
 import { WeatherLabView } from "@/components/WeatherLab";
 import type {
@@ -937,6 +938,29 @@ function ChampionRow({
   );
 }
 
+function KnockoutMapPanel({
+  data,
+  live,
+  onOpenMatch,
+  className,
+}: {
+  data: Data;
+  live: LiveMap;
+  onOpenMatch: (match: Match) => void;
+  className?: string;
+}) {
+  return (
+    <Panel
+      idx="04"
+      title="KNOCKOUT MAP 淘汰赛态势"
+      className={className}
+      aside={<span className="lbl lbl-faint">FT · LIVE/KICKOFF · AI ADV%</span>}
+    >
+      <KnockoutMap matches={data.matches} live={live} onOpen={onOpenMatch} />
+    </Panel>
+  );
+}
+
 function ChampionPanel({
   data,
   poly,
@@ -1290,7 +1314,7 @@ export function Dashboard({
         <PerformancePanel
           data={data}
           onOpen={() => setDrawer({ kind: "record" })}
-          className="order-2 xl:order-none"
+          className="order-3 xl:order-none"
         />
         <MatchdayPanel
           data={data}
@@ -1299,11 +1323,17 @@ export function Dashboard({
           onOpenMatch={(m) => setDrawer({ kind: "match", m })}
           className="order-1 md:col-span-2 xl:order-none xl:col-span-1"
         />
+        <KnockoutMapPanel
+          data={data}
+          live={live}
+          onOpenMatch={(m) => setDrawer({ kind: "match", m })}
+          className="order-2 md:col-span-2 xl:order-none"
+        />
         <ChampionPanel
           data={data}
           poly={poly}
           onOpen={() => setDrawer({ kind: "champions" })}
-          className="order-3 xl:order-none"
+          className="order-4 xl:order-none"
         />
       </div>
 
