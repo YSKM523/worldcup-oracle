@@ -1310,30 +1310,30 @@ export function Dashboard({
           • large desktop (≥1280px): the three-column fill-screen mission-control grid.
         order-* handles the mobile/tablet reflow; xl:* restores DOM order.
       */}
-      <div className="grid min-h-0 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(260px,22%)_minmax(0,1fr)_minmax(340px,26%)]">
+      <div className="grid min-h-0 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(260px,22%)_minmax(0,1fr)_minmax(340px,26%)] xl:grid-rows-[minmax(360px,.9fr)_minmax(260px,.7fr)]">
         <PerformancePanel
           data={data}
           onOpen={() => setDrawer({ kind: "record" })}
-          className="order-3 xl:order-none"
+          className="order-3 xl:col-start-1 xl:row-start-1 xl:order-none"
         />
         <MatchdayPanel
           data={data}
           live={live}
           poly={poly}
           onOpenMatch={(m) => setDrawer({ kind: "match", m })}
-          className="order-1 md:col-span-2 xl:order-none xl:col-span-1"
+          className="order-1 md:col-span-2 xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:order-none"
         />
         <KnockoutMapPanel
           data={data}
           live={live}
           onOpenMatch={(m) => setDrawer({ kind: "match", m })}
-          className="order-2 md:col-span-2 xl:order-none"
+          className="order-2 md:col-span-2 xl:col-span-2 xl:col-start-1 xl:row-start-2 xl:order-none"
         />
         <ChampionPanel
           data={data}
           poly={poly}
           onOpen={() => setDrawer({ kind: "champions" })}
-          className="order-4 xl:order-none"
+          className="order-4 xl:col-start-3 xl:row-span-2 xl:row-start-1 xl:order-none"
         />
       </div>
 

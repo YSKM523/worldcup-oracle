@@ -82,7 +82,7 @@ function KnockoutNode({
         return (
           <div
             key={`${index}-${team}`}
-            className={`mt-1.5 flex items-center gap-2 ${winner && winner !== team ? "opacity-40" : ""}`}
+            className={`mt-1 flex items-center gap-2 ${winner && winner !== team ? "opacity-40" : ""}`}
           >
             {teamUnresolved ? (
               <span className="h-3.5 w-5 shrink-0 rounded-[3px] bg-[var(--line)]" aria-hidden />
@@ -100,7 +100,7 @@ function KnockoutNode({
       })}
 
       {!unresolved && !completed && advHome != null && advAway != null ? (
-        <div className="mt-2">
+        <div className="mt-1.5">
           <div className="flex h-1 overflow-hidden rounded-[2px] bg-[var(--line)]">
             <span
               style={{
@@ -115,7 +115,7 @@ function KnockoutNode({
               }}
             />
           </div>
-          <div className="mono mt-1 flex justify-between text-[10px] text-[var(--ink-faint)]">
+          <div className="mono mt-0.5 flex justify-between text-[10px] leading-none text-[var(--ink-faint)]">
             <span>{pct(advHome)}</span>
             <span>{pct(advAway)}</span>
           </div>
@@ -124,7 +124,7 @@ function KnockoutNode({
     </>
   );
 
-  const classes = `block w-full rounded-[3px] border p-2 text-left ${
+  const classes = `block w-full rounded-[3px] border p-1.5 text-left ${
     final
       ? "border-[var(--line-strong)] bg-[var(--panel-2)]"
       : "border-[var(--line)] bg-[var(--panel)]"
@@ -158,8 +158,8 @@ function StageColumn({
 }) {
   return (
     <section data-knockout-stage={stage} className="flex min-w-0 flex-col">
-      <div className="lbl lbl-faint mb-2">{STAGE_LABEL[stage]}</div>
-      <div className="flex min-h-0 flex-1 flex-col justify-around gap-2">
+      <div className="lbl lbl-faint mb-1.5">{STAGE_LABEL[stage]}</div>
+      <div className="flex min-h-0 flex-1 flex-col justify-around gap-1.5">
         {matches.map((match) => (
           <KnockoutNode
             key={match.espn_id}
@@ -195,7 +195,7 @@ export function KnockoutMap({ matches, live, onOpen }: KnockoutMapProps) {
   }
 
   return (
-    <div className="grid h-full grid-cols-1 gap-3 p-3 md:grid-cols-[minmax(0,1.25fr)_20px_minmax(0,1fr)_20px_minmax(0,.9fr)] md:gap-2">
+    <div className="grid h-full grid-cols-1 gap-3 p-2 md:grid-cols-[minmax(0,1.25fr)_20px_minmax(0,1fr)_20px_minmax(0,.9fr)] md:gap-2">
       <StageColumn {...stages[0]} live={live} onOpen={onOpen} />
       <Connector />
       <StageColumn {...stages[1]} live={live} onOpen={onOpen} />
