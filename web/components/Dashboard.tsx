@@ -5,6 +5,7 @@ import { CheckIcon, Flag, LogoMark, StarIcon, XIcon } from "@/components/icons";
 import { FocusCard } from "@/components/MatchCards";
 import { LiveStats } from "@/components/LiveStats";
 import { MatchDetail } from "@/components/MatchDetail";
+import { MatchTelemetry } from "@/components/MatchTelemetry";
 import { KnockoutMap } from "@/components/KnockoutMap";
 import { ChampionsView, GroupsView, RecordView } from "@/components/Views";
 import { WeatherLabView } from "@/components/WeatherLab";
@@ -1175,6 +1176,8 @@ function MatchModal({
 
   const slug = m.market?.slug;
   const kalshi = useKalshiMarket({ home: m.home, away: m.away, kickoffUtc: m.kickoff_utc, enabled: !!slug });
+  const liveEntry = live[m.espn_id];
+  const isStarted = m.completed || liveEntry?.state === "in" || liveEntry?.state === "post" || !!liveEntry?.completed;
 
   return (
     <div
@@ -1182,7 +1185,7 @@ function MatchModal({
       onClick={onClose}
     >
       <div
-        className="panel reveal flex max-h-[calc(100dvh-16px)] w-full max-w-[1440px] flex-col xl:max-h-[90vh]"
+        className="panel reveal flex max-h-[calc(100dvh-16px)] w-full max-w-[1600px] flex-col xl:max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="panel-head">
@@ -1194,7 +1197,7 @@ function MatchModal({
           </span>
           <button
             onClick={onClose}
-            className="ml-auto flex h-6 w-6 items-center justify-center rounded-[3px] border border-[var(--line)] transition-colors hover:border-[var(--line-strong)]"
+            className="ml-auto flex h-11 w-11 items-center justify-center rounded-[3px] border border-[var(--line)] transition-colors hover:border-[var(--line-strong)] sm:h-8 sm:w-8"
             aria-label="关闭"
           >
             <XIcon className="h-3.5 w-3.5" />
@@ -1203,23 +1206,19 @@ function MatchModal({
 
         <div
           data-match-modal-grid
-          className="grid min-h-0 max-h-[calc(100dvh-54px)] grid-cols-1 grid-rows-[max-content_max-content] overflow-y-auto xl:max-h-[calc(90vh-37px)] xl:grid-cols-[minmax(0,3fr)_minmax(420px,2fr)] xl:grid-rows-none xl:overflow-hidden"
+          className="grid min-h-0 max-h-[calc(100dvh-54px)] grid-cols-1 grid-rows-[max-content_max-content_max-content] overflow-y-auto xl:max-h-[calc(90vh-37px)] xl:grid-cols-[270px_minmax(0,1fr)_minmax(440px,500px)] xl:grid-rows-none xl:overflow-hidden"
         >
-          <section className="drawer-scroll min-h-0 space-y-3 border-b border-[var(--line)] p-3 xl:overflow-y-auto xl:border-b-0 xl:border-r">
-            <FocusCard m={m} meta={meta} live={live} poly={poly} weather={weather} hideBook />
-            <LiveStats
-              espnId={m.espn_id}
-              home={m.home}
-              away={m.away}
-              live={m.completed || live[m.espn_id]?.state === "in" || !!live[m.espn_id]?.completed}
-              compact
-            />
+          <section data-match-column="stats" className="drawer-scroll min-h-0 border-b border-[var(--line)] p-3 xl:overflow-y-auto xl:border-b-0 xl:border-r">
+            {isStarted ? (
+              <LiveStats espnId={m.espn_id} home={m.home} away={m.away} live />
+            ) : (
+              <MatchTelemetry match={m} weather={weather} poly={poly} kalshi={kalshi} />
+            )}
           </section>
-          <section className="drawer-scroll min-h-0 p-3 xl:overflow-y-auto">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="lbl lbl-faint">05</span>
-              <span className="lbl text-[var(--ink)]">LIVE 盘口 · ORDER BOOK</span>
-            </div>
+          <section data-match-column="prediction" className="drawer-scroll min-h-0 border-b border-[var(--line)] p-3 xl:overflow-y-auto xl:border-b-0 xl:border-r">
+            <FocusCard m={m} meta={meta} live={live} poly={poly} weather={weather} hideBook />
+          </section>
+          <section data-match-column="market" className="drawer-scroll min-h-0 p-3 xl:overflow-y-auto">
             {slug ? (
               <MatchDetail
                 slug={slug}
