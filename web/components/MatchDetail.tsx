@@ -387,7 +387,7 @@ export function MatchDetail({
       }
     >
       {consoleMode && kalshi && (
-        <MarketConsensusPanel home={home} away={away} polymarket={mm} kalshi={kalshi} polymarketAvailable={slug != null} />
+        <MarketConsensusPanel home={home} away={away} polymarket={mm} kalshi={kalshi} />
       )}
 
       {!slug ? (

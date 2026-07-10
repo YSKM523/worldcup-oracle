@@ -10,6 +10,7 @@ import { KnockoutMap } from "@/components/KnockoutMap";
 import { ChampionsView, GroupsView, RecordView } from "@/components/Views";
 import { WeatherLabView } from "@/components/WeatherLab";
 import { useKalshiMarket } from "@/lib/useKalshiMarket";
+import { shouldEnableKalshiMarket } from "@/lib/kalshiMarketEligibility";
 import type {
   Champion,
   Data,
@@ -1179,7 +1180,7 @@ function MatchModal({
     home: m.home,
     away: m.away,
     kickoffUtc: m.kickoff_utc,
-    enabled: m.home.trim().length > 0 && m.away.trim().length > 0,
+    enabled: shouldEnableKalshiMarket(m),
   });
   const liveEntry = live[m.espn_id];
   const isStarted = m.completed || liveEntry?.state === "in" || liveEntry?.state === "post" || !!liveEntry?.completed;

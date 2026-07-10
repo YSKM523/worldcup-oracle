@@ -69,9 +69,9 @@ describe("MarketConsensusPanel", () => {
     delete (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT;
   });
 
-  const renderPanel = async (poly: MatchMarketState, kalshi: KalshiMarketState, polymarketAvailable = true) => {
+  const renderPanel = async (poly: MatchMarketState, kalshi: KalshiMarketState) => {
     await act(async () => {
-      renderer = create(createElement(MarketConsensusPanel, { home: "Spain", away: "Belgium", polymarket: poly, kalshi, polymarketAvailable }));
+      renderer = create(createElement(MarketConsensusPanel, { home: "Spain", away: "Belgium", polymarket: poly, kalshi }));
     });
   };
 
@@ -113,12 +113,13 @@ describe("MarketConsensusPanel", () => {
 
   it("labels Polymarket unavailable while retaining a live Kalshi single source", async () => {
     const missingPoly = { ...polymarket(Date.now()), status: "error" as const, updatedAt: null, books: {} };
-    await renderPanel(missingPoly, completeKalshi(Date.now()), false);
+    await renderPanel(missingPoly, completeKalshi(Date.now()));
     expect(state()).toBe("single");
     expect(text()).toContain("1/2 SINGLE SOURCE");
     expect(text()).toContain("KAL LIVE");
     expect(text()).toContain("PM");
     expect(text()).toContain("UNAVAILABLE");
-    expect(text()).toContain("该场暂无 Polymarket 微观结构");
+    expect(text()).toContain("POLY MICROSTRUCTURE");
+    expect(text()).not.toContain("该场暂无 Polymarket 微观结构");
   });
 });
