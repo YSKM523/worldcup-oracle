@@ -126,6 +126,24 @@ describe("fetchKalshiMatch", () => {
     const result = await fetchKalshiMatch({ home: "Spain", away: "Belgium", kickoff: "2026-07-10T19:00:00Z" }, fetcher);
     expect(result).toMatchObject({ status: "unavailable", reason: "incomplete-market" });
   });
+
+  it("rejects three non-empty garbage market tickers", async () => {
+    const garbageTickers = { markets: markets.markets.map((market, index) => ({ ...market, ticker: [`garbage_home`, `garbage_draw`, `garbage_away`][index] })) };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(events)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(garbageTickers)));
+    const result = await fetchKalshiMatch({ home: "Spain", away: "Belgium", kickoff: "2026-07-10T19:00:00Z" }, fetcher);
+    expect(result).toMatchObject({ status: "unavailable", reason: "incomplete-market" });
+  });
+
+  it("rejects market tickers belonging to another event", async () => {
+    const crossEvent = { markets: markets.markets.map((market) => ({ ...market, ticker: market.ticker.replace("26JUL10ESPBEL", "26JUL10FRAENG") })) };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(events)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(crossEvent)));
+    const result = await fetchKalshiMatch({ home: "Spain", away: "Belgium", kickoff: "2026-07-10T19:00:00Z" }, fetcher);
+    expect(result).toMatchObject({ status: "unavailable", reason: "incomplete-market" });
+  });
 });
 
 describe("onRequestGet", () => {
@@ -154,6 +172,27 @@ describe("onRequestGet", () => {
     try {
       const response = await onRequestGet({
         request: new Request("https://example.com/api/kalshi/match?home=Spain&away=Belgium&kickoff=07%2F10%2F2026"),
+        waitUntil: () => undefined,
+      });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ status: "error", reason: "invalid-input" });
+      expect(fetcher).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it.each([
+    "2026-02-30T19:00:00Z",
+    "2026-07-10T25:00:00Z",
+    "2026-07-10T19:00:00+24:00",
+    "2026-07-10T19:00:00+05:60",
+  ])("returns 400 for invalid ISO calendar time %s", async (kickoff) => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    try {
+      const response = await onRequestGet({
+        request: new Request(`https://example.com/api/kalshi/match?home=Spain&away=Belgium&kickoff=${encodeURIComponent(kickoff)}`),
         waitUntil: () => undefined,
       });
       expect(response.status).toBe(400);

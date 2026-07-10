@@ -11,7 +11,8 @@ export type KalshiQuoteResponse = {
 
 const API = "https://external-api.kalshi.com/trade-api/v2";
 const TEAM = /^[\p{L}\p{M} .'-]{2,40}$/u;
-const ISO_KICKOFF = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})$/;
+const ISO_KICKOFF = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{3}))?(Z|([+-])(\d{2}):(\d{2}))$/;
+const TICKER = /^[A-Z0-9]+(?:-[A-Z0-9]+)+$/;
 const TEAM_VARIANTS: Record<string, string[]> = {
   "ivory coast": ["ivory coast", "cote d'ivoire", "côte d'ivoire"],
   "south korea": ["south korea", "korea republic"],
@@ -40,6 +41,29 @@ const canonicalTeamId = (team: string) => {
 const eventTeams = (title: string): [string, string] | null => {
   const match = title.match(/^(.*?)\s+vs\.?\s+(.*?):\s*Regulation Time Moneyline\s*$/iu);
   return match ? [canonicalTeamId(match[1]), canonicalTeamId(match[2])] : null;
+};
+const isValidIsoInstant = (value: string) => {
+  const match = value.match(ISO_KICKOFF);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const millis = Number(match[7] ?? 0);
+  const offsetHour = match[10] ? Number(match[10]) : 0;
+  const offsetMinute = match[11] ? Number(match[11]) : 0;
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59 || offsetHour > 23 || offsetMinute > 59) return false;
+  const roundTrip = new Date(Date.UTC(year, month - 1, day, hour, minute, second, millis));
+  return roundTrip.getUTCFullYear() === year &&
+    roundTrip.getUTCMonth() === month - 1 &&
+    roundTrip.getUTCDate() === day &&
+    roundTrip.getUTCHours() === hour &&
+    roundTrip.getUTCMinutes() === minute &&
+    roundTrip.getUTCSeconds() === second &&
+    roundTrip.getUTCMilliseconds() === millis &&
+    Number.isFinite(Date.parse(value));
 };
 const json = (body: unknown, status = 200, cache = "public, max-age=0, s-maxage=1, stale-while-revalidate=4") =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": cache } });
@@ -83,8 +107,8 @@ export async function fetchKalshiMatch(
     const bid = number(market.yes_bid_dollars);
     const ask = number(market.yes_ask_dollars);
     const mid = bid != null && ask != null ? (bid + ask) / 2 : bid ?? ask;
-    const ticker = typeof market.ticker === "string" ? market.ticker.trim() : "";
-    if (!ticker || mid == null || !Number.isFinite(mid) || mid <= 0 || mid >= 1) continue;
+    const ticker = typeof market.ticker === "string" ? market.ticker : "";
+    if (!TICKER.test(ticker) || !ticker.startsWith(`${eventTicker}-`) || ticker.length === eventTicker.length + 1 || mid == null || !Number.isFinite(mid) || mid <= 0 || mid >= 1) continue;
     outcomes[side] = {
       ticker, bid, ask, mid,
       last: number(market.last_price_dollars), volume: number(market.volume_fp),
@@ -99,7 +123,7 @@ export async function onRequestGet(context: { request: Request; waitUntil(promis
   const home = url.searchParams.get("home") ?? "";
   const away = url.searchParams.get("away") ?? "";
   const kickoff = url.searchParams.get("kickoff") ?? "";
-  if (!TEAM.test(home) || !TEAM.test(away) || !ISO_KICKOFF.test(kickoff) || !Number.isFinite(Date.parse(kickoff))) return json({ status: "error", source: "kalshi-rest", eventTicker: null, updatedAt: Date.now(), outcomes: {}, reason: "invalid-input" }, 400, "no-store");
+  if (!TEAM.test(home) || !TEAM.test(away) || !isValidIsoInstant(kickoff)) return json({ status: "error", source: "kalshi-rest", eventTicker: null, updatedAt: Date.now(), outcomes: {}, reason: "invalid-input" }, 400, "no-store");
   const cache = (globalThis.caches as CacheStorage & { default?: Cache } | undefined)?.default;
   const cacheKey = new Request(url.toString(), { method: "GET" });
   const cached = await cache?.match(cacheKey);
