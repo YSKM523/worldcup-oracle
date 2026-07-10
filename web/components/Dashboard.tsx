@@ -8,6 +8,7 @@ import { MatchDetail } from "@/components/MatchDetail";
 import { KnockoutMap } from "@/components/KnockoutMap";
 import { ChampionsView, GroupsView, RecordView } from "@/components/Views";
 import { WeatherLabView } from "@/components/WeatherLab";
+import { useKalshiMarket } from "@/lib/useKalshiMarket";
 import type {
   Champion,
   Data,
@@ -1173,6 +1174,7 @@ function MatchModal({
   }, [onClose]);
 
   const slug = m.market?.slug;
+  const kalshi = useKalshiMarket({ home: m.home, away: m.away, kickoffUtc: m.kickoff_utc, enabled: !!slug });
 
   return (
     <div
@@ -1226,6 +1228,7 @@ function MatchModal({
                 away={m.away}
                 pred={m.pred}
                 liveEntry={live[m.espn_id]}
+                kalshi={kalshi}
                 variant="console"
               />
             ) : (

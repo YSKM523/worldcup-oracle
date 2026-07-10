@@ -11,8 +11,9 @@ import {
   type TradeItem,
 } from "@/lib/useMatchMarket";
 import { useInplayCurve, type InplayCurves } from "@/lib/useInplayCurve";
-import type { LiveEntry, Pred } from "@/lib/types";
+import type { KalshiMarketState, LiveEntry, Pred } from "@/lib/types";
 import { zh } from "@/lib/wc";
+import { MarketConsensusPanel } from "@/components/MarketConsensusPanel";
 
 /* 与 WdlBar 同色系：主=emerald-400 / 平=zinc-400 / 客=rose-500（纯色，无渐变） */
 const COLOR: Record<OutcomeSide, string> = {
@@ -323,6 +324,7 @@ export function MatchDetail({
   away,
   pred,
   liveEntry,
+  kalshi,
   variant = "card",
 }: {
   slug: string;
@@ -331,6 +333,7 @@ export function MatchDetail({
   away: string;
   pred?: Pred;
   liveEntry?: LiveEntry;
+  kalshi?: KalshiMarketState;
   variant?: "card" | "console";
 }) {
   const consoleMode = variant === "console";
@@ -367,7 +370,7 @@ export function MatchDetail({
     ? "py-8 text-center text-xs text-zinc-600"
     : "mt-3 rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-3 text-center text-xs text-zinc-600";
 
-  if (mm.status === "error")
+  if (mm.status === "error" && !(consoleMode && kalshi))
     return (
       <div data-match-detail-variant={variant} className={errorClass}>
         该场 Polymarket 盘口数据不可用
@@ -383,6 +386,14 @@ export function MatchDetail({
           : "mt-3 space-y-3 rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-3"
       }
     >
+      {consoleMode && kalshi && (
+        <MarketConsensusPanel home={home} away={away} polymarket={mm} kalshi={kalshi} />
+      )}
+
+      {mm.status === "error" ? (
+        <div className={errorClass}>该场 Polymarket 盘口数据不可用</div>
+      ) : (
+        <>
       {/* 状态行 */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
         <span className="inline-flex items-center gap-1.5">
@@ -464,6 +475,8 @@ export function MatchDetail({
       <p className="text-[10px] leading-4 text-zinc-700">
         数据直连 Polymarket CLOB（订单簿快照 + 逐笔推送），价格为 Yes 口径；No 侧成交已折算（价=1−p，方向翻转）。仅供研究娱乐。
       </p>
+        </>
+      )}
     </div>
   );
 }
