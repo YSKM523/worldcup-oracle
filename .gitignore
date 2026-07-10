@@ -52,3 +52,8 @@ results/calibration/
 .design-sync/
 collector/keepers_backup.sql
 results/logs/.watchdog_state.json
+
+# local agent/browser workspaces
+.worktrees/
+.playwright-cli/
+.superpowers/brainstorm/
