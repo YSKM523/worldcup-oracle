@@ -25,20 +25,46 @@ export function LiveStats({
   home,
   away,
   live,
+  compact = false,
 }: {
   espnId: string;
   home: string;
   away: string;
   /** true when the schedule/live feed marks this match as in-play or done. */
   live: boolean;
+  compact?: boolean;
 }) {
   const stats = useMatchStats(espnId, true);
-  const started = stats && stats.state !== "pre";
+  const started = !!stats && stats.state !== "pre";
+  const state = started ? "started" : live ? "loading" : "pre";
 
   const inPlay = stats?.state === "in";
 
+  if (compact && !started) {
+    return (
+      <div
+        data-live-stats-mode={compact ? "compact" : "default"}
+        data-live-stats-state={state}
+        className={`border border-zinc-800/80 bg-zinc-950/60 ${compact ? "rounded-[3px] p-2" : "rounded-xl p-3"}`}
+      >
+        <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="lbl lbl-faint">04</span>
+          <span className="lbl text-[var(--ink)]">LIVE STATS · 实时数据</span>
+          <span className="lbl lbl-faint ml-auto">{live ? "加载中…" : "开赛后更新"}</span>
+          <span className="mono basis-full text-[10px] text-[var(--ink-faint)] sm:ml-auto sm:basis-auto">
+            控球 · 射门 · 角球 · 牌
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-3">
+    <div
+      data-live-stats-mode={compact ? "compact" : "default"}
+      data-live-stats-state={state}
+      className={`border border-zinc-800/80 bg-zinc-950/60 ${compact ? "rounded-[3px] p-2" : "rounded-xl p-3"}`}
+    >
       <div className="mb-2.5 flex items-center gap-2">
         <span className="lbl lbl-faint">04</span>
         <span className="lbl" style={{ color: "var(--ink)" }}>
@@ -65,7 +91,7 @@ export function LiveStats({
       </div>
 
       {started ? (
-        <div className="space-y-2">
+        <div className={compact ? "grid gap-x-4 gap-y-1.5 sm:grid-cols-2" : "space-y-2"}>
           {ROWS.map((r) => {
             const h = stats!.home[r.name];
             const a = stats!.away[r.name];

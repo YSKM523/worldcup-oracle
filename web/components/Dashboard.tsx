@@ -1210,6 +1210,7 @@ function MatchModal({
               home={m.home}
               away={m.away}
               live={m.completed || live[m.espn_id]?.state === "in" || !!live[m.espn_id]?.completed}
+              compact
             />
           </div>
           {/* CENTER — prediction detail */}
