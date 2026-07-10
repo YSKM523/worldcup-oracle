@@ -27,6 +27,11 @@
   --mkt-soft: rgba(216, 161, 58, 0.14);
   --neutral: #6b7280;
 
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code",
     "Menlo", "Consolas", monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
@@ -107,8 +112,8 @@ body {
 .panel-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
   border-bottom: 1px solid var(--line);
   flex: none;
 }
@@ -118,15 +123,15 @@ body {
   overflow: visible;
 }
 /* Panels get their own inner scroll once the dashboard locks to a single
-   fill-screen grid. That lock now starts at lg (1024px), so inner-scroll must
-   start there too — otherwise 1024–1279px viewports clip panel overflow. */
-@media (min-width: 1024px) {
+   fill-screen grid. Compact desktops stay in the natural-scroll two-column
+   layout, so the inner-scroll contract starts at 1280px. */
+@media (min-width: 1280px) {
   .panel-body {
     overflow-y: auto;
   }
 }
 
-/* At ≥1024px the dashboard locks to a single fill-screen grid: TopBar/Ticker
+/* At ≥1280px the dashboard locks to a single fill-screen grid: TopBar/Ticker
    are fixed rows, the middle row is bounded (minmax(0,1fr)), and each panel-body
    scrolls its own overflow. This holds even on short landscape laptops
    (e.g. 1366×768) — columns scroll internally, so nothing is clipped and the

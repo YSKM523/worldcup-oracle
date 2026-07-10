@@ -1275,35 +1275,35 @@ export function Dashboard({
   if (!data) return <BootLoader error={error} />;
 
   return (
-    <div className="dash-root flex min-h-dvh flex-col gap-2 p-2 lg:grid lg:h-dvh lg:grid-rows-[auto_minmax(0,1fr)_auto] lg:gap-2 lg:overflow-hidden">
+    <div className="dash-root flex min-h-dvh flex-col gap-2 p-2 xl:grid xl:h-dvh xl:grid-rows-[auto_minmax(0,1fr)_auto] xl:overflow-hidden">
       <TopBar data={data} poly={poly} />
 
       {/*
         Responsive tiers:
           • phone  (<768px): single column, natural scroll — MATCHDAY first.
-          • tablet (768–1023px): two columns — MATCHDAY spans the top row,
+          • tablet / compact desktop (768–1279px): two columns — MATCHDAY spans the top row,
             PERFORMANCE + CHAMPION share the row beneath it.
-          • desktop (≥1024px): the three-column fill-screen mission-control grid.
-        order-* handles the mobile/tablet reflow; lg:* restores DOM order.
+          • large desktop (≥1280px): the three-column fill-screen mission-control grid.
+        order-* handles the mobile/tablet reflow; xl:* restores DOM order.
       */}
-      <div className="grid min-h-0 grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-[minmax(240px,21%)_minmax(0,1fr)_minmax(310px,26%)]">
+      <div className="grid min-h-0 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(260px,22%)_minmax(0,1fr)_minmax(340px,26%)]">
         <PerformancePanel
           data={data}
           onOpen={() => setDrawer({ kind: "record" })}
-          className="order-2 lg:order-none"
+          className="order-2 xl:order-none"
         />
         <MatchdayPanel
           data={data}
           live={live}
           poly={poly}
           onOpenMatch={(m) => setDrawer({ kind: "match", m })}
-          className="order-1 md:col-span-2 lg:order-none lg:col-span-1"
+          className="order-1 md:col-span-2 xl:order-none xl:col-span-1"
         />
         <ChampionPanel
           data={data}
           poly={poly}
           onOpen={() => setDrawer({ kind: "champions" })}
-          className="order-3 lg:order-none"
+          className="order-3 xl:order-none"
         />
       </div>
 
