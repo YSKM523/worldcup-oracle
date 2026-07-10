@@ -1192,7 +1192,7 @@ function MatchModal({
           </span>
           <button
             onClick={onClose}
-            className="ml-auto flex h-6 w-6 items-center justify-center rounded-[3px] border border-[var(--line)]"
+            className="ml-auto flex h-6 w-6 items-center justify-center rounded-[3px] border border-[var(--line)] transition-colors hover:border-[var(--line-strong)]"
             aria-label="关闭"
           >
             <XIcon className="h-3.5 w-3.5" />

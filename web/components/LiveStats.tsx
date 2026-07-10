@@ -121,7 +121,10 @@ export function LiveStats({
               </div>
             );
           })}
-          <div className="mono flex items-center justify-between pt-1 text-[10px]" style={{ color: "var(--ink-faint)" }}>
+          <div
+            className={`${compact ? "sm:col-span-2 " : ""}mono flex items-center justify-between pt-1 text-[10px]`}
+            style={{ color: "var(--ink-faint)" }}
+          >
             <span>{zh(home)}</span>
             <span>数据来源 ESPN</span>
             <span>{zh(away)}</span>
