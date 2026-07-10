@@ -68,6 +68,7 @@ export interface SpikeAlert {
 }
 export interface MatchMarketState {
   status: "loading" | "live" | "error";
+  updatedAt: number | null;
   wsUp: boolean;
   books: Partial<Record<OutcomeSide, OutcomeBook>>;
   /** 最新在前 */
@@ -81,6 +82,7 @@ export interface MatchMarketState {
 
 const INIT: MatchMarketState = {
   status: "loading",
+  updatedAt: null,
   wsUp: false,
   books: {},
   trades: [],
@@ -315,6 +317,7 @@ export function useMatchMarket(slug: string | null, kickoffUtc: string): MatchMa
       }
       setState({
         status: "live",
+        updatedAt: nowS * 1000,
         wsUp,
         books,
         trades: [...trades],

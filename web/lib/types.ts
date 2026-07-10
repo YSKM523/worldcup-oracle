@@ -297,3 +297,8 @@ export interface PolyLive {
   /** CLOB WebSocket 当前是否在线（实时推送生效中） */
   wsConnected: boolean;
 }
+
+export type MarketSide = "home" | "draw" | "away";
+export interface KalshiOutcomeQuote { ticker: string; bid: number | null; ask: number | null; mid: number | null; last: number | null; volume: number | null; }
+export interface KalshiQuoteResponse { status: "live" | "unavailable" | "error"; source: "kalshi-rest"; eventTicker: string | null; updatedAt: number; outcomes: Partial<Record<MarketSide, KalshiOutcomeQuote>>; reason?: string; }
+export interface KalshiMarketState extends KalshiQuoteResponse { stale: boolean; failures: number; }
