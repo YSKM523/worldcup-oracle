@@ -33,6 +33,7 @@ export function MatchTelemetry({ match, weather, poly, kalshi }: MatchTelemetryP
   }, []);
 
   const kickoff = new Date(match.kickoff_utc).getTime();
+  const kickoffReached = kickoff <= now;
   const wx = weather?.matches[match.espn_id];
   const polyMatch = poly.matches[kickoffEpoch(match.kickoff_utc)];
   const polyUpdated = polyMatch?.ts ?? poly.updatedAt;
@@ -51,10 +52,11 @@ export function MatchTelemetry({ match, weather, poly, kalshi }: MatchTelemetryP
       <div className="border-b border-[var(--line)] py-3">
         <div className="lbl lbl-faint">KICKOFF COUNTDOWN</div>
         <div className="mt-1 text-[22px] font-bold tabular-nums tracking-tight text-[var(--ink)]">
-          T−{countdown(kickoff, now)}
+          {kickoffReached ? "KICKOFF REACHED" : <>T−{countdown(kickoff, now)}</>}
         </div>
+        {kickoffReached && <div className="mt-1 text-[var(--mkt)]">等待实时源</div>}
         <div className="mt-1 text-[var(--ink-faint)]">
-          {new Date(kickoff).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })} UTC
+          {new Date(kickoff).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" })} UTC
         </div>
       </div>
 

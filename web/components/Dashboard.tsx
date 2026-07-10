@@ -1178,6 +1178,7 @@ function MatchModal({
   const kalshi = useKalshiMarket({ home: m.home, away: m.away, kickoffUtc: m.kickoff_utc, enabled: !!slug });
   const liveEntry = live[m.espn_id];
   const isStarted = m.completed || liveEntry?.state === "in" || liveEntry?.state === "post" || !!liveEntry?.completed;
+  const titleId = `match-dialog-title-${m.espn_id}`;
 
   return (
     <div
@@ -1187,17 +1188,20 @@ function MatchModal({
       <div
         className="panel reveal flex max-h-[calc(100dvh-16px)] w-full max-w-[1600px] flex-col xl:max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <div className="panel-head">
           <span className="lbl lbl-faint">▚</span>
-          <span className="lbl text-[var(--ink)]">MATCH DETAIL · {zh(m.home)} vs {zh(m.away)}</span>
+          <span id={titleId} className="lbl text-[var(--ink)]">MATCH DETAIL · {zh(m.home)} vs {zh(m.away)}</span>
           <span className="lbl lbl-faint ml-2 hidden sm:inline">
             {(m.stage === "group" && m.group ? `${m.group}组` : STAGE_ZH[m.stage] ?? m.stage)}
             {m.city ? ` · ${m.city}` : ""}
           </span>
           <button
             onClick={onClose}
-            className="ml-auto flex h-11 w-11 items-center justify-center rounded-[3px] border border-[var(--line)] transition-colors hover:border-[var(--line-strong)] sm:h-8 sm:w-8"
+            className="ml-auto flex h-11 w-11 items-center justify-center rounded-[3px] border border-[var(--line)] transition-colors hover:border-[var(--line-strong)]"
             aria-label="关闭"
           >
             <XIcon className="h-3.5 w-3.5" />
@@ -1208,17 +1212,17 @@ function MatchModal({
           data-match-modal-grid
           className="grid min-h-0 max-h-[calc(100dvh-54px)] grid-cols-1 grid-rows-[max-content_max-content_max-content] overflow-y-auto xl:max-h-[calc(90vh-37px)] xl:grid-cols-[270px_minmax(0,1fr)_minmax(440px,500px)] xl:grid-rows-none xl:overflow-hidden"
         >
-          <section data-match-column="stats" className="drawer-scroll min-h-0 border-b border-[var(--line)] p-3 xl:overflow-y-auto xl:border-b-0 xl:border-r">
+          <section data-match-column="prediction" className="drawer-scroll order-1 min-h-0 border-b border-[var(--line)] p-3 xl:order-2 xl:overflow-y-auto xl:border-b-0 xl:border-r">
+            <FocusCard m={m} meta={meta} live={live} poly={poly} weather={weather} hideBook />
+          </section>
+          <section data-match-column="stats" className="drawer-scroll order-2 min-h-0 border-b border-[var(--line)] p-3 xl:order-1 xl:overflow-y-auto xl:border-b-0 xl:border-r">
             {isStarted ? (
               <LiveStats espnId={m.espn_id} home={m.home} away={m.away} live />
             ) : (
               <MatchTelemetry match={m} weather={weather} poly={poly} kalshi={kalshi} />
             )}
           </section>
-          <section data-match-column="prediction" className="drawer-scroll min-h-0 border-b border-[var(--line)] p-3 xl:overflow-y-auto xl:border-b-0 xl:border-r">
-            <FocusCard m={m} meta={meta} live={live} poly={poly} weather={weather} hideBook />
-          </section>
-          <section data-match-column="market" className="drawer-scroll min-h-0 p-3 xl:overflow-y-auto">
+          <section data-match-column="market" className="drawer-scroll order-3 min-h-0 p-3 xl:overflow-y-auto">
             {slug ? (
               <MatchDetail
                 slug={slug}
