@@ -13,7 +13,7 @@
 - Preserve all existing match, model, weather, live-stat, and Polymarket data behavior.
 - Use the existing 4/8/12/16px spacing rhythm and dark control-room visual language.
 - Desktop uses a roughly 60/40 two-column layout with the market column at least 420px wide.
-- Below `lg`, content order is prediction → live stats → market and the dialog scrolls naturally.
+- Below `xl` (1280px), content order is prediction → live stats → market and the dialog scrolls naturally.
 - Do not add dependencies or change APIs, data structures, subscriptions, or prediction logic.
 - Existing default `LiveStats` and `MatchDetail` call sites must remain visually unchanged.
 
@@ -311,7 +311,7 @@ Replace the fixed inline height and three-column grid with:
 
 ```tsx
 <div
-  className="panel reveal flex max-h-[calc(100dvh-16px)] w-full max-w-[1440px] flex-col lg:max-h-[90vh]"
+  className="panel reveal flex max-h-[calc(100dvh-16px)] w-full max-w-[1440px] flex-col xl:max-h-[90vh]"
   onClick={(e) => e.stopPropagation()}
 >
   <div className="panel-head">
@@ -327,9 +327,9 @@ Replace the fixed inline height and three-column grid with:
   </div>
   <div
     data-match-modal-grid
-    className="grid min-h-0 max-h-[calc(100dvh-54px)] grid-cols-1 overflow-y-auto lg:max-h-[calc(90vh-37px)] lg:grid-cols-[minmax(0,3fr)_minmax(420px,2fr)] lg:overflow-hidden"
+    className="grid min-h-0 max-h-[calc(100dvh-54px)] grid-cols-1 overflow-y-auto xl:max-h-[calc(90vh-37px)] xl:grid-cols-[minmax(0,3fr)_minmax(420px,2fr)] xl:overflow-hidden"
   >
-    <section className="drawer-scroll min-h-0 space-y-3 border-b border-[var(--line)] p-3 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+    <section className="drawer-scroll min-h-0 space-y-3 border-b border-[var(--line)] p-3 xl:overflow-y-auto xl:border-b-0 xl:border-r">
       <FocusCard m={m} meta={meta} live={live} poly={poly} weather={weather} hideBook />
       <LiveStats
         espnId={m.espn_id}
@@ -339,7 +339,7 @@ Replace the fixed inline height and three-column grid with:
         compact
       />
     </section>
-    <section className="drawer-scroll min-h-0 p-3 lg:overflow-y-auto">
+    <section className="drawer-scroll min-h-0 p-3 xl:overflow-y-auto">
       <div className="mb-2 flex items-center gap-2">
         <span className="lbl lbl-faint">05</span>
         <span className="lbl text-[var(--ink)]">LIVE 盘口 · ORDER BOOK</span>
