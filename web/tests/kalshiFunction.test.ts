@@ -65,6 +65,67 @@ describe("fetchKalshiMatch", () => {
     const result = await fetchKalshiMatch({ home: "Spain", away: "Belgium", kickoff: "2026-07-10T19:00:00Z" }, fetcher);
     expect(result).toMatchObject({ status: "unavailable", reason: "event-not-found" });
   });
+
+  it("does not match United States to an Australia event", async () => {
+    const australia = { events: [{ ...events.events[0], title: "Australia vs Belgium: Regulation Time Moneyline" }] };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(australia)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(markets)));
+    const result = await fetchKalshiMatch({ home: "United States", away: "Belgium", kickoff: "2026-07-10T19:00:00Z" }, fetcher);
+    expect(result).toMatchObject({ status: "unavailable", reason: "event-not-found" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps alias inputs to canonical event teams and alias market subtitles", async () => {
+    const aliasMarkets = {
+      markets: [
+        { ...markets.markets[0], ticker: "KXWCGAME-26JUL10USAIVC-USA", yes_sub_title: "Reg Time: US" },
+        { ...markets.markets[1], ticker: "KXWCGAME-26JUL10USAIVC-TIE" },
+        { ...markets.markets[2], ticker: "KXWCGAME-26JUL10USAIVC-IVC", yes_sub_title: "Reg Time: Cote d'Ivoire" },
+      ],
+    };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ events: [{ event_ticker: "KXWCGAME-26JUL10USAIVC", title: "United States vs Ivory Coast: Regulation Time Moneyline" }] })))
+      .mockResolvedValueOnce(new Response(JSON.stringify(aliasMarkets)));
+    const result = await fetchKalshiMatch({ home: "USA", away: "Côte d'Ivoire", kickoff: "2026-07-10T19:00:00Z" }, fetcher);
+    expect(result).toMatchObject({ status: "live" });
+    expect(result.outcomes.home?.ticker).toContain("-USA");
+    expect(result.outcomes.away?.ticker).toContain("-IVC");
+  });
+
+  it("maps canonical inputs to alias event teams", async () => {
+    const aliasEvents = { events: [{ event_ticker: "KXWCGAME-26JUL10USAIVC", title: "USA vs Côte d'Ivoire: Regulation Time Moneyline" }] };
+    const aliasMarkets = {
+      markets: [
+        { ...markets.markets[0], ticker: "KXWCGAME-26JUL10USAIVC-USA", yes_sub_title: "Reg Time: USA" },
+        { ...markets.markets[1], ticker: "KXWCGAME-26JUL10USAIVC-TIE" },
+        { ...markets.markets[2], ticker: "KXWCGAME-26JUL10USAIVC-IVC", yes_sub_title: "Reg Time: Ivory Coast" },
+      ],
+    };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(aliasEvents)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(aliasMarkets)));
+    const result = await fetchKalshiMatch({ home: "United States", away: "Ivory Coast", kickoff: "2026-07-10T19:00:00Z" }, fetcher);
+    expect(result.status).toBe("live");
+  });
+
+  it("rejects three markets without a valid mid price", async () => {
+    const emptyPrices = { markets: markets.markets.map((market) => ({ ...market, yes_bid_dollars: "", yes_ask_dollars: "" })) };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(events)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(emptyPrices)));
+    const result = await fetchKalshiMatch({ home: "Spain", away: "Belgium", kickoff: "2026-07-10T19:00:00Z" }, fetcher);
+    expect(result).toMatchObject({ status: "unavailable", reason: "incomplete-market" });
+  });
+
+  it("rejects three markets when a ticker is empty", async () => {
+    const emptyTicker = { markets: markets.markets.map((market, index) => index === 0 ? { ...market, ticker: "" } : market) };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(events)))
+      .mockResolvedValueOnce(new Response(JSON.stringify(emptyTicker)));
+    const result = await fetchKalshiMatch({ home: "Spain", away: "Belgium", kickoff: "2026-07-10T19:00:00Z" }, fetcher);
+    expect(result).toMatchObject({ status: "unavailable", reason: "incomplete-market" });
+  });
 });
 
 describe("onRequestGet", () => {
@@ -85,5 +146,21 @@ describe("onRequestGet", () => {
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({ status: "error", reason: "upstream-failure" });
     vi.unstubAllGlobals();
+  });
+
+  it("returns 400 for a non-ISO kickoff date", async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    try {
+      const response = await onRequestGet({
+        request: new Request("https://example.com/api/kalshi/match?home=Spain&away=Belgium&kickoff=07%2F10%2F2026"),
+        waitUntil: () => undefined,
+      });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ status: "error", reason: "invalid-input" });
+      expect(fetcher).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
