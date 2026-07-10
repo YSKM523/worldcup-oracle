@@ -44,12 +44,16 @@ describe("MatchTelemetry", () => {
   it("formats kickoff explicitly in UTC even under a non-UTC process timezone", () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date("2026-07-10T18:00:00Z"));
     const previous = process.env.TZ; process.env.TZ = "America/Los_Angeles";
-    const root = render();
-    expect(text(root)).toContain("07/10 18:01");
-    expect(text(root)).toContain(" UTC");
-    expect(text(root)).not.toContain("07/10 11:01");
-    act(() => root.unmount());
-    process.env.TZ = previous;
+    let root: ReturnType<typeof create> | undefined;
+    try {
+      root = render();
+      expect(text(root)).toContain("07/10 18:01");
+      expect(text(root)).toContain(" UTC");
+      expect(text(root)).not.toContain("07/10 11:01");
+    } finally {
+      if (root) act(() => root!.unmount());
+      process.env.TZ = previous;
+    }
   });
 
   it("shows a reached state instead of an endless zero countdown", () => {
@@ -58,6 +62,7 @@ describe("MatchTelemetry", () => {
     expect(text(root)).toContain("KICKOFF REACHED");
     expect(text(root)).toContain("等待实时源");
     expect(text(root)).not.toContain("T−00:00:00");
+    expect(text(root)).not.toContain("等待开赛");
     act(() => root.unmount());
   });
 

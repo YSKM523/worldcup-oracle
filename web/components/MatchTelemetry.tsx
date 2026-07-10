@@ -65,7 +65,7 @@ export function MatchTelemetry({ match, weather, poly, kalshi }: MatchTelemetryP
         <dt className="lbl lbl-faint">VENUE</dt><dd className="text-[var(--ink)]">{[match.venue, match.city].filter(Boolean).join(" · ") || "待定"}</dd>
         <dt className="lbl lbl-faint">WEATHER</dt>
         <dd className="text-[var(--ink)]">{wx ? `${wx.temp_c}°C · 湿度 ${wx.humidity_pct}%` : "等待气象数据"}</dd>
-        <dt className="lbl lbl-faint">ESPN</dt><dd className="text-[var(--ink-faint)]">等待开赛</dd>
+        <dt className="lbl lbl-faint">ESPN</dt><dd className="text-[var(--ink-faint)]">{kickoffReached ? "等待比赛状态" : "等待开赛"}</dd>
       </dl>
 
       <div className="space-y-2 border-b border-[var(--line)] py-3">
