@@ -124,7 +124,7 @@ function TopBar({ data, poly }: { data: Data; poly: PolyLive }) {
   const ws = poly.wsConnected;
   return (
     <header className="panel reveal flex-none">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-3.5 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-3 py-2">
         <div className="flex items-center gap-2.5">
           <span style={{ color: "var(--up)" }}>
             <LogoMark className="h-5 w-5" />
@@ -766,7 +766,7 @@ function NextUpRow({
   return (
     <button
       onClick={() => onOpen(m)}
-      className="flex w-full items-center gap-3 border-t border-[var(--line)] px-3 py-2 text-left transition-colors hover:bg-[var(--panel-2)]"
+      className="flex w-full items-center gap-3 border-t border-[var(--line)] px-3 py-1.5 text-left transition-colors hover:bg-[var(--panel-2)]"
     >
       <span className="mono w-12 shrink-0 text-[10px]" style={{ color: "var(--ink-faint)" }}>
         {dk.slice(5)}
@@ -845,7 +845,7 @@ function MatchdayPanel({
       }
     >
       <div className="flex h-full flex-col">
-        <div className="flex min-h-0 flex-1 flex-col justify-evenly gap-3 overflow-y-auto p-3">
+        <div className="flex flex-col gap-2 p-3">
           {focusCards.length ? (
             focusCards.map((m) => (
               <TodayCard key={m.espn_id} m={m} live={live} poly={poly} onOpen={onOpenMatch} />
@@ -858,7 +858,7 @@ function MatchdayPanel({
         </div>
         {nextUp.length > 0 && (
           <div className="flex-none border-t border-[var(--line)]">
-            <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center justify-between px-3 py-1.5">
               <span className="lbl">NEXT UP 后续赛程</span>
               <span className="lbl lbl-faint">{nextUp.length} 场</span>
             </div>
@@ -891,7 +891,7 @@ function ChampionRow({
   const marketProb = liveRaw && liveSum > 0 ? rawPrice / liveSum : c.market;
   const e = liveRaw ? liveEdge(c.ai, marketProb, c.edge?.models_agree ?? 0) : c.edge;
   return (
-    <div className="flex items-center gap-2.5 border-t border-[var(--line)] px-3 py-2">
+    <div className="flex items-center gap-2.5 border-t border-[var(--line)] px-3 py-1.5">
       <span className="mono w-4 shrink-0 text-[11px]" style={{ color: "var(--ink-faint)" }}>
         {rank}
       </span>
@@ -907,7 +907,7 @@ function ChampionRow({
             />
           )}
         </div>
-        <div className="mt-1 space-y-0.5">
+        <div className="mt-0.5 space-y-0.5">
           <div className="bar-track" style={{ height: 4 }}>
             <div
               className="bar-fill"
@@ -995,9 +995,9 @@ function ChampionPanel({
           ))}
         </div>
         {edgeLeaders.length > 0 && (
-          <div className="flex-none border-t border-[var(--line)] bg-[var(--panel-2)] p-3">
-            <div className="lbl mb-2">最大分歧 AI vs 市场</div>
-            <div className="space-y-2">
+          <div className="flex-none border-t border-[var(--line)] bg-[var(--panel-2)] p-2">
+            <div className="lbl mb-1.5">最大分歧 AI vs 市场</div>
+            <div className="space-y-1.5">
               {edgeLeaders.map((c) => (
                 <div key={c.team} className="flex items-center gap-2">
                   <Flag name={c.team} className="h-3.5 w-5 shrink-0" />
@@ -1017,7 +1017,7 @@ function ChampionPanel({
         )}
         <button
           onClick={onOpen}
-          className="lbl flex-none border-t border-[var(--line)] py-2.5 text-center transition-colors hover:text-[var(--ink)]"
+          className="lbl flex-none border-t border-[var(--line)] py-2 text-center transition-colors hover:text-[var(--ink)]"
         >
           全部 {rows.length} 队 · 分阶段概率 →
         </button>
@@ -1037,7 +1037,7 @@ function Ticker({
 }) {
   return (
     <footer className="panel reveal flex-none">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3.5 py-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-1.5">
         <span className="mono hidden text-[10px] lg:inline" style={{ color: "var(--ink-faint)" }}>
           PIPELINE: {data.meta.models.join(" · ")} → Elo → Bradley-Terry(Davidson) → 50K Monte-Carlo
         </span>
