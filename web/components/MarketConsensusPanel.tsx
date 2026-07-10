@@ -1,11 +1,13 @@
 "use client";
 
-import { buildMarketConsensus, MARKET_SIDES, type SourceLine } from "@/lib/marketConsensus";
-import type { KalshiMarketState, MarketSide } from "@/lib/types";
-import type { MatchMarketState } from "@/lib/useMatchMarket";
-import { zh } from "@/lib/wc";
+import { useEffect, useState } from "react";
+import { buildMarketConsensus, MARKET_SIDES, type SourceLine } from "../lib/marketConsensus";
+import type { KalshiMarketState, MarketSide } from "../lib/types";
+import type { MatchMarketState } from "../lib/useMatchMarket";
+import { zh } from "../lib/wc";
 
 const SIDE_COLOR: Record<MarketSide, string> = { home: "#34d399", draw: "#a1a1aa", away: "#f43f5e" };
+const SIDE_SHORT: Record<MarketSide, string> = { home: "H", draw: "D", away: "A" };
 const SEVERITY_CLASS = { normal: "text-zinc-500", warning: "text-amber-300", critical: "text-rose-300" } as const;
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 const quote = (value: number | null | undefined) => value == null ? "—" : `${(value * 100).toFixed(0)}¢`;
@@ -18,7 +20,7 @@ const volume = (value: number | null | undefined) => {
 
 function validLine(values: Record<MarketSide, number | null | undefined>, updatedAt: number | null): SourceLine | null {
   if (updatedAt == null || !Number.isFinite(updatedAt)) return null;
-  if (MARKET_SIDES.some((side) => !Number.isFinite(values[side]) || values[side]! <= 0)) return null;
+  if (MARKET_SIDES.some((side) => !Number.isFinite(values[side]) || values[side]! <= 0 || values[side]! >= 1)) return null;
   return { home: values.home!, draw: values.draw!, away: values.away!, updatedAt };
 }
 
@@ -51,6 +53,28 @@ export function MarketConsensusPanel({ home, away, polymarket, kalshi }: {
 }) {
   const poly = polymarketLine(polymarket);
   const kal = kalshiLine(kalshi);
+  const [, refreshAtExpiry] = useState(0);
+
+  useEffect(() => {
+    const expiries = [...new Set([poly?.updatedAt, kal?.updatedAt]
+      .filter((updatedAt): updatedAt is number => updatedAt != null)
+      .map((updatedAt) => updatedAt + 15_001)
+      .filter((expiry) => expiry > Date.now()))]
+      .sort((a, b) => a - b);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let next = 0;
+    const schedule = () => {
+      const expiry = expiries[next++];
+      if (expiry == null) return;
+      timer = setTimeout(() => {
+        refreshAtExpiry((version) => version + 1);
+        schedule();
+      }, Math.max(0, expiry - Date.now()));
+    };
+    schedule();
+    return () => clearTimeout(timer);
+  }, [poly?.updatedAt, kal?.updatedAt]);
+
   const result = buildMarketConsensus(poly, kal);
   const polyFresh = result.sourceNames.includes("polymarket");
   const kalFresh = result.sourceNames.includes("kalshi");
@@ -58,7 +82,8 @@ export function MarketConsensusPanel({ home, away, polymarket, kalshi }: {
   const status = result.status === "dual"
     ? `PM ${polyMode} · KAL REST 1S · 2/2 LIVE`
     : result.status === "single" ? "1/2 SINGLE SOURCE" : "MARKETS UNAVAILABLE";
-  const kalStatus = kalshi.status === "live" && !kalFresh ? "KAL STALE" : kalFresh ? "KAL LIVE" : "KAL UNAVAILABLE";
+  const kalStale = kal != null && !kalFresh;
+  const kalStatus = kalFresh ? "KAL LIVE" : kalStale ? "KAL STALE" : "KAL UNAVAILABLE";
   const hasCritical = MARKET_SIDES.some((side) => result.severity[side] === "critical");
   const hasWarning = MARKET_SIDES.some((side) => result.severity[side] === "warning");
 
@@ -99,9 +124,9 @@ export function MarketConsensusPanel({ home, away, polymarket, kalshi }: {
             <span className={`h-1.5 w-1.5 ${polyFresh ? "bg-emerald-400" : "bg-zinc-700"}`} /><b className="font-semibold text-zinc-300">PM</b><span>{polyFresh ? `${polyMode} LIVE` : "UNAVAILABLE"}</span><span className="ml-auto">3-WAY MID</span>
           </div>
           <div data-market-source="kalshi" className="border-t border-zinc-800 px-3 py-1.5 lg:border-l lg:border-t-0">
-            <div className="mb-1 flex items-center gap-2"><span className={`h-1.5 w-1.5 ${kalFresh ? "bg-emerald-400" : kalshi.status === "live" ? "bg-amber-400" : "bg-zinc-700"}`} /><b className="font-semibold text-zinc-300">KAL</b><span className={kalStatus === "KAL STALE" ? "font-semibold text-amber-300" : ""}>{kalStatus}</span><span className="ml-auto text-zinc-600">BID / ASK / LAST / VOL</span></div>
+            <div className="mb-1 flex items-center gap-2"><span className={`h-1.5 w-1.5 ${kalFresh ? "bg-emerald-400" : kalStale ? "bg-amber-400" : "bg-zinc-700"}`} /><b className="font-semibold text-zinc-300">KAL</b><span className={kalStatus === "KAL STALE" ? "font-semibold text-amber-300" : ""}>{kalStatus}</span><span className="ml-auto text-zinc-600">BID / ASK / LAST / VOL</span></div>
             <div className="grid grid-cols-3 gap-2">
-              {MARKET_SIDES.map((side) => { const outcome = kalshi.outcomes[side]; return <span key={side} className="whitespace-nowrap text-zinc-500">{quote(outcome?.bid)}/{quote(outcome?.ask)}/{quote(outcome?.last)} · {volume(outcome?.volume)}</span>; })}
+              {MARKET_SIDES.map((side) => { const outcome = kalshi.outcomes[side]; return <span key={side} className="whitespace-nowrap text-zinc-500"><b className="mr-1 text-zinc-400">{SIDE_SHORT[side]}</b>{quote(outcome?.bid)}/{quote(outcome?.ask)}/{quote(outcome?.last)} · {volume(outcome?.volume)}</span>; })}
             </div>
           </div>
         </div>
