@@ -1228,7 +1228,15 @@ function MatchModal({
               </span>
             </div>
             {slug ? (
-              <MatchDetail slug={slug} kickoffUtc={m.kickoff_utc} home={m.home} away={m.away} pred={m.pred} liveEntry={live[m.espn_id]} />
+              <MatchDetail
+                slug={slug}
+                kickoffUtc={m.kickoff_utc}
+                home={m.home}
+                away={m.away}
+                pred={m.pred}
+                liveEntry={live[m.espn_id]}
+                variant="console"
+              />
             ) : (
               <div
                 className="mono flex flex-1 items-center justify-center py-10 text-center text-[12px]"

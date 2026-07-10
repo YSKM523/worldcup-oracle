@@ -323,6 +323,7 @@ export function MatchDetail({
   away,
   pred,
   liveEntry,
+  variant = "card",
 }: {
   slug: string;
   kickoffUtc: string;
@@ -330,7 +331,9 @@ export function MatchDetail({
   away: string;
   pred?: Pred;
   liveEntry?: LiveEntry;
+  variant?: "card" | "console";
 }) {
+  const consoleMode = variant === "console";
   const mm = useMatchMarket(slug, kickoffUtc);
   const aiCurves = useInplayCurve({ pred, liveEntry });
   const [tab, setTab] = useState<OutcomeSide | null>(null);
@@ -360,15 +363,26 @@ export function MatchDetail({
     return () => clearTimeout(id);
   }, [spike]);
 
+  const errorClass = consoleMode
+    ? "py-8 text-center text-xs text-zinc-600"
+    : "mt-3 rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-3 text-center text-xs text-zinc-600";
+
   if (mm.status === "error")
     return (
-      <div className="mt-3 rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-3 text-center text-xs text-zinc-600">
+      <div data-match-detail-variant={variant} className={errorClass}>
         该场 Polymarket 盘口数据不可用
       </div>
     );
 
   return (
-    <div className="mt-3 space-y-3 rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-3">
+    <div
+      data-match-detail-variant={variant}
+      className={
+        consoleMode
+          ? "space-y-2"
+          : "mt-3 space-y-3 rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-3"
+      }
+    >
       {/* 状态行 */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
         <span className="inline-flex items-center gap-1.5">
