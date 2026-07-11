@@ -43,7 +43,7 @@ export function MatchTelemetry({ match, weather, poly, kalshi }: MatchTelemetryP
   const stage = match.stage === "group" && match.group ? `${match.group}组 · 小组赛` : STAGE_ZH[match.stage] ?? match.stage;
 
   return (
-    <div data-match-telemetry className="mono min-h-full text-[11px] text-[var(--ink-dim)]">
+    <div data-match-telemetry className="mono flex h-full min-h-full flex-col text-[11px] text-[var(--ink-dim)]">
       <div className="flex items-center gap-2 border-b border-[var(--line)] pb-2">
         <span className="lbl lbl-faint">04</span>
         <span className="lbl text-[var(--ink)]">LIVE STATS · 赛前遥测</span>
@@ -82,10 +82,11 @@ export function MatchTelemetry({ match, weather, poly, kalshi }: MatchTelemetryP
         </div>
       </div>
 
-      <div className="py-3">
+      <div className="flex flex-1 flex-col py-3">
         <div className="lbl lbl-faint">MATCH FEED PREVIEW</div>
         <div className="mt-2 leading-5 text-[var(--ink-faint)]">控球 · 射门 · 射正 · 角球 · 牌</div>
         <div className="mt-1 text-[var(--ink-faint)]">开赛后自动切换 ESPN 实时数据</div>
+        <div className="lbl lbl-faint mt-auto border-t border-[var(--line)] pt-2">AUTO SWITCH · ESPN LIVE FEED</div>
       </div>
     </div>
   );

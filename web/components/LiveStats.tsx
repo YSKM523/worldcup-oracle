@@ -43,7 +43,7 @@ export function LiveStats({
   const inPlay = stats?.state === "in";
   const consoleMode = variant === "console";
   const surfaceClass = consoleMode
-    ? "border-0 bg-transparent p-0 rounded-none"
+    ? "flex h-full min-h-full flex-col rounded-none border-0 bg-transparent p-0"
     : `border border-zinc-800/80 bg-zinc-950/60 ${compact ? "rounded-[3px] p-2" : "rounded-xl p-3"}`;
 
   if (compact && !started) {
@@ -99,7 +99,7 @@ export function LiveStats({
       </div>
 
       {started ? (
-        <div className={compact ? "grid gap-x-4 gap-y-1.5 sm:grid-cols-2" : "space-y-2"}>
+        <div className={compact ? "grid gap-x-4 gap-y-1.5 sm:grid-cols-2" : consoleMode ? "flex flex-1 flex-col justify-between gap-2" : "space-y-2"}>
           {ROWS.map((r) => {
             const h = stats!.home[r.name];
             const a = stats!.away[r.name];

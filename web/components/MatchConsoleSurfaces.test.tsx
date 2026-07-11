@@ -43,6 +43,8 @@ describe("match console surfaces", () => {
     const surface = findSurface(root!, "stats");
     expect(surface.props.className).toContain("rounded-none");
     expect(surface.props.className).toContain("border-0");
+    expect(surface.props.className).toContain("h-full");
+    expect(surface.props.className).toContain("flex-col");
     expect(JSON.stringify(root!.toJSON())).toContain("LIVE STATS · 实时数据");
   });
 
@@ -61,6 +63,8 @@ describe("match console surfaces", () => {
     const surface = findSurface(root!, "prediction");
     expect(surface.props.className).toContain("rounded-none");
     expect(surface.props.className).toContain("border-0");
+    expect(surface.props.className).toContain("h-full");
+    expect(surface.props.className).toContain("flex-col");
     expect(JSON.stringify(root!.toJSON())).toContain("MATCH FORECAST · 模型预测");
   });
 });
