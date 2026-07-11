@@ -218,7 +218,7 @@ function MarketOdds({ m, poly, hideBook }: { m: Match; poly: PolyLive; hideBook?
   const isWs = live?.src === "ws" && live.ts != null && Date.now() - live.ts < 120e3;
   return (
     <>
-    <div className="mt-2 flex items-center gap-x-4 gap-y-1 text-[11px] text-zinc-500">
+    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-500">
       <span
         className="inline-flex items-center gap-1 text-zinc-600"
         title={

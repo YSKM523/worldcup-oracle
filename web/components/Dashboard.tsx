@@ -468,7 +468,7 @@ function MatchOddsRow({ m, poly }: { m: Match; poly: PolyLive }) {
       ? [...m.edge].sort((a, b) => Math.abs(b.edge_pct) - Math.abs(a.edge_pct))[0]
       : null;
   return (
-    <div className="mono flex items-center gap-x-3 text-[11px]" style={{ color: "var(--ink-dim)" }}>
+    <div className="mono flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--ink-dim)" }}>
       <span className="flex items-center gap-1">
         {live && (
           <span
