@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { CheckIcon, Flag, StarIcon, XIcon } from "@/components/icons";
 import { MatchDetail } from "@/components/MatchDetail";
-import type { FormEntry, LiveMap, Match, MatchWeather, Meta, PolyLive, WeatherData } from "@/lib/types";
+import { ForecastAnalyticsTabs } from "@/components/ForecastAnalyticsTabs";
+import type { FormEntry, KalshiMarketState, LiveEntry, LiveMap, Match, MatchWeather, Meta, PolyLive, WeatherData } from "@/lib/types";
 import {
   KO_STAGES,
   MODEL_SHORT,
@@ -408,6 +409,8 @@ export function FocusCard({
   live,
   poly,
   weather,
+  kalshi,
+  liveEntry,
   hideBook,
   variant = "card",
 }: {
@@ -416,6 +419,8 @@ export function FocusCard({
   live: LiveMap;
   poly: PolyLive;
   weather?: WeatherData | null;
+  kalshi?: KalshiMarketState;
+  liveEntry?: LiveEntry;
   hideBook?: boolean;
   variant?: "card" | "console";
 }) {
@@ -438,17 +443,11 @@ export function FocusCard({
       : `夺冠概率：${zh(m.home)} ${pct(d.champion_home, 1)} · ${zh(m.away)} ${pct(d.champion_away, 1)}`
     : "";
   const consoleMode = variant === "console";
-  const formClass: Record<FormEntry["res"], string> = {
-    W: "text-emerald-300",
-    D: "text-zinc-400",
-    L: "text-rose-300",
-  };
-  const formLabel: Record<FormEntry["res"], string> = { W: "胜", D: "平", L: "负" };
 
   return (
     <div
       data-console-surface={consoleMode ? "prediction" : undefined}
-      className={consoleMode ? "flex h-full min-h-full flex-col rounded-none border-0 bg-transparent p-0" : "rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5"}
+      className={consoleMode ? "flex h-full min-h-0 flex-1 flex-col rounded-none border-0 bg-transparent p-0 xl:absolute xl:inset-3 xl:h-auto" : "rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5"}
     >
       {consoleMode && (
         <div className="mb-3 flex min-h-8 items-center gap-2 border-b border-[var(--line)] pb-2">
@@ -516,65 +515,7 @@ export function FocusCard({
         </div>
       ) : null}
 
-      {consoleMode && d && (
-        <section data-console-dossier className="mt-4 border-y border-zinc-800/70 py-3">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="lbl text-zinc-400">MATCH DOSSIER · 近期态势</span>
-            <span className="lbl lbl-faint ml-auto">LAST 3 · H2H · STAKES</span>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {([
-              [m.home, d.form_home],
-              [m.away, d.form_away],
-            ] as const).map(([team, form]) => (
-              <div key={team} className="min-w-0">
-                <div className="mb-1.5 truncate text-[11px] font-semibold text-zinc-300">{zh(team)}</div>
-                <div className="space-y-1">
-                  {form.slice(0, 3).map((game) => (
-                    <div key={`${game.date}-${game.opp}`} className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-1.5 text-[10px] tabular-nums">
-                      <b className={formClass[game.res]}>{formLabel[game.res]}</b>
-                      <span className="truncate text-zinc-500">vs {zh(game.opp)}</span>
-                      <span className="text-zinc-300">{game.score}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          {(h2hLine || stakes) && (
-            <div className="mt-2 grid gap-1 border-t border-zinc-900 pt-2 text-[10px] leading-4 text-zinc-500 xl:grid-cols-2">
-              {h2hLine && <div>{h2hLine}</div>}
-              {stakes && <div>{stakes}</div>}
-            </div>
-          )}
-        </section>
-      )}
-
-      {consoleMode && p && !d && (
-        <section data-console-model-matrix className="mt-4 flex flex-1 flex-col border-y border-zinc-800/70 py-3">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="lbl text-zinc-400">MODEL MATRIX · 模型矩阵</span>
-            <span className="lbl lbl-faint ml-auto">HOME · DRAW · AWAY</span>
-          </div>
-          <div className="grid grid-cols-[minmax(90px,1fr)_64px_64px_64px] border-b border-zinc-900 pb-1 text-right text-[9px] uppercase tracking-[0.08em] text-zinc-600">
-            <span className="text-left">Model</span><span>主</span><span>平</span><span>客</span>
-          </div>
-          <div className="divide-y divide-zinc-900">
-            {p.per_model.map((model, index) => (
-              <div key={meta.models[index] ?? index} className="grid min-h-8 grid-cols-[minmax(90px,1fr)_64px_64px_64px] items-center text-right text-[11px] tabular-nums">
-                <span className="truncate text-left font-medium text-zinc-400">{MODEL_SHORT[meta.models[index]] ?? meta.models[index] ?? `MODEL ${index + 1}`}</span>
-                <span className="text-emerald-300">{pct(model.p_home)}</span>
-                <span className="text-zinc-400">{pct(model.p_draw)}</span>
-                <span className="text-rose-300">{pct(model.p_away)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-auto grid grid-cols-[minmax(90px,1fr)_64px_64px_64px] border-t border-zinc-800/70 pt-2 text-right text-[10px] tabular-nums text-zinc-500">
-            <span className="lbl lbl-faint text-left">AI FAIR ODDS</span>
-            <span>{oddsFmt(p.p_home)}</span><span>{oddsFmt(p.p_draw)}</span><span>{oddsFmt(p.p_away)}</span>
-          </div>
-        </section>
-      )}
+      {consoleMode && <ForecastAnalyticsTabs match={m} poly={poly} weather={wx} kalshi={kalshi} liveEntry={liveEntry} />}
 
       {!consoleMode && (h2hLine || stakes) && (
         <div className="mt-4 space-y-1 border-t border-zinc-800/70 pt-3 text-xs leading-5 text-zinc-500">

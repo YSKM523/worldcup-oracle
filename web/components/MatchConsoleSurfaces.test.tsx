@@ -73,13 +73,15 @@ describe("match console surfaces", () => {
     expect(surface.props.className).toContain("border-0");
     expect(surface.props.className).toContain("h-full");
     expect(surface.props.className).toContain("flex-col");
-    expect(JSON.stringify(root!.toJSON())).toContain("MATCH FORECAST · 模型预测");
-    expect(JSON.stringify(root!.toJSON())).toContain("MATCH DOSSIER · 近期态势");
-    expect(JSON.stringify(root!.toJSON())).toContain("法国");
-    expect(JSON.stringify(root!.toJSON())).toContain("德国");
+    const output = JSON.stringify(root!.toJSON());
+    expect(output).toContain("MATCH FORECAST · 模型预测");
+    expect(output).toContain("VALUE · 盘口价值");
+    expect(output).toContain("SCORES · 比分分布");
+    expect(output).not.toContain("MODEL MATRIX · 模型矩阵");
+    expect(output).not.toContain("MATCH DOSSIER · 近期态势");
   });
 
-  it("fills the console with a model matrix when detailed form data is unavailable", () => {
+  it("renders forecast analytics when detailed form data is unavailable", () => {
     act(() => {
       root = create(React.createElement(FocusCard as React.ComponentType<Record<string, unknown>>, {
         m: {
@@ -102,9 +104,7 @@ describe("match console surfaces", () => {
       }));
     });
     const output = JSON.stringify(root!.toJSON());
-    expect(output).toContain("MODEL MATRIX · 模型矩阵");
-    expect(output).toContain("Chronos");
-    expect(output).toContain("TimesFM");
-    expect(output).toContain("FlowState");
+    expect(output).toContain("SCORES · 比分分布");
+    expect(output).not.toContain("MODEL MATRIX · 模型矩阵");
   });
 });

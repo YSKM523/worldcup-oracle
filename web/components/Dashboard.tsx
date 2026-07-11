@@ -1218,8 +1218,8 @@ function MatchModal({
           data-match-modal-grid
           className="grid min-h-0 max-h-[calc(100dvh-54px)] grid-cols-1 grid-rows-[max-content_max-content_max-content] overflow-y-auto xl:max-h-[calc(90vh-37px)] xl:grid-cols-[270px_minmax(0,1fr)_minmax(440px,500px)] xl:grid-rows-none xl:overflow-hidden"
         >
-          <section data-match-column="prediction" className="drawer-scroll order-1 flex min-h-0 flex-col border-b border-[var(--line)] p-3 xl:order-2 xl:overflow-y-auto xl:border-b-0 xl:border-r">
-            <FocusCard m={m} meta={meta} live={live} poly={poly} weather={weather} hideBook variant="console" />
+          <section data-match-column="prediction" className="drawer-scroll order-1 flex min-h-0 flex-col border-b border-[var(--line)] p-3 xl:relative xl:order-2 xl:h-full xl:overflow-y-auto xl:border-b-0 xl:border-r">
+            <FocusCard m={m} meta={meta} live={live} poly={poly} weather={weather} kalshi={kalshi} liveEntry={liveEntry} hideBook variant="console" />
           </section>
           <section data-match-column="stats" className="drawer-scroll order-2 flex min-h-0 flex-col border-b border-[var(--line)] p-3 xl:order-1 xl:overflow-y-auto xl:border-b-0 xl:border-r">
             {isStarted ? (

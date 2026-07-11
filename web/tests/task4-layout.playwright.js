@@ -38,6 +38,28 @@ async page => {
     await page.keyboard.press("Escape");
     if (await page.locator("[data-match-modal-grid]").count()) throw new Error("Escape did not close dialog");
   };
+  const assertForecastTabs = async width => {
+    const tabs = page.locator("[data-forecast-tabs]");
+    if (await tabs.count() !== 1) throw new Error(`${width}: expected one forecast tab set`);
+    const tabIds = ["value", "scripts", "scores", "watch"];
+    const controls = [];
+    for (const tabId of tabIds) {
+      const tab = tabs.locator(`[data-forecast-tab=${tabId}]`);
+      if (await tab.count() !== 1 || await tab.getAttribute("role") !== "tab") throw new Error(`${width}: ${tabId} is not a semantic tab button`);
+      controls.push(await tab.getAttribute("aria-controls"));
+    }
+    if (new Set(controls).size !== tabIds.length) throw new Error(`${width}: forecast tabs do not control distinct panels`);
+    const scores = tabs.locator("[data-forecast-tab=scores]");
+    if (await scores.getAttribute("aria-selected") !== "true" || !(await scores.isVisible())) throw new Error(`${width}: scores is not visibly selected by default`);
+    const scorePanel = tabs.locator(`[id=\"${controls[2]}\"]`);
+    if (!(await scorePanel.isVisible()) || !(await scorePanel.textContent()).includes("比分分布")) throw new Error(`${width}: scores panel is not visibly rendered by default`);
+    for (let index = 0; index < tabIds.length; index += 1) {
+      const tab = tabs.locator(`[data-forecast-tab=${tabIds[index]}]`);
+      await tab.click();
+      const panel = tabs.locator(`[id=\"${controls[index]}\"]`);
+      if (await tab.getAttribute("aria-selected") !== "true" || !(await panel.isVisible())) throw new Error(`${width}: ${tabIds[index]} did not switch to its panel`);
+    }
+  };
 
   await page.goto("http://localhost:3002");
   const matrix = [];
@@ -56,6 +78,11 @@ async page => {
       if (![prediction, market].every(item => Math.abs(item.y - stats.y) < 1 && Math.abs(item.height - stats.height) < 1)) throw new Error(`${width}: desktop alignment`);
       const scroll = await page.locator("[data-match-column]").evaluateAll(items => items.map(item => getComputedStyle(item).overflowY));
       if (scroll.some(value => value !== "auto")) throw new Error(`${width}: independent scroll ${scroll}`);
+      if ([1920, 2560].includes(width)) {
+        await assertForecastTabs(width);
+        const surface = await page.locator("[data-console-surface=prediction]").boundingBox();
+        if (Math.abs((surface.y + surface.height) - (market.y + market.height - 12)) > 1) throw new Error(`${width}: prediction surface misses market 12px bottom inset`);
+      }
     } else if (!(prediction.y < stats.y && stats.y < market.y && prediction.y + prediction.height <= stats.y + 1 && stats.y + stats.height <= market.y + 1)) {
       throw new Error(`${width}: expected prediction→stats→market without overlap`);
     }
@@ -70,9 +97,11 @@ async page => {
 
   await page.setViewportSize({ width: 1920, height: 1080 });
   await open();
+  await assertForecastTabs(1920);
   await page.getByRole("button", { name: "关闭" }).click();
   if (await page.locator("[data-match-modal-grid]").count()) throw new Error("icon did not close dialog");
   await open();
+  if (await page.locator("[data-forecast-tab=scores]").getAttribute("aria-selected") !== "true") throw new Error("1920: reopening did not reset forecast tabs to scores");
   await page.mouse.click(2, 2);
   if (await page.locator("[data-match-modal-grid]").count()) throw new Error("backdrop did not close dialog");
 
