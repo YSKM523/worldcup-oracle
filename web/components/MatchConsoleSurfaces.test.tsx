@@ -78,4 +78,33 @@ describe("match console surfaces", () => {
     expect(JSON.stringify(root!.toJSON())).toContain("法国");
     expect(JSON.stringify(root!.toJSON())).toContain("德国");
   });
+
+  it("fills the console with a model matrix when detailed form data is unavailable", () => {
+    act(() => {
+      root = create(React.createElement(FocusCard as React.ComponentType<Record<string, unknown>>, {
+        m: {
+          espn_id: "402", kickoff_utc: "2026-07-11T21:00:00Z", stage: "qf", group: null,
+          venue: "Hard Rock Stadium", city: "Miami Gardens, Florida", home: "Norway", away: "England",
+          tbd: false, completed: false, status: null, home_score: null, away_score: null, winner: null,
+          pred: {
+            p_home: .23, p_draw: .30, p_away: .47, elo_home: 2205, elo_away: 2322,
+            per_model: [
+              { p_home: .22, p_draw: .30, p_away: .48 },
+              { p_home: .24, p_draw: .31, p_away: .45 },
+              { p_home: .23, p_draw: .29, p_away: .48 },
+            ],
+            scoreline: { top_scores: [], most_likely: "1-1", most_likely_p: .143, xg_home: 1.02, xg_away: 1.67, p_over25: .48, p_btts: .54 },
+          },
+        },
+        meta: { models: ["Chronos-2", "TimesFM-2.5", "FlowState"] },
+        live: {}, poly: { matches: {}, champion: {}, championFresh: false, updatedAt: null, wsConnected: false },
+        hideBook: true, variant: "console",
+      }));
+    });
+    const output = JSON.stringify(root!.toJSON());
+    expect(output).toContain("MODEL MATRIX · 模型矩阵");
+    expect(output).toContain("Chronos");
+    expect(output).toContain("TimesFM");
+    expect(output).toContain("FlowState");
+  });
 });
