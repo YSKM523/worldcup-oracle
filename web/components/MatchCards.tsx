@@ -447,7 +447,7 @@ export function FocusCard({
   return (
     <div
       data-console-surface={consoleMode ? "prediction" : undefined}
-      className={consoleMode ? "flex h-full min-h-0 flex-1 flex-col rounded-none border-0 bg-transparent p-0 xl:absolute xl:inset-3 xl:h-auto" : "rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5"}
+      className={consoleMode ? "flex h-full min-h-0 flex-1 flex-col rounded-none border-0 bg-transparent p-0" : "rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5"}
     >
       {consoleMode && (
         <div className="mb-3 flex min-h-8 items-center gap-2 border-b border-[var(--line)] pb-2">

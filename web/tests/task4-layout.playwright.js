@@ -59,6 +59,15 @@ async page => {
       const panel = tabs.locator(`[id=\"${controls[index]}\"]`);
       if (await tab.getAttribute("aria-selected") !== "true" || !(await panel.isVisible())) throw new Error(`${width}: ${tabIds[index]} did not switch to its panel`);
     }
+    const watchPanel = tabs.locator(`[id=\"${controls[3]}\"]`);
+    const watch = await watchPanel.evaluate((panel) => ({
+      clientHeight: panel.clientHeight,
+      scrollHeight: panel.scrollHeight,
+      visibleItems: panel.querySelectorAll("li").length,
+    }));
+    if (watch.clientHeight < 160) throw new Error(`${width}: watch panel is too short (${watch.clientHeight}px)`);
+    if (watch.visibleItems < 5) throw new Error(`${width}: watch items are clipped (${watch.visibleItems})`);
+    if (watch.scrollHeight < watch.clientHeight) throw new Error(`${width}: watch panel reports invalid scroll bounds`);
   };
 
   await page.goto("http://localhost:3002");
