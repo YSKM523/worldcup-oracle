@@ -40,6 +40,7 @@ describe("ForecastAnalyticsTabs", () => {
     if (root) act(() => root?.unmount());
     root = null;
     vi.restoreAllMocks();
+    vi.useRealTimers();
     delete (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT;
   });
 
@@ -142,6 +143,14 @@ describe("ForecastAnalyticsTabs", () => {
     expect(rendered.root.findByProps({ "data-forecast-score": "1-1" }).props["data-most-likely"]).toBeUndefined();
   });
 
+  it("marks a supplied 4-0 mode in the aggregate tail without highlighting an unrelated grid cell", () => {
+    const rendered = render({ match: { ...match, pred: { ...match.pred!, scoreline: { ...match.pred!.scoreline, most_likely: "4-0", top_scores: [{ score: "4-0", p: .04 }] } } } });
+
+    expect(rendered.root.findByProps({ "data-forecast-score-tail": true }).props["data-most-likely"]).toBe("4-0");
+    expect(rendered.root.findByProps({ "data-forecast-score": "1-1" }).props["data-most-likely"]).toBeUndefined();
+    expect(text(rendered)).toContain("4-0");
+  });
+
   it("shows market decimal odds and direction, while null market fields degrade", () => {
     const rendered = render();
     act(() => rendered.root.findByProps({ "data-forecast-tab": "value" }).props.onClick());
@@ -162,6 +171,42 @@ describe("ForecastAnalyticsTabs", () => {
     act(() => rendered.root.findByProps({ "data-forecast-tab": "watch" }).props.onClick());
 
     expect(text(rendered)).toContain("WEATHER UNAVAILABLE");
+  });
+
+  it("updates a fresh quote timestamp to stale and clears the watch clock on unmount", () => {
+    vi.useFakeTimers();
+    const now = Date.parse("2026-07-10T18:00:00Z");
+    vi.setSystemTime(now);
+    const rendered = render({ poly: { ...poly(), updatedAt: null, matches: { [kickoffEpoch(match.kickoff_utc)]: { home: .42, draw: .29, away: .29, src: "ws", ts: now } } } });
+    act(() => rendered.root.findByProps({ "data-forecast-tab": "watch" }).props.onClick());
+    expect(text(rendered)).toContain("PM WS · FRESH");
+    expect(vi.getTimerCount()).toBe(1);
+
+    act(() => { vi.advanceTimersByTime(16_000); });
+    expect(text(rendered)).toContain("PM STALE");
+    act(() => rendered.unmount());
+    root = null;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("marks an old quote timestamp stale", () => {
+    vi.useFakeTimers();
+    const now = Date.parse("2026-07-10T18:00:00Z");
+    vi.setSystemTime(now);
+    const rendered = render({ poly: { ...poly(), matches: { [kickoffEpoch(match.kickoff_utc)]: { home: .42, draw: .29, away: .29, src: "ws", ts: now - 15_001 } } } });
+    act(() => rendered.root.findByProps({ "data-forecast-tab": "watch" }).props.onClick());
+
+    expect(text(rendered)).toContain("PM STALE");
+  });
+
+  it("uses quote timestamps ahead of the global Polymarket timestamp", () => {
+    vi.useFakeTimers();
+    const now = Date.parse("2026-07-10T18:00:00Z");
+    vi.setSystemTime(now);
+    const rendered = render({ poly: { ...poly(), updatedAt: now, matches: { [kickoffEpoch(match.kickoff_utc)]: { home: .42, draw: .29, away: .29, src: "ws", ts: now - 15_001 } } } });
+    act(() => rendered.root.findByProps({ "data-forecast-tab": "watch" }).props.onClick());
+
+    expect(text(rendered)).toContain("PM STALE");
   });
 
   it("never renders retired console filler in any analytics panel", () => {

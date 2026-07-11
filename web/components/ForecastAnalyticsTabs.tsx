@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { buildMatchScripts, buildScoreDistribution, buildValueRows, type ValueRow } from "../lib/forecastAnalytics";
 import type { KalshiMarketState, LiveEntry, MarketSide, Match, MatchWeather, PolyLive } from "../lib/types";
 import { kickoffEpoch, zh } from "../lib/wc";
@@ -93,25 +93,35 @@ function ScoresPanel({ match, distribution }: { match: Match; distribution: Retu
   const ranking = match.pred?.scoreline.top_scores ?? [];
   if (!distribution) return <div className="py-6 text-center text-[11px] font-semibold tracking-[0.1em] text-zinc-500">SCORE MODEL UNAVAILABLE</div>;
   const suppliedMode = match.pred?.scoreline.most_likely;
-  const mostLikely = distribution.cells.some((cell) => cell.label === suppliedMode) ? suppliedMode : distribution.mode.label;
+  const suppliedInGrid = distribution.cells.some((cell) => cell.label === suppliedMode);
+  const mostLikely = suppliedInGrid ? suppliedMode : suppliedMode ? null : distribution.mode.label;
   return (
     <div className="space-y-3 px-3">
       <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.14em] text-zinc-400"><span>比分分布</span><span className="h-px flex-1 bg-zinc-800" /><span className="text-zinc-600">0–3 + 4+</span></div>
       <div data-forecast-score-grid className="grid grid-cols-4 gap-px overflow-hidden border border-zinc-800 bg-zinc-800">
         {distribution.cells.map((cell) => {
-          const isMode = cell.label === mostLikely;
+          const isMode = mostLikely != null && cell.label === mostLikely;
           return <div key={cell.label} data-forecast-score={cell.label} data-most-likely={isMode || undefined} className={`min-h-11 bg-zinc-950 px-2 py-1.5 text-right tabular-nums ${isMode ? "bg-amber-400/10 text-amber-200" : "text-zinc-300"}`}><b className="float-left text-[10px] font-medium text-zinc-500">{cell.label}</b><span className="text-[11px]">{pct(cell.p)}</span></div>;
         })}
       </div>
-      <div data-forecast-score-tail className="flex items-center border-y border-zinc-800 py-2 text-[11px] tabular-nums"><span className="font-semibold text-zinc-300">4+ TAIL</span><span className="ml-auto text-zinc-100">{pct(distribution.tail)}</span></div>
+      <div data-forecast-score-tail data-most-likely={suppliedMode && !suppliedInGrid ? suppliedMode : undefined} className={`flex items-center border-y border-zinc-800 py-2 text-[11px] tabular-nums ${suppliedMode && !suppliedInGrid ? "bg-amber-400/10 text-amber-200" : ""}`}><span className="font-semibold text-zinc-300">4+ TAIL{suppliedMode && !suppliedInGrid ? ` · MODE ${suppliedMode}` : ""}</span><span className="ml-auto text-zinc-100">{pct(distribution.tail)}</span></div>
       <div className="text-[10px] text-zinc-500"><span className="font-semibold tracking-[0.12em] text-zinc-400">TOP SCORES</span><span className="ml-3 tabular-nums">{ranking.length ? ranking.map((score) => `${score.score} ${pct(score.p)}`).join(" · ") : "—"}</span></div>
     </div>
   );
 }
 
 function WatchPanel({ match, poly, kalshi, weather, liveEntry, rows }: ForecastAnalyticsTabsProps & { rows: ValueRow[] }) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    tick();
+    const interval = setInterval(tick, 1_000);
+    return () => clearInterval(interval);
+  }, []);
   const quote = poly.matches[kickoffEpoch(match.kickoff_utc)];
-  const pmStatus = !quote ? "PM UNAVAILABLE" : poly.updatedAt == null ? "PM STALE" : poly.wsConnected ? "PM WS · FRESH" : "PM SNAPSHOT · FRESH";
+  const updatedAt = quote?.ts ?? poly.updatedAt;
+  const pmFresh = updatedAt != null && Number.isFinite(updatedAt) && now != null && now >= updatedAt && now - updatedAt <= 15_000;
+  const pmStatus = !quote ? "PM UNAVAILABLE" : pmFresh ? poly.wsConnected ? "PM WS · FRESH" : "PM SNAPSHOT · FRESH" : "PM STALE";
   const kalStatus = kalshi?.status === "live" ? kalshi.stale ? "KAL STALE" : "KAL LIVE" : "KAL UNAVAILABLE";
   const divergence = rows.reduce<number | null>((max, row) => row.edge == null ? max : Math.max(max ?? 0, Math.abs(row.edge)), null);
   const weatherStatus = !weather || !Number.isFinite(weather.temp_c) || !Number.isFinite(weather.humidity_pct) ? "WEATHER UNAVAILABLE" : `WEATHER ${Math.round(weather.temp_c)}°C · ${Math.round(weather.humidity_pct)}%${weather.forecast ? " · FORECAST" : ""}`;
