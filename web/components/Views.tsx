@@ -136,7 +136,7 @@ function FocusList({
         <h2 className="text-base font-bold text-amber-300">
           本期详细预测 · {fmtDay(matchday)} · 共 {matches.length} 场
         </h2>
-        <span className="text-xs text-zinc-600">每日 06:00 UTC 出新一期 · 比分实时刷新</span>
+        <span className="text-xs text-zinc-600">每日 02:00 多伦多时间出新一期 · 比分实时刷新</span>
       </div>
       <div className="space-y-4">
         {matches.map((m) => (
@@ -253,21 +253,28 @@ export function GroupsView({ data }: { data: Data }) {
 export function ChampionsView({ data, poly }: { data: Data; poly: PolyLive }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
-  const rows = data.champions.filter((c) => c.ai > 0.0005 || c.market > 0.0005);
-  const shown = showAll ? rows : rows.slice(0, 20);
-  const maxP = Math.max(shown[0]?.ai ?? 0.01, shown[0]?.market ?? 0.01);
 
   // Live raw price (vig included) per team, de-vig sum for the edge recompute.
   const liveRaw = poly.championFresh ? poly.champion : null;
   const liveSum = liveRaw ? Object.values(liveRaw).reduce((a, b) => a + b, 0) : 0;
+  // market-primary: rank by (live-devigged) market probability, AI as对照
+  const marketProbOf = (c: (typeof data.champions)[number]) => {
+    const raw = liveRaw?.[c.team];
+    return liveRaw && liveSum > 0 && raw != null ? raw / liveSum : c.market;
+  };
+  const rows = data.champions
+    .filter((c) => c.ai > 0.0005 || c.market > 0.0005)
+    .sort((a, b) => marketProbOf(b) - marketProbOf(a) || b.ai - a.ai);
+  const shown = showAll ? rows : rows.slice(0, 20);
+  const maxP = shown.reduce((m, c) => Math.max(m, marketProbOf(c), c.ai), 0.01);
 
   return (
     <div>
       <p className="mb-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-zinc-500">
-        <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-400" />
-        AI 集成概率
-        <span className="ml-2 inline-block h-2.5 w-2.5 rounded-sm bg-zinc-600" />
-        Polymarket 市场（右侧为小数赔率）
+        <span className="inline-block h-2.5 w-2.5 rounded-sm bg-amber-400" />
+        Polymarket 盘口（右侧为小数赔率）
+        <span className="ml-2 inline-block h-2.5 w-2.5 rounded-sm bg-emerald-400" />
+        AI 集成概率（对照）
         {data.meta.volume ? `　总量 $${(data.meta.volume / 1e9).toFixed(2)}B` : ""}
         {poly.championFresh && (
           <span className="inline-flex items-center gap-1 text-emerald-400">
@@ -309,21 +316,24 @@ export function ChampionsView({ data, poly }: { data: Data; poly: PolyLive }) {
                   )}
                 </span>
                 <span className="shrink-0 text-right text-sm tabular-nums">
-                  <b className="text-emerald-400">{pct(c.ai, 1)}</b>
-                  <span className="text-zinc-600"> · 赔率 {oddsFmt(rawPrice)}</span>
+                  <b className="text-amber-400">{pct(marketProb, 1)}</b>
+                  <span className="text-zinc-600">
+                    {" "}· 赔率 {oddsFmt(rawPrice)} ·{" "}
+                    <span className="text-emerald-400">AI {pct(c.ai, 1)}</span>
+                  </span>
                 </span>
               </div>
               <div className="mt-2.5 space-y-1">
                 <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800/80">
                   <div
-                    className="h-full bg-emerald-400"
-                    style={{ width: `${Math.min(100, (c.ai / maxP) * 100)}%` }}
+                    className="h-full bg-amber-400"
+                    style={{ width: `${Math.min(100, (marketProb / maxP) * 100)}%` }}
                   />
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800/80">
                   <div
-                    className="h-full bg-zinc-600"
-                    style={{ width: `${Math.min(100, (marketProb / maxP) * 100)}%` }}
+                    className="h-full bg-emerald-400"
+                    style={{ width: `${Math.min(100, (c.ai / maxP) * 100)}%` }}
                   />
                 </div>
               </div>

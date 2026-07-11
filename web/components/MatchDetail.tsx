@@ -12,7 +12,7 @@ import {
 } from "@/lib/useMatchMarket";
 import { useInplayCurve, type InplayCurves } from "@/lib/useInplayCurve";
 import type { KalshiMarketState, LiveEntry, Pred } from "@/lib/types";
-import { zh } from "@/lib/wc";
+import { TZ, zh } from "@/lib/wc";
 import { MarketConsensusPanel } from "@/components/MarketConsensusPanel";
 
 /* 与 WdlBar 同色系：主=emerald-400 / 平=zinc-400 / 客=rose-500（纯色，无渐变） */
@@ -32,9 +32,9 @@ const pp = (d: number) => `${d > 0 ? "+" : ""}${(d * 100).toFixed(1)}pp`;
 const usd = (n: number) =>
   n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `$${(n / 1e3).toFixed(1)}k` : `$${n.toFixed(0)}`;
 const hhmm = (t: number) =>
-  new Date(t * 1000).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+  new Date(t * 1000).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ });
 const hhmmss = (t: number) =>
-  new Date(t * 1000).toLocaleTimeString("zh-CN", { hour12: false });
+  new Date(t * 1000).toLocaleTimeString("zh-CN", { hour12: false, timeZone: TZ });
 
 function outcomeLabel(o: OutcomeSide, home: string, away: string): string {
   return o === "home" ? zh(home) : o === "draw" ? "平局" : zh(away);

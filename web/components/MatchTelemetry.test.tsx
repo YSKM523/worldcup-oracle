@@ -41,14 +41,16 @@ describe("MatchTelemetry", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("formats kickoff explicitly in UTC even under a non-UTC process timezone", () => {
+  it("formats kickoff explicitly in Toronto time even under a non-Toronto process timezone", () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date("2026-07-10T18:00:00Z"));
     const previous = process.env.TZ; process.env.TZ = "America/Los_Angeles";
     let root: ReturnType<typeof create> | undefined;
     try {
       root = render();
-      expect(text(root)).toContain("07/10 18:01");
-      expect(text(root)).toContain(" UTC");
+      // 18:01:05Z → Toronto EDT (UTC−4) = 14:01
+      expect(text(root)).toContain("07/10 14:01");
+      expect(text(root)).toContain(" ET");
+      expect(text(root)).not.toContain("07/10 18:01");
       expect(text(root)).not.toContain("07/10 11:01");
     } finally {
       if (root) act(() => root!.unmount());

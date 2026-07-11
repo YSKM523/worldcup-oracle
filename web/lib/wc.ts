@@ -123,14 +123,20 @@ export function liveEdge(ai: number, marketDevig: number, modelsAgree: number) {
   };
 }
 
-export const fmtTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+/** All user-facing times render in Toronto time (EDT/EST), not viewer-local. */
+export const TZ = "America/Toronto";
 
+export const fmtTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: TZ,
+  });
+
+/** YYYY-MM-DD of the instant in Toronto time (en-CA formats exactly this). */
 export function localDateKey(iso: string): string {
-  const d = new Date(iso);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${mm}-${dd}`;
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: TZ });
 }
 
 export function fmtDay(key: string): string {

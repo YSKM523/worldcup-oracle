@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { KalshiMarketState, Match, PolyLive, WeatherData } from "../lib/types";
-import { kickoffEpoch, STAGE_ZH } from "../lib/wc";
+import { kickoffEpoch, STAGE_ZH, TZ } from "../lib/wc";
 
 type MatchTelemetryProps = {
   match: Match;
@@ -23,7 +23,7 @@ function countdown(kickoff: number, now: number) {
 }
 
 const stamp = (value: number | null | undefined) =>
-  value ? new Date(value).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false }) : "—";
+  value ? new Date(value).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ }) : "—";
 
 export function MatchTelemetry({ match, weather, poly, kalshi }: MatchTelemetryProps) {
   const [now, setNow] = useState(() => Date.now());
@@ -56,7 +56,7 @@ export function MatchTelemetry({ match, weather, poly, kalshi }: MatchTelemetryP
         </div>
         {kickoffReached && <div className="mt-1 text-[var(--mkt)]">等待实时源</div>}
         <div className="mt-1 text-[var(--ink-faint)]">
-          {new Date(kickoff).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" })} UTC
+          {new Date(kickoff).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ })} ET
         </div>
       </div>
 

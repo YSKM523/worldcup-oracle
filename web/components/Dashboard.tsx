@@ -10,7 +10,7 @@ import { KnockoutMap } from "@/components/KnockoutMap";
 import { ChampionsView, GroupsView, RecordView } from "@/components/Views";
 import { WeatherLabView } from "@/components/WeatherLab";
 import { useKalshiMarket } from "@/lib/useKalshiMarket";
-import { buildMarketScoreline } from "@/lib/forecastAnalytics";
+import { buildMarketScoreline, devig, marketPrices } from "@/lib/forecastAnalytics";
 import { shouldEnableKalshiMarket } from "@/lib/kalshiMarketEligibility";
 import type {
   Champion,
@@ -24,6 +24,7 @@ import type {
 import {
   KO_STAGES,
   STAGE_ZH,
+  TZ,
   fmtTime,
   kickoffEpoch,
   liveEdge,
@@ -49,15 +50,24 @@ function useClock() {
   return now;
 }
 
-const utcClock = (d: Date | null) =>
+const torontoClock = (d: Date | null) =>
   d
-    ? `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}:${String(d.getUTCSeconds()).padStart(2, "0")}`
+    ? d.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+        timeZone: TZ,
+      })
     : "--:--:--";
 
-const syncStamp = (iso: string) => {
-  const d = new Date(iso);
-  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
-};
+const syncStamp = (iso: string) =>
+  new Date(iso).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: TZ,
+  });
 
 const dayLabel = (key: string) => {
   const [y, mo, da] = key.split("-").map(Number);
@@ -143,7 +153,7 @@ function TopBar({ data, poly }: { data: Data; poly: PolyLive }) {
               WORLDCUP<span style={{ color: "var(--up)" }}>·</span>ORACLE
             </div>
             <div className="lbl mt-1" style={{ fontSize: 10 }}>
-              FIFA 2026 // AI × POLYMARKET
+              FIFA 2026 // POLYMARKET 盘口 × AI 对照
             </div>
           </div>
         </div>
@@ -193,8 +203,8 @@ function TopBar({ data, poly }: { data: Data; poly: PolyLive }) {
               style={{ background: ws ? "var(--up)" : "var(--ink-ghost)" }}
             />
             <span className="mono text-[12px] tabular-nums" style={{ minWidth: 66 }}>
-              {utcClock(now)}
-              <span style={{ color: "var(--ink-faint)" }}>Z</span>
+              {torontoClock(now)}
+              <span style={{ color: "var(--ink-faint)" }}> ET</span>
             </span>
           </span>
         </div>
@@ -239,15 +249,52 @@ function PerformancePanel({
     }));
   })();
 
+  const mktLeadsMatch = me != null && (me.pm_brier ?? 1) <= (me.ai_brier ?? 1);
+  const mktLeadsChamp = p.scoreboard != null && p.scoreboard.leader !== "AI";
+
   return (
     <Panel
       idx="01"
-      title="AI PERFORMANCE"
+      title="SCOREBOARD 盘口 vs AI"
       className={className}
       aside={<span className="lbl lbl-faint">{p.n_scored} SCORED</span>}
     >
       <div className="flex h-full flex-col gap-3 p-3">
-        {/* compact primary metrics — one analytical group, not nested cards */}
+        {/* market-vs-AI head-to-head — the headline of the console */}
+        <div className="grid grid-cols-2 gap-2 border-b border-[var(--line)] pb-3">
+          {me && me.n_scored > 0 && (
+            <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-2.5">
+              <div className="lbl">单场盘 BRIER</div>
+              <div
+                className="mono mt-1.5 text-[15px] font-bold"
+                style={{ color: mktLeadsMatch ? "var(--mkt)" : "var(--up)" }}
+              >
+                {mktLeadsMatch ? "盘口 ▸ 领先" : "AI ▸ 领先"}
+              </div>
+              <div className="mono mt-1 text-[11px]" style={{ color: "var(--ink-dim)" }}>
+                市 {me.pm_brier} · AI {me.ai_brier}
+              </div>
+              <div className="lbl lbl-faint mt-1">{me.n_scored} 场已结算</div>
+            </div>
+          )}
+          {p.scoreboard && (
+            <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-2.5">
+              <div className="lbl">冠军盘 BRIER</div>
+              <div
+                className="mono mt-1.5 text-[15px] font-bold"
+                style={{ color: mktLeadsChamp ? "var(--mkt)" : "var(--up)" }}
+              >
+                {mktLeadsChamp ? "盘口 ▸ 领先" : "AI ▸ 领先"}
+              </div>
+              <div className="mono mt-1 text-[11px]" style={{ color: "var(--ink-dim)" }}>
+                市 {p.scoreboard.pm_brier} · AI {p.scoreboard.ai_brier}
+              </div>
+              <div className="lbl lbl-faint mt-1">{p.scoreboard.n_teams} 队已淘汰</div>
+            </div>
+          )}
+        </div>
+
+        {/* AI challenger ledger — kept as the labelled对照 */}
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(104px,.72fr)] border-b border-[var(--line)] pb-3">
           <div className="pr-3">
             <div className="flex items-end justify-between gap-2">
@@ -258,16 +305,16 @@ function PerformancePanel({
                 {winPct}
               </span>
               <span className="lbl text-right leading-[1.25]">
-                胜平负
+                AI 胜平负
                 <br />
                 判对率
               </span>
             </div>
-            <div className="lbl lbl-faint mt-2">WINNER HIT · {p.details.length} MATCHES</div>
+            <div className="lbl lbl-faint mt-2">AI 对照 · {p.details.length} MATCHES</div>
           </div>
           <div className="border-l border-[var(--line)] pl-3">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="lbl">BRIER</span>
+              <span className="lbl">AI BRIER</span>
               <span className="mono text-[15px] font-semibold">{brier}</span>
             </div>
             <div className="bar-track mt-2">
@@ -280,45 +327,10 @@ function PerformancePanel({
           </div>
         </div>
 
-        {/* AI vs market head-to-head */}
-        <div className="grid grid-cols-2 gap-2">
-          {p.scoreboard && (
-            <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-2.5">
-              <div className="lbl">冠军盘 BRIER</div>
-              <div
-                className="mono mt-1.5 text-[13px] font-bold"
-                style={{ color: p.scoreboard.leader === "AI" ? "var(--up)" : "var(--mkt)" }}
-              >
-                {p.scoreboard.leader === "AI" ? "AI ▸ 领先" : "市场 ▸ 领先"}
-              </div>
-              <div className="mono mt-1 text-[11px]" style={{ color: "var(--ink-dim)" }}>
-                {p.scoreboard.ai_brier} · {p.scoreboard.pm_brier}
-              </div>
-            </div>
-          )}
-          {me && me.n_scored > 0 && (
-            <div className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] p-2.5">
-              <div className="lbl">单场盘 BRIER</div>
-              <div
-                className="mono mt-1.5 text-[13px] font-bold"
-                style={{
-                  color:
-                    (me.ai_brier ?? 1) < (me.pm_brier ?? 1) ? "var(--up)" : "var(--mkt)",
-                }}
-              >
-                {(me.ai_brier ?? 1) < (me.pm_brier ?? 1) ? "AI ▸ 领先" : "市场 ▸ 领先"}
-              </div>
-              <div className="mono mt-1 text-[11px]" style={{ color: "var(--ink-dim)" }}>
-                {me.ai_brier} · {me.pm_brier}
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* per-stage hit-rate — real ledger, fills the column with signal */}
         {stageAcc.length > 1 && (
           <div className="border-t border-[var(--line)] pt-3">
-            <div className="lbl mb-2">分阶段判对率 BY STAGE</div>
+            <div className="lbl mb-2">AI 分阶段判对率 BY STAGE</div>
             <div className="space-y-1.5">
               {stageAcc.map((s) => (
                 <div key={s.stage} className="flex items-center gap-2">
@@ -347,7 +359,7 @@ function PerformancePanel({
         {/* recent verdicts strip */}
         <div className="flex flex-col">
           <div className="mb-2 flex items-center justify-between">
-            <span className="lbl">RECENT VERDICTS 近期战绩</span>
+            <span className="lbl">AI RECENT VERDICTS 近期战绩</span>
             <button onClick={onOpen} className="lbl transition-colors hover:text-[var(--ink)]">
               全部 →
             </button>
@@ -767,15 +779,21 @@ function TodayCard({
 
 function NextUpRow({
   m,
+  poly,
   onOpen,
 }: {
   m: Match;
+  poly: PolyLive;
   onOpen: (m: Match) => void;
 }) {
   const p = m.pred;
-  const ph = p?.p_adv_home ?? p?.p_home ?? 0.5;
-  const pa = p?.p_adv_away ?? p?.p_away ?? 0.5;
+  // market-primary: de-vigged 90' book favourite when a book exists;
+  // AI advance prob only as the labelled fallback (no advance market exists)
+  const mkt = devig(marketPrices(m, poly));
+  const ph = mkt?.home ?? p?.p_adv_home ?? p?.p_home ?? 0.5;
+  const pa = mkt?.away ?? p?.p_adv_away ?? p?.p_away ?? 0.5;
   const favHome = ph >= pa;
+  const ko = KO_STAGES.has(m.stage);
   const stageLbl = STAGE_ZH[m.stage] ?? m.stage;
   const dk = venueDayKey(m.kickoff_utc);
   return (
@@ -794,9 +812,9 @@ function NextUpRow({
         <Flag name={m.away} className="h-3.5 w-5 shrink-0" />
         <span className={`truncate text-[13px] ${!favHome ? "font-semibold" : ""}`}>{zh(m.away)}</span>
       </span>
-      {p && (
+      {(mkt || p) && (
         <span className="mono shrink-0 text-[11px]" style={{ color: "var(--ink-dim)" }}>
-          晋级{" "}
+          {mkt ? (ko ? "盘 90′" : "盘") : ko ? "AI 晋级" : "AI"}{" "}
           <b style={{ color: favHome ? "var(--up)" : "var(--down)" }}>
             {zh(favHome ? m.home : m.away).slice(0, 4)} {pct(Math.max(ph, pa))}
           </b>
@@ -878,7 +896,7 @@ function MatchdayPanel({
               <span className="lbl lbl-faint">{nextUp.length} 场</span>
             </div>
             {nextUp.slice(0, 6).map((m) => (
-              <NextUpRow key={m.espn_id} m={m} onOpen={onOpenMatch} />
+              <NextUpRow key={m.espn_id} m={m} poly={poly} onOpen={onOpenMatch} />
             ))}
           </div>
         )}
@@ -926,26 +944,26 @@ function ChampionRow({
           <div className="bar-track" style={{ height: 4 }}>
             <div
               className="bar-fill"
-              style={{ width: `${Math.min(100, (c.ai / maxP) * 100)}%`, background: "var(--up)" }}
-            />
-          </div>
-          <div className="bar-track" style={{ height: 4 }}>
-            <div
-              className="bar-fill"
               style={{
                 width: `${Math.min(100, (marketProb / maxP) * 100)}%`,
                 background: "var(--mkt)",
               }}
             />
           </div>
+          <div className="bar-track" style={{ height: 4 }}>
+            <div
+              className="bar-fill"
+              style={{ width: `${Math.min(100, (c.ai / maxP) * 100)}%`, background: "var(--up)" }}
+            />
+          </div>
         </div>
       </div>
       <div className="shrink-0 text-right leading-tight">
-        <div className="mono text-[13px] font-bold" style={{ color: "var(--up)" }}>
-          {pct(c.ai, 1)}
+        <div className="mono text-[13px] font-bold" style={{ color: "var(--mkt)" }}>
+          {pct(marketProb, 1)}
         </div>
         <div className="mono text-[10px]" style={{ color: "var(--ink-faint)" }}>
-          {oddsFmt(rawPrice)}
+          {oddsFmt(rawPrice)} · <span style={{ color: "var(--up)" }}>AI {pct(c.ai, 1)}</span>
         </div>
       </div>
     </div>
@@ -986,10 +1004,19 @@ function ChampionPanel({
   onOpen: () => void;
   className?: string;
 }) {
-  const rows = data.champions.filter((c) => c.ai > 0.0005 || c.market > 0.0005);
   const liveRaw = poly.championFresh ? poly.champion : null;
   const liveSum = liveRaw ? Object.values(liveRaw).reduce((a, b) => a + b, 0) : 0;
-  const maxP = Math.max(rows[0]?.ai ?? 0.01, rows[0]?.market ?? 0.01);
+  // market-primary: rank by (live-devigged) market probability, AI shown as对照
+  const marketProbOf = (c: Champion) => {
+    const raw = liveRaw?.[c.team];
+    return liveRaw && liveSum > 0 && raw != null ? raw / liveSum : c.market;
+  };
+  const rows = data.champions
+    .filter((c) => c.ai > 0.0005 || c.market > 0.0005)
+    .sort((a, b) => marketProbOf(b) - marketProbOf(a) || b.ai - a.ai);
+  const maxP = rows
+    .slice(0, 20)
+    .reduce((m, c) => Math.max(m, marketProbOf(c), c.ai), 0.01);
   // biggest AI-vs-market divergences — fills the tail as the field narrows
   const edgeLeaders = rows
     .filter((c) => c.edge && Math.abs(c.edge.edge_pct) >= 1)
@@ -1003,12 +1030,12 @@ function ChampionPanel({
       aside={
         <>
           <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-[2px]" style={{ background: "var(--up)" }} />
-            <span className="lbl lbl-faint">AI</span>
-          </span>
-          <span className="flex items-center gap-1">
             <span className="h-2 w-2 rounded-[2px]" style={{ background: "var(--mkt)" }} />
             <span className="lbl lbl-faint">MKT</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-[2px]" style={{ background: "var(--up)" }} />
+            <span className="lbl lbl-faint">AI</span>
           </span>
           {poly.championFresh && (
             <span className="flex items-center gap-1">
@@ -1034,14 +1061,14 @@ function ChampionPanel({
         </div>
         {edgeLeaders.length > 0 && (
           <div className="flex-none border-t border-[var(--line)] bg-[var(--panel-2)] p-2">
-            <div className="lbl mb-1.5">最大分歧 AI vs 市场</div>
+            <div className="lbl mb-1.5">最大分歧 盘口 vs AI</div>
             <div className="space-y-1.5">
               {edgeLeaders.map((c) => (
                 <div key={c.team} className="flex items-center gap-2">
                   <Flag name={c.team} className="h-3.5 w-5 shrink-0" />
                   <span className="min-w-0 flex-1 truncate text-[12px]">{zh(c.team)}</span>
                   <span className="mono shrink-0 text-[10px]" style={{ color: "var(--ink-faint)" }}>
-                    AI {pct(c.ai, 1)} · 市 {pct(c.market, 1)}
+                    市 {pct(c.market, 1)} · AI {pct(c.ai, 1)}
                   </span>
                   <EdgeFlag
                     dir={c.edge!.direction}
@@ -1077,7 +1104,7 @@ function Ticker({
     <footer className="panel reveal flex-none">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-1.5">
         <span className="mono hidden text-[10px] lg:inline" style={{ color: "var(--ink-faint)" }}>
-          PIPELINE: {data.meta.models.join(" · ")} → Elo → Bradley-Terry(Davidson) → 50K Monte-Carlo
+          盘口: Polymarket 1X2 → 去vig → xG 条件化泊松 // AI 对照: {data.meta.models.join(" · ")} → Elo → 50K Monte-Carlo
         </span>
         <span className="lbl lbl-faint hidden md:inline">仅供研究娱乐 · 非投注建议</span>
         <div className="ml-auto flex items-center gap-1.5">
@@ -1262,9 +1289,9 @@ function MatchModal({
 function BootLoader({ error }: { error?: boolean }) {
   const lines = [
     "ORACLE // FIFA 2026 WORLD CUP",
-    "▸ fetching data.json",
     "▸ connecting Polymarket CLOB WS",
-    "▸ hydrating 50K Monte-Carlo snapshot",
+    "▸ fetching data.json",
+    "▸ hydrating AI reference snapshot",
   ];
   return (
     <div className="flex h-[calc(100*var(--dvh))] flex-col items-center justify-center">
