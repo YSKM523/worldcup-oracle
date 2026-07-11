@@ -18,6 +18,7 @@ interface GammaMarket {
   question?: string;
   outcomePrices?: string | string[];
   clobTokenIds?: string | string[];
+  volume?: string | number;
 }
 interface GammaEvent {
   title?: string;
@@ -66,6 +67,7 @@ function parseMoneyline(ev: GammaEvent): ParsedMoneyline | null {
   let h: number | null = null;
   let d: number | null = null;
   let a: number | null = null;
+  const vols: Partial<Record<Side, number>> = {};
   const tokens: Record<string, Side> = {};
   for (const m of ev.markets ?? []) {
     const q = (m.question ?? "").toLowerCase();
@@ -79,11 +81,16 @@ function parseMoneyline(ev: GammaEvent): ParsedMoneyline | null {
     if (side === "home") h = p;
     else if (side === "draw") d = p;
     else a = p;
+    const v = Number(m.volume);
+    if (Number.isFinite(v) && v >= 0) vols[side] = v;
     const tok = yesToken(m);
     if (tok) tokens[tok] = side;
   }
   if (h == null || d == null || a == null) return null;
-  return { key: kickoffEpoch(ev.endDate), odds: { home: h, draw: d, away: a, src: "gamma" }, tokens };
+  const vol = vols.home != null && vols.draw != null && vols.away != null
+    ? { home: vols.home, draw: vols.draw, away: vols.away }
+    : undefined;
+  return { key: kickoffEpoch(ev.endDate), odds: { home: h, draw: d, away: a, src: "gamma", ...(vol ? { vol } : {}) }, tokens };
 }
 
 /* ── CLOB WS 消息(只取所需字段) ─────────────────────────────────── */
@@ -256,12 +263,14 @@ export function usePolymarket(matches: Match[]): PolyLive {
         for (const [key, sides] of Object.entries(byKey)) {
           const base = matches[key] ?? gammaOdds.current[key];
           if (!base && (sides.home == null || sides.draw == null || sides.away == null)) continue;
+          const vol = base?.vol ?? gammaOdds.current[key]?.vol;
           matches[key] = {
             home: sides.home ?? base!.home,
             draw: sides.draw ?? base!.draw,
             away: sides.away ?? base!.away,
             src: "ws",
             ts: now,
+            ...(vol ? { vol } : {}),
           };
         }
         return { ...s, matches, updatedAt: now };

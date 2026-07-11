@@ -31,6 +31,7 @@ import {
   pct,
   venueDayKey,
   zh,
+  volFmt,
 } from "@/lib/wc";
 
 /* ── tiny utilities ─────────────────────────────────────────── */
@@ -488,6 +489,14 @@ function MatchOddsRow({ m, poly }: { m: Match; poly: PolyLive }) {
       <span>
         客 <b style={{ color: "var(--ink)" }}>{oddsFmt(prices.away)}</b>
       </span>
+      {live?.vol && (
+        <span
+          style={{ color: "var(--ink-faint)" }}
+          title="三腿累计成交量 USD（YES+NO 双边）·量大≠更可能，反映热度/分歧"
+        >
+          量 ${volFmt(live.vol.home)}·${volFmt(live.vol.draw)}·${volFmt(live.vol.away)}
+        </span>
+      )}
       {top && (
         <EdgeFlag
           dir={top.direction}

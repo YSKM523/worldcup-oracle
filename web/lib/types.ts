@@ -288,6 +288,8 @@ export interface PolyMatchOdds {
   src?: "ws" | "gamma";
   /** epoch ms of the last update for this match */
   ts?: number;
+  /** 三腿累计成交量 USD（YES+NO 双边，gamma 轮询取得；量大≠更可能，反映热度/分歧） */
+  vol?: { home: number; draw: number; away: number };
 }
 export interface PolyLive {
   champion: Record<string, number>; // team → raw Yes price

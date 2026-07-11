@@ -80,6 +80,10 @@ export const oddsFmt = (p: number | null | undefined): string => {
   return o == null ? "—" : o.toFixed(2);
 };
 
+/** Compact USD volume: 2.9M / 929K / 412. */
+export const volFmt = (v: number): string =>
+  v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${Math.round(v / 1e3)}K` : String(Math.round(v));
+
 /** Kickoff ISO ('…Z' or '…+00:00') → epoch-second string, for odds matching. */
 export const kickoffEpoch = (iso: string): string =>
   String(Math.floor(new Date(iso).getTime() / 1000));

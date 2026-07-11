@@ -15,6 +15,7 @@ import {
   oddsFmt,
   pct,
   zh,
+  volFmt,
 } from "@/lib/wc";
 
 /* ── Shared bits ───────────────────────────────────────────────── */
@@ -246,6 +247,14 @@ function MarketOdds({ m, poly, hideBook }: { m: Match; poly: PolyLive; hideBook?
       <span className="tabular-nums">
         客 <b className="text-zinc-300">{oddsFmt(prices.away)}</b>
       </span>
+      {live?.vol && (
+        <span
+          className="tabular-nums text-zinc-600"
+          title="三腿累计成交量 USD（YES+NO 双边）·量大≠更可能，反映热度/分歧"
+        >
+          量 ${volFmt(live.vol.home)}·${volFmt(live.vol.draw)}·${volFmt(live.vol.away)}
+        </span>
+      )}
       {m.edge && m.edge.length > 0 && (() => {
         const top = [...m.edge].sort((a, b) => Math.abs(b.edge_pct) - Math.abs(a.edge_pct))[0];
         const sideZh = top.side === "home" ? "主" : top.side === "draw" ? "平" : "客";
