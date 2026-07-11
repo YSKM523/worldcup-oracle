@@ -10,6 +10,7 @@ import { KnockoutMap } from "@/components/KnockoutMap";
 import { ChampionsView, GroupsView, RecordView } from "@/components/Views";
 import { WeatherLabView } from "@/components/WeatherLab";
 import { useKalshiMarket } from "@/lib/useKalshiMarket";
+import { buildMarketScoreline } from "@/lib/forecastAnalytics";
 import { shouldEnableKalshiMarket } from "@/lib/kalshiMarketEligibility";
 import type {
   Champion,
@@ -512,6 +513,7 @@ function TodayCard({
   const p = m.pred;
   const lv = live[m.espn_id];
   const ko = KO_STAGES.has(m.stage);
+  const mkt = m.completed ? null : buildMarketScoreline(m, poly);
   const venue = [m.city].filter(Boolean).join("");
   const stageLbl =
     m.stage === "group" && m.group ? `${m.group}组` : STAGE_ZH[m.stage] ?? m.stage;
@@ -549,7 +551,7 @@ function TodayCard({
         {fmtTime(m.kickoff_utc)}
       </div>
       {p && (
-        <div className="lbl lbl-faint mt-1">预测 {p.scoreline.most_likely}</div>
+        <div className="lbl lbl-faint mt-1">{mkt ? `盘口 ${mkt.mostLikely}` : `预测 ${p.scoreline.most_likely}`}</div>
       )}
     </div>
   );
@@ -586,7 +588,7 @@ function TodayCard({
               <div className="mono flex justify-between text-[11px]">
                 <span style={{ color: "var(--up)" }}>晋级 {pct(p.p_adv_home ?? 0)}</span>
                 <span style={{ color: "var(--ink-faint)" }}>
-                  90′ {pct(p.p_home)}/{pct(p.p_draw)}/{pct(p.p_away)}
+                  {mkt ? "盘 90′" : "90′"} {pct(mkt?.probs.home ?? p.p_home)}/{pct(mkt?.probs.draw ?? p.p_draw)}/{pct(mkt?.probs.away ?? p.p_away)}
                 </span>
                 <span style={{ color: "var(--down)" }}>{pct(p.p_adv_away ?? 0)} 晋级</span>
               </div>
@@ -596,25 +598,25 @@ function TodayCard({
               <ProbBar
                 tall
                 segs={[
-                  { w: p.p_home, color: "var(--up)" },
-                  { w: p.p_draw, color: "var(--neutral)" },
-                  { w: p.p_away, color: "var(--down)" },
+                  { w: mkt?.probs.home ?? p.p_home, color: "var(--up)" },
+                  { w: mkt?.probs.draw ?? p.p_draw, color: "var(--neutral)" },
+                  { w: mkt?.probs.away ?? p.p_away, color: "var(--down)" },
                 ]}
               />
               <div className="mono flex justify-between text-[11px]">
-                <span style={{ color: "var(--up)" }}>主胜 {pct(p.p_home)}</span>
-                <span style={{ color: "var(--ink-dim)" }}>平 {pct(p.p_draw)}</span>
-                <span style={{ color: "var(--down)" }}>{pct(p.p_away)} 客胜</span>
+                <span style={{ color: "var(--up)" }}>主胜 {pct(mkt?.probs.home ?? p.p_home)}</span>
+                <span style={{ color: "var(--ink-dim)" }}>平 {pct(mkt?.probs.draw ?? p.p_draw)}</span>
+                <span style={{ color: "var(--down)" }}>{pct(mkt?.probs.away ?? p.p_away)} 客胜</span>
               </div>
             </div>
           )}
 
           {/* predicted scorelines */}
           <div>
-            <div className="lbl lbl-faint mb-1.5">SCORELINE 预测比分</div>
+            <div className="lbl lbl-faint mb-1.5">SCORELINE {mkt ? "盘口比分" : "预测比分"}</div>
             <div className="flex flex-wrap gap-1.5">
-              {p.scoreline.top_scores.slice(0, 6).map((s) => {
-                const top = s.score === p.scoreline.most_likely;
+              {(mkt?.topScores ?? p.scoreline.top_scores).slice(0, 6).map((s) => {
+                const top = s.score === (mkt?.mostLikely ?? p.scoreline.most_likely);
                 return (
                   <span
                     key={s.score}
@@ -641,10 +643,10 @@ function TodayCard({
               xG <b style={{ color: "var(--ink)" }}>{p.scoreline.xg_home}-{p.scoreline.xg_away}</b>
             </span>
             <span>
-              大2.5 <b style={{ color: "var(--ink)" }}>{pct(p.scoreline.p_over25)}</b>
+              大2.5 <b style={{ color: "var(--ink)" }}>{pct(mkt?.pOver25 ?? p.scoreline.p_over25)}</b>
             </span>
             <span>
-              双方进球 <b style={{ color: "var(--ink)" }}>{pct(p.scoreline.p_btts)}</b>
+              双方进球 <b style={{ color: "var(--ink)" }}>{pct(mkt?.pBtts ?? p.scoreline.p_btts)}</b>
             </span>
             <span>
               模型 <b style={{ color: "var(--ink)" }}>
@@ -1192,7 +1194,7 @@ function MatchModal({
       onClick={onClose}
     >
       <div
-        className="panel reveal flex max-h-[calc(100dvh-16px)] w-full max-w-[1600px] flex-col xl:max-h-[90vh]"
+        className="panel reveal flex max-h-[calc(100*var(--dvh)-16px)] w-full max-w-[1600px] flex-col xl:max-h-[calc(90*var(--dvh))]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -1216,7 +1218,7 @@ function MatchModal({
 
         <div
           data-match-modal-grid
-          className="grid min-h-0 max-h-[calc(100dvh-54px)] grid-cols-1 grid-rows-[max-content_max-content_max-content] overflow-y-auto xl:h-[calc(90vh-37px)] xl:max-h-[calc(90vh-37px)] xl:grid-cols-[270px_minmax(0,1fr)_minmax(440px,500px)] xl:grid-rows-none xl:overflow-hidden"
+          className="grid min-h-0 max-h-[calc(100*var(--dvh)-54px)] grid-cols-1 grid-rows-[max-content_max-content_max-content] overflow-y-auto xl:h-[calc(90*var(--dvh)-37px)] xl:max-h-[calc(90*var(--dvh)-37px)] xl:grid-cols-[270px_minmax(0,1fr)_minmax(440px,500px)] xl:grid-rows-none xl:overflow-hidden"
         >
           <section data-match-column="prediction" className="drawer-scroll order-1 flex min-h-0 flex-col border-b border-[var(--line)] p-3 xl:order-2 xl:h-full xl:overflow-y-auto xl:border-b-0 xl:border-r">
             <FocusCard m={m} meta={meta} live={live} poly={poly} weather={weather} kalshi={kalshi} liveEntry={liveEntry} hideBook variant="console" />
@@ -1256,7 +1258,7 @@ function BootLoader({ error }: { error?: boolean }) {
     "▸ hydrating 50K Monte-Carlo snapshot",
   ];
   return (
-    <div className="flex h-dvh flex-col items-center justify-center">
+    <div className="flex h-[calc(100*var(--dvh))] flex-col items-center justify-center">
       <div className="mono text-[13px] leading-7" style={{ color: "var(--ink-dim)" }}>
         {error ? (
           <div style={{ color: "var(--down)" }}>× 数据加载失败 — 请刷新重试</div>
@@ -1302,7 +1304,7 @@ export function Dashboard({
   if (!data) return <BootLoader error={error} />;
 
   return (
-    <div className="dash-root flex min-h-dvh flex-col gap-2 p-2 xl:grid xl:h-dvh xl:grid-rows-[auto_minmax(0,1fr)_auto] xl:overflow-hidden">
+    <div className="dash-root flex min-h-[calc(100*var(--dvh))] flex-col gap-2 p-2 xl:grid xl:h-[calc(100*var(--dvh))] xl:grid-rows-[auto_minmax(0,1fr)_auto] xl:overflow-hidden">
       <TopBar data={data} poly={poly} />
 
       {/*

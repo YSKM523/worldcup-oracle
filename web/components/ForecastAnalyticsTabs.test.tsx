@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buildScoreDistribution, conditionDistribution } from "../lib/forecastAnalytics";
 import type { KalshiMarketState, Match, PolyLive } from "../lib/types";
 import { kickoffEpoch } from "../lib/wc";
 import { ForecastAnalyticsTabs } from "./ForecastAnalyticsTabs";
@@ -137,7 +138,7 @@ describe("ForecastAnalyticsTabs", () => {
   });
 
   it("honors the supplied most-likely score over a divergent Poisson mode", () => {
-    const rendered = render({ match: { ...match, pred: { ...match.pred!, scoreline: { ...match.pred!.scoreline, most_likely: "3-3" } } } });
+    const rendered = render({ poly: poly(null), match: { ...match, pred: { ...match.pred!, scoreline: { ...match.pred!.scoreline, most_likely: "3-3" } } } });
 
     expect(rendered.root.findByProps({ "data-forecast-score": "3-3" }).props["data-most-likely"]).toBe(true);
     expect(rendered.root.findByProps({ "data-forecast-score": "1-1" }).props["data-most-likely"]).toBeUndefined();
@@ -158,11 +159,39 @@ describe("ForecastAnalyticsTabs", () => {
   });
 
   it("marks a supplied 4-0 mode in the aggregate tail without highlighting an unrelated grid cell", () => {
-    const rendered = render({ match: { ...match, pred: { ...match.pred!, scoreline: { ...match.pred!.scoreline, most_likely: "4-0", top_scores: [{ score: "4-0", p: .04 }] } } } });
+    const rendered = render({ poly: poly(null), match: { ...match, pred: { ...match.pred!, scoreline: { ...match.pred!.scoreline, most_likely: "4-0", top_scores: [{ score: "4-0", p: .04 }] } } } });
 
     expect(rendered.root.findByProps({ "data-forecast-score-tail": true }).props["data-most-likely"]).toBe("4-0");
     expect(rendered.root.findByProps({ "data-forecast-score": "1-1" }).props["data-most-likely"]).toBeUndefined();
     expect(text(rendered)).toContain("4-0");
+  });
+
+  it("conditions the score distribution on de-vigged market prices by default", () => {
+    const rendered = render();
+
+    expect(rendered.root.findAllByProps({ "data-forecast-score-source": "market" }).length).toBe(2);
+    // per-side mass of the conditioned grid == de-vigged 1X2 (.42/.29/.29 sums to 1)
+    const scriptMass = (side: string) =>
+      rendered.root.findByProps({ "data-forecast-script": side }).findByType("strong").children.join("");
+    expect(scriptMass("home")).toBe("42.0%");
+    expect(scriptMass("draw")).toBe("29.0%");
+    expect(scriptMass("away")).toBe("29.0%");
+  });
+
+  it("switches back to the AI grid via the source toggle and restores the supplied mode", () => {
+    const rendered = render();
+
+    act(() => rendered.root.findAllByProps({ "data-forecast-source-btn": "ai" })[0].props.onClick());
+
+    expect(rendered.root.findAllByProps({ "data-forecast-score-source": "ai" }).length).toBe(2);
+    expect(rendered.root.findByProps({ "data-forecast-score": "1-1" }).props["data-most-likely"]).toBe(true);
+  });
+
+  it("falls back to the AI grid and disables the market toggle without market data", () => {
+    const rendered = render({ poly: poly(null) });
+
+    expect(rendered.root.findAllByProps({ "data-forecast-score-source": "ai" }).length).toBe(2);
+    expect(rendered.root.findAllByProps({ "data-forecast-source-btn": "market" })[0].props.disabled).toBe(true);
   });
 
   it("shows market decimal odds and direction, while null market fields degrade", () => {
@@ -275,5 +304,28 @@ describe("ForecastAnalyticsTabs", () => {
       expect(text(rendered)).not.toContain("MODEL MATRIX · 模型矩阵");
       expect(text(rendered)).not.toContain("MATCH DOSSIER · 近期态势");
     }
+  });
+});
+
+describe("conditionDistribution", () => {
+  it("rescales each outcome region to the target probs and keeps within-side scoreline ratios", () => {
+    const base = buildScoreDistribution(1.42, 1.08)!;
+    const probs = { home: .5, draw: .2, away: .3 } as const;
+    const conditioned = conditionDistribution(base, probs)!;
+
+    for (const side of ["home", "draw", "away"] as const) {
+      const mass = conditioned.cells.filter((cell) => cell.side === side).reduce((sum, cell) => sum + cell.p, 0)
+        + conditioned.tailBySide[side];
+      expect(mass).toBeCloseTo(probs[side], 10);
+    }
+    const ratio = (cells: typeof base.cells) =>
+      cells.find((cell) => cell.label === "1-0")!.p / cells.find((cell) => cell.label === "2-1")!.p;
+    expect(ratio(conditioned.cells)).toBeCloseTo(ratio(base.cells), 10);
+  });
+
+  it("rejects degenerate probabilities", () => {
+    const base = buildScoreDistribution(1.42, 1.08)!;
+    expect(conditionDistribution(base, { home: 1, draw: 0, away: 0 })).toBeNull();
+    expect(conditionDistribution(base, { home: Number.NaN, draw: .5, away: .5 })).toBeNull();
   });
 });

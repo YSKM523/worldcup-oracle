@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckIcon, Flag, StarIcon, XIcon } from "@/components/icons";
 import { MatchDetail } from "@/components/MatchDetail";
 import { ForecastAnalyticsTabs } from "@/components/ForecastAnalyticsTabs";
+import { buildMarketScoreline } from "@/lib/forecastAnalytics";
 import type { FormEntry, KalshiMarketState, LiveEntry, LiveMap, Match, MatchWeather, Meta, PolyLive, WeatherData } from "@/lib/types";
 import {
   KO_STAGES,
@@ -90,8 +91,9 @@ function WdlBar({ h, d, a }: { h: number; d: number; a: number }) {
   );
 }
 
-function AdvBar({ m }: { m: Match }) {
+function AdvBar({ m, wdl }: { m: Match; wdl?: { home: number; draw: number; away: number } | null }) {
   const p = m.pred!;
+  const w = wdl ?? { home: p.p_home, draw: p.p_draw, away: p.p_away };
   return (
     <div>
       <div className="flex h-1.5 overflow-hidden rounded-full">
@@ -103,7 +105,7 @@ function AdvBar({ m }: { m: Match }) {
           晋级 <b className="text-emerald-400">{pct(p.p_adv_home ?? 0)}</b>
         </span>
         <span className="text-zinc-500">
-          90 分钟 {pct(p.p_home)} / {pct(p.p_draw)} / {pct(p.p_away)}
+          {wdl ? "盘 90 分钟" : "90 分钟"} {pct(w.home)} / {pct(w.draw)} / {pct(w.away)}
         </span>
         <span>
           晋级 <b className="text-rose-400">{pct(p.p_adv_away ?? 0)}</b>
@@ -113,7 +115,7 @@ function AdvBar({ m }: { m: Match }) {
   );
 }
 
-function ScoreMid({ m, live }: { m: Match; live: LiveMap }) {
+function ScoreMid({ m, live, mktScore }: { m: Match; live: LiveMap; mktScore?: string | null }) {
   const lv = live[m.espn_id];
   if (lv && lv.state === "in") {
     return (
@@ -144,7 +146,7 @@ function ScoreMid({ m, live }: { m: Match; live: LiveMap }) {
       <div className="text-sm font-medium tabular-nums text-zinc-400">{fmtTime(m.kickoff_utc)}</div>
       {m.pred && (
         <div className="mt-0.5 text-xs text-zinc-500">
-          预测 <span className="font-semibold text-zinc-300">{m.pred.scoreline.most_likely}</span>
+          {mktScore ? "盘口" : "预测"} <span className="font-semibold text-zinc-300">{mktScore ?? m.pred.scoreline.most_likely}</span>
         </div>
       )}
     </div>
@@ -298,6 +300,7 @@ export function CompactCard({
   weather?: WeatherData | null;
 }) {
   const p = m.pred;
+  const mkt = m.completed || m.tbd ? null : buildMarketScoreline(m, poly);
   const wx = weather?.matches[m.espn_id];
   const venue = [m.venue, m.city].filter(Boolean).join(" · ");
   const loser =
@@ -320,7 +323,7 @@ export function CompactCard({
           <Flag name={m.home} className="h-5 w-7 shrink-0" />
           <span className="truncate font-semibold">{zh(m.home)}</span>
         </div>
-        <ScoreMid m={m} live={live} />
+        <ScoreMid m={m} live={live} mktScore={mkt?.mostLikely} />
         <div className={`flex min-w-0 flex-1 flex-row-reverse items-center gap-2.5 ${loser === "away" ? "opacity-50" : ""}`}>
           <Flag name={m.away} className="h-5 w-7 shrink-0" />
           <span className="truncate font-semibold">{zh(m.away)}</span>
@@ -330,12 +333,12 @@ export function CompactCard({
       {m.completed && <ResultLine m={m} />}
       {!m.completed && p && (
         <div className="mt-3.5">
-          {KO_STAGES.has(m.stage) ? <AdvBar m={m} /> : <WdlBar h={p.p_home} d={p.p_draw} a={p.p_away} />}
+          {KO_STAGES.has(m.stage) ? <AdvBar m={m} wdl={mkt?.probs} /> : <WdlBar h={mkt?.probs.home ?? p.p_home} d={mkt?.probs.draw ?? p.p_draw} a={mkt?.probs.away ?? p.p_away} />}
           <div className="mt-2.5 text-xs text-zinc-500">
-            比分 <b className="text-zinc-300">{p.scoreline.most_likely}</b>{" "}
-            <span className="tabular-nums">({pct(p.scoreline.most_likely_p, 1)})</span>
+            {mkt ? "盘口比分" : "比分"} <b className="text-zinc-300">{mkt?.mostLikely ?? p.scoreline.most_likely}</b>{" "}
+            <span className="tabular-nums">({pct(mkt ? mkt.topScores[0].p : p.scoreline.most_likely_p, 1)})</span>
             {"　"}
-            {p.scoreline.top_scores.slice(1, 4).map((s) => `${s.score} ${pct(s.p)}`).join(" · ")}
+            {(mkt?.topScores ?? p.scoreline.top_scores).slice(1, 4).map((s) => `${s.score} ${pct(s.p)}`).join(" · ")}
           </div>
           <ModelRow m={m} meta={meta} />
           <MarketOdds m={m} poly={poly} />
@@ -425,6 +428,7 @@ export function FocusCard({
   variant?: "card" | "console";
 }) {
   const p = m.pred;
+  const mkt = m.completed || m.tbd ? null : buildMarketScoreline(m, poly);
   const d = m.detail;
   const wx = weather?.matches[m.espn_id];
   const venue = [m.venue, m.city].filter(Boolean).join(" · ");
@@ -467,23 +471,26 @@ export function FocusCard({
       <div className="flex items-start gap-3">
         <TeamBig m={m} side="home" />
         <div className="mt-3">
-          <ScoreMid m={m} live={live} />
+          <ScoreMid m={m} live={live} mktScore={mkt?.mostLikely} />
         </div>
         <TeamBig m={m} side="away" />
       </div>
 
       {m.completed ? (
         <ResultLine m={m} />
-      ) : p ? (
+      ) : p ? (() => {
+        const topScores = mkt?.topScores ?? p.scoreline.top_scores;
+        const mostLikely = mkt?.mostLikely ?? p.scoreline.most_likely;
+        return (
         <div className="mt-5 space-y-4">
-          {KO_STAGES.has(m.stage) ? <AdvBar m={m} /> : <WdlBar h={p.p_home} d={p.p_draw} a={p.p_away} />}
+          {KO_STAGES.has(m.stage) ? <AdvBar m={m} wdl={mkt?.probs} /> : <WdlBar h={mkt?.probs.home ?? p.p_home} d={mkt?.probs.draw ?? p.p_draw} a={mkt?.probs.away ?? p.p_away} />}
 
           <div className="flex flex-wrap gap-1.5">
-            {p.scoreline.top_scores.map((s) => (
+            {topScores.map((s) => (
               <span
                 key={s.score}
                 className={`rounded-lg border px-2.5 py-1 text-sm font-semibold tabular-nums ${
-                  s.score === p.scoreline.most_likely
+                  s.score === mostLikely
                     ? "border-amber-400/50 bg-amber-400/10 text-amber-300"
                     : "border-zinc-800 bg-zinc-900 text-zinc-300"
                 }`}
@@ -495,6 +502,11 @@ export function FocusCard({
           </div>
 
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-zinc-500">
+            {mkt && (
+              <span>
+                口径 <b className="text-zinc-200">盘口</b>
+              </span>
+            )}
             <span>
               xG{" "}
               <b className="tabular-nums text-zinc-200">
@@ -502,10 +514,10 @@ export function FocusCard({
               </b>
             </span>
             <span>
-              大 2.5 球 <b className="tabular-nums text-zinc-200">{pct(p.scoreline.p_over25)}</b>
+              大 2.5 球 <b className="tabular-nums text-zinc-200">{pct(mkt?.pOver25 ?? p.scoreline.p_over25)}</b>
             </span>
             <span>
-              双方进球 <b className="tabular-nums text-zinc-200">{pct(p.scoreline.p_btts)}</b>
+              双方进球 <b className="tabular-nums text-zinc-200">{pct(mkt?.pBtts ?? p.scoreline.p_btts)}</b>
             </span>
           </div>
 
@@ -513,7 +525,8 @@ export function FocusCard({
           <MarketOdds m={m} poly={poly} hideBook={hideBook} />
           <WeatherLabLine m={m} w={wx} />
         </div>
-      ) : null}
+        );
+      })() : null}
 
       {consoleMode && <ForecastAnalyticsTabs match={m} poly={poly} weather={wx} kalshi={kalshi} liveEntry={liveEntry} />}
 

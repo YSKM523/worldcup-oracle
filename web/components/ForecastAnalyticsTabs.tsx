@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { buildMatchScripts, buildScoreDistribution, buildValueRows, type ValueRow } from "../lib/forecastAnalytics";
+import { buildMatchScripts, buildScoreDistribution, buildValueRows, conditionDistribution, devig, marketPrices, type ScoreDistribution, type ValueRow } from "../lib/forecastAnalytics";
 import type { KalshiMarketState, LiveEntry, MarketSide, Match, MatchWeather, PolyLive } from "../lib/types";
 import { kickoffEpoch, zh } from "../lib/wc";
 
 type ForecastTab = "value" | "scripts" | "scores" | "watch";
+type ScoreSource = "market" | "ai";
 
 /** Console-only inputs supplied by FocusCard during Task 3 integration. */
 export interface ForecastAnalyticsTabsProps {
@@ -48,12 +49,6 @@ function validAi(match: Match): Record<MarketSide, number> | null {
     : null;
 }
 
-function marketPrices(match: Match, poly: PolyLive): Record<MarketSide, number> | null {
-  const live = poly.matches[kickoffEpoch(match.kickoff_utc)];
-  const values = live ?? match.market;
-  return values ? { home: values.home, draw: values.draw, away: values.away } : null;
-}
-
 function MarketUnavailable() {
   return <div className="border border-dashed border-zinc-800 px-3 py-4 text-center text-[11px] font-semibold tracking-[0.1em] text-zinc-500">MARKET UNAVAILABLE</div>;
 }
@@ -80,11 +75,27 @@ function ValuePanel({ match, ai, rows }: { match: Match; ai: Record<MarketSide, 
   );
 }
 
-function ScriptsPanel({ match, distribution }: { match: Match; distribution: ReturnType<typeof buildScoreDistribution> }) {
+interface ScoreSourceProps {
+  source: ScoreSource;
+  marketAvailable: boolean;
+  onSource: (source: ScoreSource) => void;
+}
+
+function SourceToggle({ source, marketAvailable, onSource }: ScoreSourceProps) {
+  return (
+    <span data-forecast-score-source={source} className="flex overflow-hidden border border-zinc-800">
+      {([["market", "盘口"], ["ai", "AI"]] as const).map(([id, label]) => (
+        <button key={id} type="button" data-forecast-source-btn={id} disabled={id === "market" && !marketAvailable} onClick={() => onSource(id)} className={`px-2 py-0.5 text-[9px] font-semibold tracking-[0.1em] ${source === id ? "bg-zinc-800 text-zinc-100" : "text-zinc-600 hover:text-zinc-300"} disabled:cursor-not-allowed disabled:text-zinc-800`}>{label}</button>
+      ))}
+    </span>
+  );
+}
+
+function ScriptsPanel({ match, distribution, ...sourceProps }: { match: Match; distribution: ScoreDistribution | null } & ScoreSourceProps) {
   if (!distribution) return <div className="py-6 text-center text-[11px] font-semibold tracking-[0.1em] text-zinc-500">SCORE MODEL UNAVAILABLE</div>;
   return (
     <div className="space-y-2 px-3">
-      <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.14em] text-zinc-400"><span>比赛剧本</span><span className="h-px flex-1 bg-zinc-800" /><span className="text-zinc-600">RESULT PATHS</span></div>
+      <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.14em] text-zinc-400"><span>比赛剧本</span><span className="h-px flex-1 bg-zinc-800" /><SourceToggle {...sourceProps} /><span className="text-zinc-600">RESULT PATHS</span></div>
       {buildMatchScripts(distribution).map((script) => (
         <div key={script.side} data-forecast-script={script.side} className="grid grid-cols-[minmax(92px,1fr)_58px_minmax(100px,1.2fr)] items-center gap-3 border-b border-zinc-900 py-2 text-[11px] tabular-nums last:border-b-0">
           <span className={`flex items-center gap-2 font-medium ${SIDE_CLASS[script.side]}`}><span className={`h-1.5 w-1.5 ${SIDE_DOT[script.side]}`} />{sideLabel(script.side, match)}路径</span>
@@ -96,15 +107,18 @@ function ScriptsPanel({ match, distribution }: { match: Match; distribution: Ret
   );
 }
 
-function ScoresPanel({ match, distribution }: { match: Match; distribution: ReturnType<typeof buildScoreDistribution> }) {
-  const ranking = match.pred?.scoreline.top_scores ?? [];
+function ScoresPanel({ match, distribution, ...sourceProps }: { match: Match; distribution: ScoreDistribution | null } & ScoreSourceProps) {
   if (!distribution) return <div className="py-6 text-center text-[11px] font-semibold tracking-[0.1em] text-zinc-500">SCORE MODEL UNAVAILABLE</div>;
-  const suppliedMode = match.pred?.scoreline.most_likely;
+  const fromMarket = sourceProps.source === "market";
+  const ranking = fromMarket
+    ? [...distribution.cells].sort((a, b) => b.p - a.p).slice(0, 3).map((cell) => ({ score: cell.label, p: cell.p }))
+    : match.pred?.scoreline.top_scores ?? [];
+  const suppliedMode = fromMarket ? distribution.mode.label : match.pred?.scoreline.most_likely;
   const suppliedInGrid = distribution.cells.some((cell) => cell.label === suppliedMode);
   const mostLikely = suppliedInGrid ? suppliedMode : suppliedMode ? null : distribution.mode.label;
   return (
     <div className="space-y-3 px-3">
-      <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.14em] text-zinc-400"><span>比分分布</span><span className="h-px flex-1 bg-zinc-800" /><span className="text-zinc-600">0–3 + 4+</span></div>
+      <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.14em] text-zinc-400"><span>比分分布</span><span className="h-px flex-1 bg-zinc-800" /><SourceToggle {...sourceProps} /><span className="text-zinc-600">{fromMarket ? "PM DEVIG" : "AI MODEL"} · 0–3 + 4+</span></div>
       <div data-forecast-score-grid className="grid grid-cols-4 gap-px overflow-hidden border border-zinc-800 bg-zinc-800">
         {distribution.cells.map((cell) => {
           const isMode = mostLikely != null && cell.label === mostLikely;
@@ -153,10 +167,16 @@ function WatchPanel({ match, poly, kalshi, weather, liveEntry, rows }: ForecastA
 
 export function ForecastAnalyticsTabs(props: ForecastAnalyticsTabsProps) {
   const [tab, setTab] = useState<ForecastTab>("scores");
+  const [scoreSource, setScoreSource] = useState<ScoreSource>("market");
   const instanceId = useId().replace(/[^a-zA-Z0-9_-]/g, "") || "forecast-tabs";
   const tabRefs = useRef<Partial<Record<ForecastTab, HTMLButtonElement | null>>>({});
   const ai = validAi(props.match);
-  const distribution = buildScoreDistribution(props.match.pred?.scoreline.xg_home ?? Number.NaN, props.match.pred?.scoreline.xg_away ?? Number.NaN);
+  const aiDistribution = buildScoreDistribution(props.match.pred?.scoreline.xg_home ?? Number.NaN, props.match.pred?.scoreline.xg_away ?? Number.NaN);
+  const marketProbs = devig(marketPrices(props.match, props.poly));
+  const marketDistribution = aiDistribution && marketProbs ? conditionDistribution(aiDistribution, marketProbs) : null;
+  const source: ScoreSource = scoreSource === "market" && marketDistribution ? "market" : "ai";
+  const distribution = source === "market" ? marketDistribution : aiDistribution;
+  const sourceProps: ScoreSourceProps = { source, marketAvailable: marketDistribution != null, onSource: setScoreSource };
   const rows = ai ? buildValueRows(ai, marketPrices(props.match, props.poly)) : [];
   const selectByKey = (event: KeyboardEvent<HTMLButtonElement>, current: ForecastTab) => {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
@@ -174,8 +194,8 @@ export function ForecastAnalyticsTabs(props: ForecastAnalyticsTabsProps) {
       </div></div>
       {TABS.map((item) => <div key={item.id} id={`${instanceId}-panel-${item.id}`} role="tabpanel" aria-labelledby={`${instanceId}-tab-${item.id}`} aria-hidden={tab !== item.id} hidden={tab !== item.id} className="min-h-0 flex-1 overflow-y-auto py-3">
         {item.id === "value" && <ValuePanel match={props.match} ai={ai} rows={rows} />}
-        {item.id === "scripts" && <ScriptsPanel match={props.match} distribution={distribution} />}
-        {item.id === "scores" && <ScoresPanel match={props.match} distribution={distribution} />}
+        {item.id === "scripts" && <ScriptsPanel match={props.match} distribution={distribution} {...sourceProps} />}
+        {item.id === "scores" && <ScoresPanel match={props.match} distribution={distribution} {...sourceProps} />}
         {item.id === "watch" && <WatchPanel {...props} rows={rows} />}
       </div>)}
     </section>
