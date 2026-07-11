@@ -23,8 +23,11 @@ export function buildScoreDistribution(xgHome: number, xgAway: number): ScoreDis
     });
   }
 
+  if (full.some((cell) => !Number.isFinite(cell.p) || cell.p <= 0)) return null;
   const total = full.reduce((sum, cell) => sum + cell.p, 0);
+  if (!Number.isFinite(total) || total <= 0) return null;
   const normalized = full.map((cell) => ({ ...cell, p: cell.p / total }));
+  if (normalized.some((cell) => !Number.isFinite(cell.p) || cell.p <= 0)) return null;
   const cells = normalized.filter((cell) => cell.home <= 3 && cell.away <= 3);
   const tailCells = normalized.filter((cell) => cell.home > 3 || cell.away > 3);
   const tailBySide = Object.fromEntries(
@@ -52,9 +55,13 @@ export function buildMatchScripts(distribution: ScoreDistribution): MatchScript[
 
 export function buildValueRows(ai: Record<MarketSide, number>, market: Record<MarketSide, number> | null): ValueRow[] {
   const marketSum = market ? market.home + market.draw + market.away : 0;
+  const marketIsValid = market !== null
+    && sides.every((side) => Number.isFinite(market[side]) && market[side] > 0)
+    && Number.isFinite(marketSum)
+    && marketSum > 0;
 
   return sides.map((side) => {
-    const normalized = market && marketSum > 0 ? market[side] / marketSum : null;
+    const normalized = marketIsValid && market ? market[side] / marketSum : null;
     const edge = normalized == null ? null : ai[side] - normalized;
     const halfKelly = normalized == null ? null : Math.max(0, ((ai[side] * (1 / normalized)) - 1) / ((1 / normalized) - 1) / 2);
 
