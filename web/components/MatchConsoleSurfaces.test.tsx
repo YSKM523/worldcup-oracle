@@ -55,6 +55,14 @@ describe("match console surfaces", () => {
           espn_id: "401", kickoff_utc: "2026-07-10T19:00:00Z", stage: "quarterfinal", group: null,
           venue: "SoFi Stadium", city: "Inglewood, California", home: "Spain", away: "Belgium",
           tbd: false, completed: false, status: "in", home_score: 1, away_score: 1, winner: null,
+          detail: {
+            elo_home: 2386, elo_away: 2201, rank_home: 1, rank_away: 6,
+            form_home: [{ date: "2026-07-01", opp: "France", score: "2-0", res: "W" }],
+            form_away: [{ date: "2026-07-01", opp: "Germany", score: "1-1", res: "D" }],
+            h2h: { n: 8, w: 7, d: 1, l: 0, last: [] },
+            advance_home: .7, advance_away: .3, champion_home: .214, champion_away: .047,
+            analysis: "Spain control the matchup.",
+          },
         },
         meta: { models: [] }, live: {}, poly: { matches: {}, champion: {}, championFresh: false, updatedAt: null, wsConnected: false },
         hideBook: true, variant: "console",
@@ -66,5 +74,8 @@ describe("match console surfaces", () => {
     expect(surface.props.className).toContain("h-full");
     expect(surface.props.className).toContain("flex-col");
     expect(JSON.stringify(root!.toJSON())).toContain("MATCH FORECAST · 模型预测");
+    expect(JSON.stringify(root!.toJSON())).toContain("MATCH DOSSIER · 近期态势");
+    expect(JSON.stringify(root!.toJSON())).toContain("法国");
+    expect(JSON.stringify(root!.toJSON())).toContain("德国");
   });
 });
