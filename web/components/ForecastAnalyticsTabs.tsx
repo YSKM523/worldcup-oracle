@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { buildMatchScripts, buildScoreDistribution, buildValueRows, type ValueRow } from "../lib/forecastAnalytics";
 import type { KalshiMarketState, LiveEntry, MarketSide, Match, MatchWeather, PolyLive } from "../lib/types";
 import { kickoffEpoch, zh } from "../lib/wc";
@@ -58,15 +58,15 @@ function ValuePanel({ match, ai, rows }: { match: Match; ai: Record<MarketSide, 
     <div className="space-y-2 px-3">
       <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.14em] text-zinc-400"><span>AI FAIR</span><span className="h-px flex-1 bg-zinc-800" /><span className="text-zinc-600">PM DEVIG · HALF KELLY</span></div>
       {!marketAvailable && <MarketUnavailable />}
-      <div className="grid grid-cols-[minmax(80px,1fr)_54px_54px_54px_54px_54px] border-b border-zinc-800 pb-1 text-right text-[9px] uppercase tracking-[0.08em] text-zinc-600">
-        <span className="text-left">Outcome</span><span>AI</span><span>PM</span><span>Fair</span><span>Edge</span><span>½ Kelly</span>
+      <div className="grid grid-cols-[minmax(80px,1fr)_48px_48px_54px_54px_54px_58px_54px] border-b border-zinc-800 pb-1 text-right text-[9px] tracking-[0.08em] text-zinc-600">
+        <span className="text-left uppercase">Outcome</span><span>AI</span><span>PM</span><span>Fair</span><span>PM Odds</span><span>Edge</span><span>Direction</span><span>½ Kelly</span>
       </div>
       {rows.map((row) => (
-        <div key={row.side} data-forecast-value={row.side} className="grid min-h-8 grid-cols-[minmax(80px,1fr)_54px_54px_54px_54px_54px] items-center border-b border-zinc-900 text-right text-[11px] tabular-nums last:border-b-0">
+        <div key={row.side} data-forecast-value={row.side} className="grid min-h-8 grid-cols-[minmax(80px,1fr)_48px_48px_54px_54px_54px_58px_54px] items-center border-b border-zinc-900 text-right text-[11px] tabular-nums last:border-b-0">
           <span className={`flex min-w-0 items-center gap-2 text-left font-medium ${SIDE_CLASS[row.side]}`}><span className={`h-1.5 w-1.5 shrink-0 ${SIDE_DOT[row.side]}`} /><span className="truncate">{sideLabel(row.side, match)}</span></span>
-          <strong className="text-zinc-100">{pct(row.ai)}</strong><span className="text-zinc-300">{number(row.market)}</span><span className="text-zinc-300">{odds(row.fairOdds)}</span>
+          <strong className="text-zinc-100">{pct(row.ai)}</strong><span className="text-zinc-300">{number(row.market)}</span><span className="text-zinc-300">{odds(row.fairOdds)}</span><span className="text-zinc-300">{odds(row.marketOdds)}</span>
           <span className={row.edge == null ? "text-zinc-600" : row.edge > 0 ? "text-emerald-300" : row.edge < 0 ? "text-rose-300" : "text-zinc-400"}>{row.edge == null ? "—" : `${row.edge > 0 ? "+" : ""}${(row.edge * 100).toFixed(1)}pp`}</span>
-          <span className="text-zinc-400">{row.halfKelly == null ? "—" : pct(row.halfKelly)}</span>
+          <span className={row.edge == null ? "text-zinc-600" : row.direction === "BUY" ? "text-emerald-300" : row.direction === "SELL" ? "text-rose-300" : "text-zinc-400"}>{row.edge == null ? "—" : row.direction}</span><span className="text-zinc-400">{row.halfKelly == null ? "—" : pct(row.halfKelly)}</span>
         </div>
       ))}
     </div>
@@ -92,12 +92,14 @@ function ScriptsPanel({ match, distribution }: { match: Match; distribution: Ret
 function ScoresPanel({ match, distribution }: { match: Match; distribution: ReturnType<typeof buildScoreDistribution> }) {
   const ranking = match.pred?.scoreline.top_scores ?? [];
   if (!distribution) return <div className="py-6 text-center text-[11px] font-semibold tracking-[0.1em] text-zinc-500">SCORE MODEL UNAVAILABLE</div>;
+  const suppliedMode = match.pred?.scoreline.most_likely;
+  const mostLikely = distribution.cells.some((cell) => cell.label === suppliedMode) ? suppliedMode : distribution.mode.label;
   return (
     <div className="space-y-3 px-3">
       <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.14em] text-zinc-400"><span>比分分布</span><span className="h-px flex-1 bg-zinc-800" /><span className="text-zinc-600">0–3 + 4+</span></div>
       <div data-forecast-score-grid className="grid grid-cols-4 gap-px overflow-hidden border border-zinc-800 bg-zinc-800">
         {distribution.cells.map((cell) => {
-          const isMode = cell.label === distribution.mode.label;
+          const isMode = cell.label === mostLikely;
           return <div key={cell.label} data-forecast-score={cell.label} data-most-likely={isMode || undefined} className={`min-h-11 bg-zinc-950 px-2 py-1.5 text-right tabular-nums ${isMode ? "bg-amber-400/10 text-amber-200" : "text-zinc-300"}`}><b className="float-left text-[10px] font-medium text-zinc-500">{cell.label}</b><span className="text-[11px]">{pct(cell.p)}</span></div>;
         })}
       </div>
@@ -109,12 +111,10 @@ function ScoresPanel({ match, distribution }: { match: Match; distribution: Retu
 
 function WatchPanel({ match, poly, kalshi, weather, liveEntry, rows }: ForecastAnalyticsTabsProps & { rows: ValueRow[] }) {
   const quote = poly.matches[kickoffEpoch(match.kickoff_utc)];
-  const quoteUpdatedAt = quote?.ts ?? poly.updatedAt;
-  const pmFresh = quoteUpdatedAt != null && Date.now() - quoteUpdatedAt <= 120_000;
-  const pmStatus = !quote ? "PM UNAVAILABLE" : poly.wsConnected && pmFresh ? "PM WS · FRESH" : pmFresh ? "PM SNAPSHOT · FRESH" : "PM STALE";
+  const pmStatus = !quote ? "PM UNAVAILABLE" : poly.updatedAt == null ? "PM STALE" : poly.wsConnected ? "PM WS · FRESH" : "PM SNAPSHOT · FRESH";
   const kalStatus = kalshi?.status === "live" ? kalshi.stale ? "KAL STALE" : "KAL LIVE" : "KAL UNAVAILABLE";
   const divergence = rows.reduce<number | null>((max, row) => row.edge == null ? max : Math.max(max ?? 0, Math.abs(row.edge)), null);
-  const weatherStatus = !weather ? "WEATHER UNAVAILABLE" : `WEATHER ${Math.round(weather.temp_c)}°C · ${Math.round(weather.humidity_pct)}%${weather.forecast ? " · FORECAST" : ""}`;
+  const weatherStatus = !weather || !Number.isFinite(weather.temp_c) || !Number.isFinite(weather.humidity_pct) ? "WEATHER UNAVAILABLE" : `WEATHER ${Math.round(weather.temp_c)}°C · ${Math.round(weather.humidity_pct)}%${weather.forecast ? " · FORECAST" : ""}`;
   const feedStatus = !liveEntry ? "MATCH FEED · UNAVAILABLE" : liveEntry.state === "in" ? `MATCH FEED · LIVE ${liveEntry.clock}` : liveEntry.state === "post" ? "MATCH FEED · FINAL" : "MATCH FEED · PRE-MATCH";
   const lines = [pmStatus, kalStatus, divergence == null ? "AI / PM · UNAVAILABLE" : `AI / PM MAX Δ ${(divergence * 100).toFixed(1)}pp`, weatherStatus, feedStatus];
   return (
@@ -127,6 +127,8 @@ function WatchPanel({ match, poly, kalshi, weather, liveEntry, rows }: ForecastA
 
 export function ForecastAnalyticsTabs(props: ForecastAnalyticsTabsProps) {
   const [tab, setTab] = useState<ForecastTab>("scores");
+  const instanceId = useId().replace(/[^a-zA-Z0-9_-]/g, "") || "forecast-tabs";
+  const tabRefs = useRef<Partial<Record<ForecastTab, HTMLButtonElement | null>>>({});
   const ai = validAi(props.match);
   const distribution = buildScoreDistribution(props.match.pred?.scoreline.xg_home ?? Number.NaN, props.match.pred?.scoreline.xg_away ?? Number.NaN);
   const rows = ai ? buildValueRows(ai, marketPrices(props.match, props.poly)) : [];
@@ -134,20 +136,22 @@ export function ForecastAnalyticsTabs(props: ForecastAnalyticsTabsProps) {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     event.preventDefault();
     const next = Math.min(TABS.length - 1, Math.max(0, TABS.findIndex((item) => item.id === current) + (event.key === "ArrowRight" ? 1 : -1)));
-    setTab(TABS[next].id);
+    const nextTab = TABS[next].id;
+    setTab(nextTab);
+    tabRefs.current[nextTab]?.focus();
   };
 
   return (
     <section data-forecast-tabs className="mt-4 flex min-h-0 flex-1 flex-col border-y border-zinc-800/70">
       <div role="tablist" aria-label="预测分析" className="overflow-x-auto border-b border-zinc-800"><div className="flex min-w-max">
-        {TABS.map((item) => <button key={item.id} id={`forecast-tab-${item.id}`} data-forecast-tab={item.id} role="tab" type="button" aria-selected={tab === item.id} aria-controls={`forecast-panel-${item.id}`} tabIndex={tab === item.id ? 0 : -1} onClick={() => setTab(item.id)} onKeyDown={(event) => selectByKey(event, item.id)} className={`border-b-2 px-3 py-2 text-[10px] font-semibold tracking-[0.12em] whitespace-nowrap ${tab === item.id ? "border-emerald-400 text-zinc-100" : "border-transparent text-zinc-600 hover:text-zinc-300"}`}>{item.label}</button>)}
+        {TABS.map((item) => <button key={item.id} ref={(node) => { tabRefs.current[item.id] = node; }} id={`${instanceId}-tab-${item.id}`} data-forecast-tab={item.id} role="tab" type="button" aria-selected={tab === item.id} aria-controls={`${instanceId}-panel-${item.id}`} tabIndex={tab === item.id ? 0 : -1} onClick={() => setTab(item.id)} onKeyDown={(event) => selectByKey(event, item.id)} className={`border-b-2 px-3 py-2 text-[10px] font-semibold tracking-[0.12em] whitespace-nowrap ${tab === item.id ? "border-emerald-400 text-zinc-100" : "border-transparent text-zinc-600 hover:text-zinc-300"}`}>{item.label}</button>)}
       </div></div>
-      <div id={`forecast-panel-${tab}`} role="tabpanel" aria-labelledby={`forecast-tab-${tab}`} className="min-h-0 flex-1 overflow-y-auto py-3">
-        {tab === "value" && <ValuePanel match={props.match} ai={ai} rows={rows} />}
-        {tab === "scripts" && <ScriptsPanel match={props.match} distribution={distribution} />}
-        {tab === "scores" && <ScoresPanel match={props.match} distribution={distribution} />}
-        {tab === "watch" && <WatchPanel {...props} rows={rows} />}
-      </div>
+      {TABS.map((item) => <div key={item.id} id={`${instanceId}-panel-${item.id}`} role="tabpanel" aria-labelledby={`${instanceId}-tab-${item.id}`} aria-hidden={tab !== item.id} hidden={tab !== item.id} className="min-h-0 flex-1 overflow-y-auto py-3">
+        {item.id === "value" && <ValuePanel match={props.match} ai={ai} rows={rows} />}
+        {item.id === "scripts" && <ScriptsPanel match={props.match} distribution={distribution} />}
+        {item.id === "scores" && <ScoresPanel match={props.match} distribution={distribution} />}
+        {item.id === "watch" && <WatchPanel {...props} rows={rows} />}
+      </div>)}
     </section>
   );
 }
