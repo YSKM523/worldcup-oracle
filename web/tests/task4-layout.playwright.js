@@ -19,7 +19,19 @@ async page => {
     contentType: "application/json",
     body: JSON.stringify({ status: "unavailable", source: "kalshi-rest", eventTicker: null, updatedAt: Date.now(), outcomes: {} }),
   }));
-  await page.context().route("**/gamma-api.polymarket.com/**", route => route.fulfill({ contentType: "application/json", body: "[]" }));
+  await page.context().route("**/gamma-api.polymarket.com/**", route => {
+    const url = route.request().url();
+    const gamma = url.includes("fifwc-nor-eng-2026-07-11") ? [{
+      title: "Norway vs. England",
+      endDate: "2026-07-11T21:00:00+00:00",
+      markets: [
+        { question: "Will Norway win?", outcomePrices: "[\"0.10\",\"0.90\"]", clobTokenIds: "[\"nor\"]" },
+        { question: "Will there be a draw?", outcomePrices: "[\"0.20\",\"0.80\"]", clobTokenIds: "[\"draw\"]" },
+        { question: "Will England win?", outcomePrices: "[\"0.70\",\"0.30\"]", clobTokenIds: "[\"eng\"]" },
+      ],
+    }] : [];
+    return route.fulfill({ contentType: "application/json", body: JSON.stringify(gamma) });
+  });
   await page.context().route("**/clob.polymarket.com/**", route => route.fulfill({ contentType: "application/json", body: "{}" }));
   await page.context().route("**/data-api.polymarket.com/**", route => route.fulfill({ contentType: "application/json", body: "[]" }));
   await page.context().route("**/site.api.espn.com/**", route => route.fulfill({
@@ -53,6 +65,15 @@ async page => {
     if (await scores.getAttribute("aria-selected") !== "true" || !(await scores.isVisible())) throw new Error(`${width}: scores is not visibly selected by default`);
     const scorePanel = tabs.locator(`[id=\"${controls[2]}\"]`);
     if (!(await scorePanel.isVisible()) || !(await scorePanel.textContent()).includes("比分分布")) throw new Error(`${width}: scores panel is not visibly rendered by default`);
+    const scoreSides = [
+      ["home", "bg-emerald"],
+      ["draw", "bg-zinc"],
+      ["away", "bg-rose"],
+    ];
+    for (const [side, color] of scoreSides) {
+      const cell = scorePanel.locator(`[data-forecast-score-side=${side}]`).first();
+      if (!(await cell.isVisible()) || !(await cell.getAttribute("class")).includes(color)) throw new Error(`${width}: ${side} score encoding missing`);
+    }
     for (let index = 0; index < tabIds.length; index += 1) {
       const tab = tabs.locator(`[data-forecast-tab=${tabIds[index]}]`);
       await tab.click();
@@ -60,6 +81,9 @@ async page => {
       if (await tab.getAttribute("aria-selected") !== "true" || !(await panel.isVisible())) throw new Error(`${width}: ${tabIds[index]} did not switch to its panel`);
     }
     const watchPanel = tabs.locator(`[id=\"${controls[3]}\"]`);
+    const source = watchPanel.locator("[data-forecast-watch=pm]");
+    await source.filter({ hasText: "PM REST/GAMMA · FRESH" }).waitFor();
+    if (!(await watchPanel.locator("[data-forecast-divergence-alert=critical]").isVisible())) throw new Error(`${width}: missing critical AI/PM divergence alert`);
     const watch = await watchPanel.evaluate((panel) => ({
       clientHeight: panel.clientHeight,
       scrollHeight: panel.scrollHeight,

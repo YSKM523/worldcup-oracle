@@ -25,6 +25,9 @@ const TABS: Array<{ id: ForecastTab; label: string }> = [
 
 const SIDE_CLASS: Record<MarketSide, string> = { home: "text-emerald-300", draw: "text-zinc-300", away: "text-rose-300" };
 const SIDE_DOT: Record<MarketSide, string> = { home: "bg-emerald-400", draw: "bg-zinc-400", away: "bg-rose-400" };
+const SCORE_SIDE_CLASS: Record<MarketSide, string> = { home: "bg-emerald-400/10 text-emerald-100", draw: "bg-zinc-800 text-zinc-100", away: "bg-rose-400/10 text-rose-100" };
+const DIVERGENCE_CLASS = { normal: "text-zinc-300", warning: "text-amber-300", critical: "text-rose-300" } as const;
+type DivergenceTier = keyof typeof DIVERGENCE_CLASS;
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 const odds = (value: number | null) => value == null ? "—" : value.toFixed(2);
@@ -38,7 +41,11 @@ function validAi(match: Match): Record<MarketSide, number> | null {
   const pred = match.pred;
   if (!pred) return null;
   const values = { home: pred.p_home, draw: pred.p_draw, away: pred.p_away };
-  return Object.values(values).every((value) => Number.isFinite(value) && value > 0) ? values : null;
+  const total = values.home + values.draw + values.away;
+  return Object.values(values).every((value) => Number.isFinite(value) && value > 0 && value < 1)
+    && Number.isFinite(total) && total > 0 && Math.abs(total - 1) <= .02
+    ? values
+    : null;
 }
 
 function marketPrices(match: Match, poly: PolyLive): Record<MarketSide, number> | null {
@@ -52,7 +59,7 @@ function MarketUnavailable() {
 }
 
 function ValuePanel({ match, ai, rows }: { match: Match; ai: Record<MarketSide, number> | null; rows: ValueRow[] }) {
-  if (!ai) return <div className="py-6 text-center text-[11px] font-semibold tracking-[0.1em] text-zinc-500">FORECAST UNAVAILABLE</div>;
+  if (!ai) return <div className="py-6 text-center text-[11px] font-semibold tracking-[0.1em] text-zinc-500">AI MODEL UNAVAILABLE</div>;
   const marketAvailable = rows.some((row) => row.market != null);
   return (
     <div className="space-y-2 px-3">
@@ -101,7 +108,7 @@ function ScoresPanel({ match, distribution }: { match: Match; distribution: Retu
       <div data-forecast-score-grid className="grid grid-cols-4 gap-px overflow-hidden border border-zinc-800 bg-zinc-800">
         {distribution.cells.map((cell) => {
           const isMode = mostLikely != null && cell.label === mostLikely;
-          return <div key={cell.label} data-forecast-score={cell.label} data-most-likely={isMode || undefined} className={`min-h-11 bg-zinc-950 px-2 py-1.5 text-right tabular-nums ${isMode ? "bg-amber-400/10 text-amber-200" : "text-zinc-300"}`}><b className="float-left text-[10px] font-medium text-zinc-500">{cell.label}</b><span className="text-[11px]">{pct(cell.p)}</span></div>;
+          return <div key={cell.label} data-forecast-score={cell.label} data-forecast-score-side={cell.side} data-most-likely={isMode || undefined} className={`min-h-11 px-2 py-1.5 text-right tabular-nums ${SCORE_SIDE_CLASS[cell.side]} ${isMode ? "ring-1 ring-inset ring-amber-400/70 text-amber-200" : ""}`}><b className="float-left text-[10px] font-medium text-zinc-500">{cell.label}</b><span className="text-[11px]">{pct(cell.p)}</span></div>;
         })}
       </div>
       <div data-forecast-score-tail data-most-likely={suppliedMode && !suppliedInGrid ? suppliedMode : undefined} className={`flex items-center border-y border-zinc-800 py-2 text-[11px] tabular-nums ${suppliedMode && !suppliedInGrid ? "bg-amber-400/10 text-amber-200" : ""}`}><span className="font-semibold text-zinc-300">4+ TAIL{suppliedMode && !suppliedInGrid ? ` · MODE ${suppliedMode}` : ""}</span><span className="ml-auto text-zinc-100">{pct(distribution.tail)}</span></div>
@@ -121,16 +128,25 @@ function WatchPanel({ match, poly, kalshi, weather, liveEntry, rows }: ForecastA
   const quote = poly.matches[kickoffEpoch(match.kickoff_utc)];
   const updatedAt = quote?.ts ?? poly.updatedAt;
   const pmFresh = updatedAt != null && Number.isFinite(updatedAt) && now != null && now >= updatedAt && now - updatedAt <= 15_000;
-  const pmStatus = !quote ? "PM UNAVAILABLE" : pmFresh ? poly.wsConnected ? "PM WS · FRESH" : "PM SNAPSHOT · FRESH" : "PM STALE";
+  const quoteSource = quote?.src === "ws" ? "PM WS" : quote?.src === "gamma" ? "PM REST/GAMMA" : "PM SOURCE UNKNOWN";
+  const pmStatus = !quote ? "PM UNAVAILABLE" : `${quoteSource} · ${pmFresh ? "FRESH" : "STALE"}`;
   const kalStatus = kalshi?.status === "live" ? kalshi.stale ? "KAL STALE" : "KAL LIVE" : "KAL UNAVAILABLE";
   const divergence = rows.reduce<number | null>((max, row) => row.edge == null ? max : Math.max(max ?? 0, Math.abs(row.edge)), null);
+  const divergenceTier: DivergenceTier | null = divergence == null ? null : divergence >= .10 ? "critical" : divergence >= .05 ? "warning" : "normal";
   const weatherStatus = !weather || !Number.isFinite(weather.temp_c) || !Number.isFinite(weather.humidity_pct) ? "WEATHER UNAVAILABLE" : `WEATHER ${Math.round(weather.temp_c)}°C · ${Math.round(weather.humidity_pct)}%${weather.forecast ? " · FORECAST" : ""}`;
   const feedStatus = !liveEntry ? "MATCH FEED · UNAVAILABLE" : liveEntry.state === "in" ? `MATCH FEED · LIVE ${liveEntry.clock}` : liveEntry.state === "post" ? "MATCH FEED · FINAL" : "MATCH FEED · PRE-MATCH";
-  const lines = [pmStatus, kalStatus, divergence == null ? "AI / PM · UNAVAILABLE" : `AI / PM MAX Δ ${(divergence * 100).toFixed(1)}pp`, weatherStatus, feedStatus];
+  const lines: Array<{ key: string; label: string; tier?: DivergenceTier }> = [
+    { key: "pm", label: pmStatus },
+    { key: "socket", label: `SOCKET ${poly.wsConnected ? "UP" : "DOWN"}` },
+    { key: "kalshi", label: kalStatus },
+    { key: "divergence", label: divergence == null ? "AI / PM · UNAVAILABLE" : `AI / PM MAX Δ ${(divergence * 100).toFixed(1)}pp · ${divergenceTier!.toUpperCase()}`, ...(divergenceTier ? { tier: divergenceTier } : {}) },
+    { key: "weather", label: weatherStatus },
+    { key: "feed", label: feedStatus },
+  ];
   return (
     <div className="space-y-2 px-3">
       <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.14em] text-zinc-400"><span>盯盘清单</span><span className="h-px flex-1 bg-zinc-800" /><span className="text-zinc-600">SOURCE HEALTH</span></div>
-      <ul className="divide-y divide-zinc-900 border-y border-zinc-800">{lines.map((line) => <li key={line} className="flex min-h-8 items-center text-[11px] font-medium tabular-nums text-zinc-300"><span className="mr-2 h-1.5 w-1.5 bg-zinc-600" />{line}</li>)}</ul>
+      <ul className="divide-y divide-zinc-900 border-y border-zinc-800">{lines.map((line) => <li key={line.key} data-forecast-watch={line.key} data-forecast-divergence-alert={line.tier ?? undefined} className={`flex min-h-8 items-center text-[11px] font-medium tabular-nums ${line.tier ? DIVERGENCE_CLASS[line.tier] : "text-zinc-300"}`}><span className={`mr-2 h-1.5 w-1.5 ${line.tier === "critical" ? "bg-rose-400" : line.tier === "warning" ? "bg-amber-400" : "bg-zinc-600"}`} />{line.label}</li>)}</ul>
     </div>
   );
 }
